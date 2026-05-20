@@ -697,7 +697,20 @@ body{
   z-index:300;
   box-shadow:0 4px 16px rgba(0,0,0,.3);
   animation:toastIn .3s ease forwards;
-  pointer-events:none;
+  pointer-events:auto;
+  display:flex;align-items:center;gap:12px;
+}
+.toast-undo{
+  background:rgba(0,0,0,.25);
+  border:none;
+  color:#000;
+  font-size:13px;
+  font-weight:700;
+  padding:4px 12px;
+  border-radius:10px;
+  cursor:pointer;
+  text-transform:uppercase;
+  letter-spacing:.5px;
 }
 @keyframes toastIn{
   from{opacity:0;transform:translateX(-50%) translateY(-20px)}
@@ -985,15 +998,27 @@ function formatDate(iso) {
   });
 }
 
-function showToast(msg) {
+function showToast(msg, undoFn) {
   var existing = document.querySelector('.toast');
   if (existing) existing.remove();
   var t = document.createElement('div');
   t.className = 'toast';
-  t.textContent = msg;
+  var span = document.createElement('span');
+  span.textContent = msg;
+  t.appendChild(span);
+  if (undoFn) {
+    var btn = document.createElement('button');
+    btn.className = 'toast-undo';
+    btn.textContent = 'Undo';
+    btn.addEventListener('click', function() {
+      t.remove();
+      undoFn();
+    });
+    t.appendChild(btn);
+  }
   document.getElementById('app').appendChild(t);
-  setTimeout(function() { t.classList.add('out'); }, 1800);
-  setTimeout(function() { t.remove(); }, 2200);
+  setTimeout(function() { t.classList.add('out'); }, 3500);
+  setTimeout(function() { t.remove(); }, 3900);
 }
 
 // ============================================================
@@ -1414,6 +1439,9 @@ function showLatePrompt(plant, cardEl) {
 }
 
 async function doWater(plant, lateReason) {
+  // Snapshot previous state for undo
+  var snapshot = JSON.parse(JSON.stringify(plant));
+
   var now     = new Date().toISOString();
   var feedDue = isFeedDue(plant);
 
@@ -1457,14 +1485,20 @@ async function doWater(plant, lateReason) {
   if (lateReason === 'still_wet') historyEntry.lateReason = 'Still wet';
   else if (lateReason === 'too_busy') historyEntry.lateReason = 'Too busy';
 
-  await dbAdd('history', historyEntry);
+  var historyId = await dbAdd('history', historyEntry);
 
   // --- Visual feedback ---
   var card = tabContent.querySelector('[data-plant-id="' + plant.id + '"]');
   if (card) card.classList.add('tap-flash');
 
   var toastMsg = feedDue ? (plant.name + ' watered + fed') : (plant.name + ' watered');
-  showToast(toastMsg);
+  showToast(toastMsg, async function() {
+    // Undo: restore plant snapshot and delete history entry
+    await dbPut('plants', snapshot);
+    await dbDelete('history', historyId);
+    showToast('Undone');
+    render();
+  });
 
   setTimeout(function() { render(); }, 350);
 }
