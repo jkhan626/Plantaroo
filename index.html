@@ -2712,11 +2712,48 @@ async function seedPlants() {
 }
 
 // ============================================================
+// ONE-TIME MIGRATION: set watering dates on existing plants
+// ============================================================
+
+async function migrateWateringDates() {
+  var MIGRATION_KEY = 'plantaroo_migration_watering_dates_v1';
+  try {
+    if (localStorage.getItem(MIGRATION_KEY)) return;
+  } catch(e) {}
+
+  var plants = await dbGetAll('plants');
+  if (plants.length === 0) return;
+
+  var yesterday = new Date(Date.now() - 86400000).toISOString();
+  var sixDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString();
+
+  for (var i = 0; i < plants.length; i++) {
+    var p = plants[i];
+    var isSixDay = SIX_DAY_PLANTS.indexOf(p.name) >= 0;
+    var soil = SOIL_TABLE[p.soil_type];
+    var effectiveStart = (soil && soil.mult !== null) ? p.species_baseline_days * soil.mult : 2;
+
+    p.last_watered = isSixDay ? sixDaysAgo : yesterday;
+    p.watering_count = Math.max(p.watering_count || 0, 1);
+    p.current_interval = effectiveStart;
+    p.recent_valid_gaps = [];
+    if (typeof p.notes === 'undefined') p.notes = '';
+
+    await dbPut('plants', p);
+  }
+
+  try { localStorage.setItem(MIGRATION_KEY, Date.now()); } catch(e) {}
+  console.log('Migration: set watering dates on ' + plants.length + ' plants');
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 
 openDB().then(function() {
   return seedPlants();
+}).then(function() {
+  return migrateWateringDates();
 }).then(function() {
   render();
   try { localStorage.setItem('plantaroo_init', Date.now()); } catch(e) {}
