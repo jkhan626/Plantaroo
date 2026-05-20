@@ -11,18 +11,20 @@
 /* ===== DESIGN TOKENS ===== */
 :root {
   --bg: #000000;
-  --surface: #141419;
+  --surface: #111116;
   --surface-elevated: #1c1c24;
-  --border: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.04);
   --border-subtle: rgba(255,255,255,0.04);
   --text-primary: #f5f5f7;
-  --text-secondary: #86868b;
-  --text-tertiary: #48484a;
+  --text-secondary: #666;
+  --text-tertiary: #555;
+  --text-muted: #444;
   --green: #30d158;
-  --green-bg: rgba(48,209,88,0.12);
+  --green-bg: rgba(48,209,88,0.10);
   --orange: #ff9f0a;
   --red: #ff453a;
   --blue: #0a84ff;
+  --light-blue: #5ac8fa;
   --purple: #bf5af2;
   --purple-bg: rgba(191,90,242,0.12);
 }
@@ -62,17 +64,17 @@ body{
   flex-shrink:0;
 }
 .header h1{
-  font-size:28px;
-  font-weight:800;
-  letter-spacing:-1px;
+  font-size:26px;
+  font-weight:700;
+  letter-spacing:-0.3px;
+  color:var(--text-primary);
 }
-.header h1 .green{color:var(--green)}
 .header .subtitle{
-  font-size:13px;
-  color:var(--text-secondary);
+  font-size:12px;
+  color:#555;
   margin-top:2px;
-  font-weight:600;
-  letter-spacing:0.2px;
+  font-weight:500;
+  letter-spacing:0;
 }
 
 /* ===== TAB CONTENT ===== */
@@ -99,9 +101,9 @@ body{
   pointer-events:none;
 }
 .nav-bar{
-  background:rgba(20,20,25,0.92);
-  backdrop-filter:blur(24px);
-  -webkit-backdrop-filter:blur(24px);
+  background:rgba(15,15,20,0.85);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
   border-radius:32px;
   display:flex;
   padding:4px;
@@ -118,27 +120,36 @@ body{
   padding:10px 0 8px;
   border:none;
   background:transparent;
-  color:var(--text-tertiary);
+  color:#666;
   font-size:11px;
-  font-weight:600;
+  font-weight:500;
   border-radius:26px;
   cursor:pointer;
-  transition:all .25s ease;
+  transition:all 150ms ease;
   position:relative;
   display:flex;
   flex-direction:column;
   align-items:center;
   gap:3px;
-  letter-spacing:0.2px;
+  letter-spacing:0;
+}
+.nav-btn:active{
+  transform:scale(0.98);
+  background:rgba(255,255,255,0.03);
 }
 .nav-btn .nav-icon{
   font-size:20px;
   line-height:1;
   display:block;
 }
+.nav-btn .nav-icon svg{
+  transition:all 150ms ease;
+}
 .nav-btn.active{
-  background:var(--green-bg);
   color:var(--green);
+}
+.nav-btn.active .nav-icon svg{
+  stroke:var(--green);
 }
 
 /* ===== FAB ===== */
@@ -158,7 +169,7 @@ body{
   z-index:99;
   box-shadow:0 4px 16px rgba(48,209,88,0.35);
   display:flex;align-items:center;justify-content:center;
-  transition:transform .15s ease,box-shadow .15s ease;
+  transition:transform 150ms ease,box-shadow 150ms ease;
 }
 .fab:active{transform:scale(.88);box-shadow:0 2px 10px rgba(48,209,88,0.25)}
 .fab svg{width:22px;height:22px}
@@ -177,10 +188,10 @@ body{
 .room-group{margin-bottom:20px}
 .room-label{
   font-size:11px;
-  font-weight:700;
-  color:var(--text-tertiary);
+  font-weight:600;
+  color:#555;
   text-transform:uppercase;
-  letter-spacing:1.2px;
+  letter-spacing:0.5px;
   margin-bottom:8px;
   padding-left:4px;
 }
@@ -188,51 +199,50 @@ body{
 /* ===== PLANT CARD ===== */
 .plant-card{
   background:var(--surface);
-  border-radius:16px;
+  border-radius:14px;
   padding:14px 16px;
   display:flex;
   align-items:center;
-  gap:14px;
+  gap:12px;
   margin-bottom:6px;
   position:relative;
-  transition:background .15s ease,transform .15s ease,box-shadow .15s ease;
+  transition:background 150ms ease,transform 100ms ease;
   cursor:pointer;
   -webkit-user-select:none;
   user-select:none;
   border:1px solid var(--border);
-  box-shadow:none;
 }
 .plant-card:active{
-  background:var(--surface-elevated);
+  background:rgba(255,255,255,0.03);
   transform:scale(0.98);
 }
 .plant-card:hover{
-  background:var(--surface-elevated);
+  background:rgba(255,255,255,0.02);
 }
 
 /* ===== PLANT PHOTO ===== */
 .plant-photo{
-  width:52px;height:52px;
+  width:48px;height:48px;
   border-radius:50%;
   object-fit:cover;
   background:var(--surface-elevated);
   flex-shrink:0;
-  border:2px solid rgba(255,255,255,0.08);
+  border:1.5px solid rgba(255,255,255,0.06);
 }
 .plant-photo-placeholder{
-  width:52px;height:52px;
+  width:48px;height:48px;
   border-radius:50%;
   background:linear-gradient(135deg,#1a2e1a,var(--surface-elevated));
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  border:2px solid rgba(255,255,255,0.08);
+  border:1.5px solid rgba(255,255,255,0.06);
 }
-.plant-photo-placeholder svg{width:24px;height:24px;opacity:.5}
+.plant-photo-placeholder svg{width:22px;height:22px;opacity:.4}
 
 /* ===== PLANT INFO ===== */
 .plant-info{flex:1;min-width:0}
 .plant-name{
-  font-size:16px;
+  font-size:15px;
   font-weight:600;
   color:var(--text-primary);
   white-space:nowrap;
@@ -240,86 +250,76 @@ body{
   text-overflow:ellipsis;
   line-height:1.3;
 }
-.plant-room{
-  font-size:13px;
-  color:var(--text-secondary);
+.plant-meta-line{
+  font-size:12px;
+  color:#666;
   margin-top:2px;
-  line-height:1.3;
+  line-height:1.4;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
-.plant-meta{
+.plant-schedule-line{
   font-size:12px;
-  color:var(--text-tertiary);
-  margin-top:3px;
-  line-height:1.3;
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-.plant-meta .meta-icon{
-  font-size:11px;
-  opacity:.7;
-}
-.plant-action-label{
-  font-size:12px;
-  color:var(--text-secondary);
-  margin-top:4px;
-  font-weight:500;
-}
-.plant-action-label .feed-label{color:var(--purple);font-weight:600}
-
-/* ===== PILLS ===== */
-.plant-pills{
-  display:flex;
-  gap:6px;
-  margin-top:6px;
-  flex-wrap:wrap;
-  align-items:center;
-}
-.pill{
-  font-size:11px;
-  font-weight:600;
-  padding:3px 10px;
-  border-radius:100px;
+  color:#555;
+  margin-top:2px;
+  line-height:1.4;
   white-space:nowrap;
-  letter-spacing:0.1px;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
-.pill-green{background:var(--green-bg);color:var(--green)}
-.pill-orange{background:rgba(255,159,10,.12);color:var(--orange)}
-.pill-blue{background:rgba(10,132,255,.12);color:var(--blue)}
-.pill-red{background:rgba(255,69,58,.12);color:var(--red)}
-.pill-purple{background:var(--purple-bg);color:var(--purple)}
-.pill-gray{background:rgba(142,142,147,.1);color:#8e8e93}
-.pill-distilled{background:rgba(10,132,255,.10);color:#5ac8fa;font-size:11px;padding:3px 10px}
+.plant-schedule-line .next-text{
+  transition:color 150ms ease;
+}
+.plant-schedule-line .next-muted{color:#555}
+.plant-schedule-line .next-orange{color:var(--orange)}
+.plant-schedule-line .next-red{color:var(--red)}
+.plant-schedule-line .next-blue{color:var(--blue)}
+.plant-schedule-line .feed-inline{color:var(--purple);font-weight:600}
+.plant-schedule-line .distilled-inline{color:var(--light-blue)}
+
+/* To Do tab action line */
+.plant-action-line{
+  font-size:12px;
+  color:var(--green);
+  font-weight:600;
+  margin-top:2px;
+  line-height:1.4;
+}
+.plant-action-line .feed-label{color:var(--purple);font-weight:600}
+
+/* Legacy compat classes */
+.plant-room{display:none}
+.plant-meta{display:none}
+.plant-pills{display:none}
+.plant-action-label{display:none}
 
 /* ===== WATER BUTTON ON CARD ===== */
 .card-water-btn{
-  width:44px;height:44px;
+  width:38px;height:38px;
   border-radius:50%;
   border:none;
-  background:var(--green-bg);
+  background:rgba(255,255,255,0.04);
   color:var(--green);
   cursor:pointer;
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  transition:transform .15s ease,background .15s ease;
+  transition:transform 150ms ease,background 150ms ease;
   position:relative;
   z-index:2;
 }
-.card-water-btn svg{width:20px;height:20px}
+.card-water-btn svg{width:18px;height:18px}
 .card-water-btn:active{
   transform:scale(.88);
-  background:rgba(48,209,88,.25);
+  background:rgba(48,209,88,.15);
 }
 .card-water-btn.due{
-  background:rgba(48,209,88,.2);
-  animation:waterPulse 2s ease-in-out infinite;
+  background:rgba(48,209,88,.12);
+  animation:waterPulse 2.5s ease-in-out infinite;
 }
 @keyframes waterPulse{
-  0%,100%{box-shadow:0 0 0 0 rgba(48,209,88,.3)}
-  50%{box-shadow:0 0 0 8px rgba(48,209,88,0)}
+  0%,100%{box-shadow:0 0 0 0 rgba(48,209,88,.2)}
+  50%{box-shadow:0 0 0 6px rgba(48,209,88,0)}
 }
 
 /* ===== THREE-DOT MENU ===== */
@@ -328,13 +328,13 @@ body{
   top:10px;right:6px;
   background:none;
   border:none;
-  color:var(--text-tertiary);
+  color:#444;
   font-size:18px;
   cursor:pointer;
   padding:6px 10px;
   line-height:1;
   border-radius:8px;
-  transition:background .15s;
+  transition:background 150ms ease;
   z-index:3;
 }
 .card-menu-btn:active{background:rgba(255,255,255,.05)}
@@ -362,7 +362,7 @@ body{
   font-weight:500;
   text-align:left;
   cursor:pointer;
-  transition:background .1s;
+  transition:background 150ms ease;
 }
 .card-menu button:active{background:rgba(255,255,255,.05)}
 .card-menu .danger{color:var(--red)}
@@ -371,7 +371,7 @@ body{
 .confirm-bar{
   background:rgba(255,69,58,.06);
   border:1px solid rgba(255,69,58,.12);
-  border-radius:16px;
+  border-radius:14px;
   padding:14px;
   margin-top:6px;
   margin-bottom:4px;
@@ -390,7 +390,7 @@ body{
   font-size:13px;
   font-weight:600;
   cursor:pointer;
-  transition:transform .1s;
+  transition:transform 100ms ease;
 }
 .confirm-bar button:active{transform:scale(.95)}
 .confirm-bar .btn-cancel{background:var(--surface-elevated);color:var(--text-secondary)}
@@ -400,7 +400,7 @@ body{
 .late-prompt{
   background:var(--surface);
   border:1px solid var(--border);
-  border-radius:16px;
+  border-radius:14px;
   padding:16px;
   margin-top:6px;
   margin-bottom:4px;
@@ -421,7 +421,7 @@ body{
   font-size:14px;
   font-weight:600;
   cursor:pointer;
-  transition:transform .1s;
+  transition:transform 100ms ease;
 }
 .late-prompt-btns button:active{transform:scale(.96)}
 .btn-still-wet{background:rgba(10,132,255,.12);color:var(--blue)}
@@ -440,27 +440,27 @@ body{
 .search-bar input{
   width:100%;
   background:var(--surface);
-  border:1.5px solid var(--border);
-  border-radius:16px;
+  border:1px solid var(--border);
+  border-radius:14px;
   padding:13px 14px 13px 42px;
   color:var(--text-primary);
   font-size:15px;
   font-weight:500;
   -webkit-appearance:none;
   appearance:none;
-  transition:border-color .2s;
+  transition:border-color 150ms ease;
 }
 .search-bar input:focus{
   outline:none;
   border-color:var(--green);
 }
-.search-bar input::placeholder{color:var(--text-tertiary)}
+.search-bar input::placeholder{color:#555}
 .search-bar .search-icon{
   position:absolute;
   left:14px;
   top:50%;
   transform:translateY(-50%);
-  color:var(--text-tertiary);
+  color:#555;
   font-size:16px;
   pointer-events:none;
 }
@@ -474,15 +474,16 @@ body{
 .sort-btn{
   padding:7px 14px;
   border-radius:100px;
-  border:1.5px solid var(--border);
+  border:1px solid var(--border);
   background:transparent;
-  color:var(--text-tertiary);
+  color:#555;
   font-size:12px;
-  font-weight:600;
+  font-weight:500;
   cursor:pointer;
-  transition:all .2s ease;
+  transition:all 150ms ease;
   white-space:nowrap;
 }
+.sort-btn:active{transform:scale(0.98)}
 .sort-btn.active{
   border-color:var(--green);
   color:var(--green);
@@ -500,13 +501,13 @@ body{
 .filter-chip{
   padding:7px 14px;
   border-radius:100px;
-  border:1.5px solid var(--border);
+  border:1px solid var(--border);
   background:transparent;
-  color:var(--text-secondary);
+  color:#666;
   font-size:12px;
-  font-weight:600;
+  font-weight:500;
   cursor:pointer;
-  transition:all .2s ease;
+  transition:all 150ms ease;
   white-space:nowrap;
   -webkit-user-select:none;
   user-select:none;
@@ -526,18 +527,18 @@ body{
 
 .plant-count{
   font-size:13px;
-  color:var(--text-tertiary);
+  color:#555;
   margin-bottom:10px;
   font-weight:500;
 }
 
 /* ===== HISTORY ===== */
 .history-group-label{
-  font-size:12px;
-  font-weight:700;
-  color:var(--text-tertiary);
+  font-size:11px;
+  font-weight:600;
+  color:#555;
   text-transform:uppercase;
-  letter-spacing:1px;
+  letter-spacing:0.5px;
   margin-top:16px;
   margin-bottom:8px;
   padding-left:4px;
@@ -545,13 +546,13 @@ body{
 .history-group-label:first-child{margin-top:0}
 .history-entry{
   background:var(--surface);
-  border-radius:16px;
+  border-radius:14px;
   padding:14px 16px;
-  margin-bottom:8px;
-  transition:background .15s;
-  border:1px solid rgba(255,255,255,0.04);
+  margin-bottom:6px;
+  transition:background 150ms ease;
+  border:1px solid var(--border);
 }
-.history-date{font-size:11px;color:var(--text-tertiary);font-weight:500}
+.history-date{font-size:11px;color:#555;font-weight:400}
 .history-name{font-size:15px;font-weight:600;color:var(--text-primary);margin-top:3px}
 .history-type{font-size:12px;color:var(--green);margin-top:3px;font-weight:500}
 .history-type.fed{color:var(--purple)}
@@ -561,25 +562,21 @@ body{
   font-size:11px;
   color:var(--orange);
   margin-top:4px;
-  padding:4px 10px;
-  background:rgba(255,159,10,.08);
-  border-radius:100px;
-  display:inline-block;
 }
 
 .history-filter{margin-bottom:14px}
 .history-filter select{
   background:var(--surface);
   color:var(--text-primary);
-  border:1.5px solid var(--border);
-  border-radius:16px;
+  border:1px solid var(--border);
+  border-radius:14px;
   padding:12px 14px;
   font-size:14px;
   font-weight:500;
   width:100%;
   -webkit-appearance:none;
   appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2348484a'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23555'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 14px center;
 }
@@ -618,7 +615,7 @@ body{
 
 .modal-handle{
   width:40px;height:4px;
-  background:var(--text-tertiary);
+  background:#555;
   border-radius:2px;
   margin:0 auto 20px;
 }
@@ -675,7 +672,7 @@ body{
   padding:10px 18px;
   border-radius:100px;
   cursor:pointer;
-  transition:background .15s;
+  transition:background 150ms ease;
   display:flex;
   align-items:center;
   gap:6px;
@@ -692,7 +689,7 @@ body{
   width:100px;height:100px;
   border-radius:50%;
   object-fit:cover;
-  border:3px solid rgba(255,255,255,0.08);
+  border:1.5px solid rgba(255,255,255,0.06);
   background:var(--surface-elevated);
 }
 .detail-photo-placeholder{
@@ -700,7 +697,7 @@ body{
   border-radius:50%;
   background:linear-gradient(135deg,#1a2e1a,var(--surface-elevated));
   display:flex;align-items:center;justify-content:center;
-  border:3px solid rgba(255,255,255,0.08);
+  border:1.5px solid rgba(255,255,255,0.06);
 }
 .detail-photo-placeholder svg{width:40px;height:40px;opacity:.4}
 .detail-change-photo{
@@ -722,7 +719,7 @@ body{
   cursor:pointer;
   padding:4px 8px;
   border-radius:8px;
-  transition:background .15s;
+  transition:background 150ms ease;
   border:none;
   background:none;
   width:100%;
@@ -743,38 +740,40 @@ body{
   outline:none;
 }
 
-/* ===== DETAIL SECTIONS ===== */
+/* ===== DETAIL SECTIONS (iOS Settings style) ===== */
 .detail-section{
-  margin:0 20px;
+  margin:0 16px;
   padding:16px 0;
-  border-top:1px solid var(--border-subtle);
+  border-top:1px solid var(--border);
 }
 .detail-section-title{
-  font-size:13px;
-  font-weight:700;
-  color:var(--text-tertiary);
+  font-size:11px;
+  font-weight:600;
+  color:#555;
   text-transform:uppercase;
-  letter-spacing:0.8px;
-  margin-bottom:12px;
+  letter-spacing:0.5px;
+  margin-bottom:8px;
 }
 .detail-row{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:8px 0;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
 }
-.detail-row-label{font-size:14px;color:var(--text-secondary);font-weight:500}
+.detail-row:last-child{border-bottom:none}
+.detail-row-label{font-size:14px;color:#888;font-weight:400}
 .detail-row-value{font-size:14px;color:var(--text-primary);font-weight:500;text-align:right}
 
 /* ===== CARNIVORE WARNING ===== */
 .carnivore-warning{
-  margin:0 20px 4px;
+  margin:0 16px 4px;
   padding:12px 16px;
-  background:rgba(255,69,58,.08);
-  border:1px solid rgba(255,69,58,.12);
+  background:rgba(255,69,58,.06);
+  border:1px solid rgba(255,69,58,.08);
   border-radius:14px;
   font-size:13px;
-  font-weight:600;
+  font-weight:500;
   color:#ff8a80;
   text-align:center;
   display:flex;
@@ -787,21 +786,21 @@ body{
 .quick-actions{
   display:flex;
   gap:10px;
-  margin:0 20px;
+  margin:0 16px;
   padding:16px 0;
-  border-top:1px solid var(--border-subtle);
+  border-top:1px solid var(--border);
 }
 .quick-action-btn{
   flex:1;
   padding:14px 8px;
   height:50px;
   border:none;
-  border-radius:16px;
+  border-radius:14px;
   font-size:14px;
   font-weight:600;
   cursor:pointer;
   text-align:center;
-  transition:transform .1s ease,opacity .15s;
+  transition:transform 100ms ease,opacity 150ms;
   display:flex;
   align-items:center;
   justify-content:center;
@@ -809,14 +808,14 @@ body{
 }
 .quick-action-btn:active{transform:scale(.95)}
 .qa-water{background:var(--green-bg);color:var(--green)}
-.qa-skip{background:rgba(142,142,147,.1);color:#8e8e93}
-.qa-repot{background:rgba(255,159,10,.1);color:var(--orange)}
+.qa-skip{background:rgba(142,142,147,.08);color:#8e8e93}
+.qa-repot{background:rgba(255,159,10,.08);color:var(--orange)}
 
 /* ===== NOTES ===== */
 .detail-notes{
   width:100%;
   background:var(--surface);
-  border:1.5px solid transparent;
+  border:1px solid transparent;
   border-radius:14px;
   padding:14px;
   color:var(--text-primary);
@@ -825,10 +824,10 @@ body{
   font-family:inherit;
   resize:vertical;
   min-height:80px;
-  transition:border-color .2s;
+  transition:border-color 150ms ease;
 }
 .detail-notes:focus{outline:none;border-color:var(--green)}
-.detail-notes::placeholder{color:var(--text-tertiary)}
+.detail-notes::placeholder{color:#555}
 
 /* ===== DETAIL HISTORY ===== */
 .detail-history-entry{
@@ -837,7 +836,7 @@ body{
   padding:10px 14px;
   margin-bottom:6px;
 }
-.detail-history-date{font-size:11px;color:var(--text-tertiary)}
+.detail-history-date{font-size:11px;color:#555}
 .detail-history-type{font-size:13px;font-weight:600;color:var(--green);margin-top:2px}
 .detail-history-type.fed{color:var(--purple)}
 .detail-history-type.repotted{color:var(--orange)}
@@ -846,28 +845,28 @@ body{
 /* ===== DELETE BUTTON ===== */
 .detail-delete-btn{
   display:block;
-  width:calc(100% - 40px);
-  margin:16px 20px 0;
+  width:calc(100% - 32px);
+  margin:16px 16px 0;
   padding:14px;
-  border:1px solid rgba(255,69,58,.15);
-  border-radius:16px;
-  background:rgba(255,69,58,.05);
+  border:1px solid rgba(255,69,58,.1);
+  border-radius:14px;
+  background:rgba(255,69,58,.04);
   color:var(--red);
   font-size:15px;
   font-weight:600;
   text-align:center;
   cursor:pointer;
-  transition:background .15s,transform .1s;
+  transition:background 150ms ease,transform 100ms ease;
 }
-.detail-delete-btn:active{transform:scale(.97);background:rgba(255,69,58,.1)}
+.detail-delete-btn:active{transform:scale(.98);background:rgba(255,69,58,.08)}
 
 /* ===== FORM FIELDS ===== */
 .form-group{margin-bottom:18px}
 .form-group label{
   display:block;
-  font-size:12px;
+  font-size:11px;
   font-weight:600;
-  color:var(--text-secondary);
+  color:#666;
   margin-bottom:6px;
   text-transform:uppercase;
   letter-spacing:0.5px;
@@ -877,7 +876,7 @@ body{
 .form-group select{
   width:100%;
   background:var(--bg);
-  border:1.5px solid var(--border);
+  border:1px solid var(--border);
   border-radius:14px;
   padding:14px;
   color:var(--text-primary);
@@ -885,7 +884,7 @@ body{
   font-weight:500;
   -webkit-appearance:none;
   appearance:none;
-  transition:border-color .2s;
+  transition:border-color 150ms ease;
 }
 .form-group input:focus,
 .form-group select:focus{
@@ -893,13 +892,13 @@ body{
   border-color:var(--green);
 }
 .form-group select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2348484a'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23555'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 14px center;
 }
 .form-group .hint{
   font-size:11px;
-  color:var(--text-tertiary);
+  color:#555;
   margin-top:4px;
 }
 
@@ -910,7 +909,7 @@ body{
   background:var(--bg);
   border-radius:14px;
   padding:4px;
-  border:1.5px solid var(--border);
+  border:1px solid var(--border);
 }
 .toggle-opt{
   flex:1;
@@ -918,12 +917,12 @@ body{
   border:none;
   border-radius:10px;
   background:transparent;
-  color:var(--text-tertiary);
+  color:#555;
   font-size:14px;
   font-weight:600;
   cursor:pointer;
   text-align:center;
-  transition:all .2s;
+  transition:all 150ms ease;
 }
 .toggle-opt.active{
   background:var(--green-bg);
@@ -935,32 +934,32 @@ body{
   width:100%;
   padding:16px;
   border:none;
-  border-radius:16px;
+  border-radius:14px;
   background:var(--green);
   color:#000;
   font-size:16px;
-  font-weight:700;
+  font-weight:600;
   cursor:pointer;
   margin-top:12px;
-  transition:transform .1s,opacity .15s;
+  transition:transform 100ms ease,opacity 150ms;
 }
-.btn-primary:active{transform:scale(.97)}
+.btn-primary:active{transform:scale(.98)}
 .btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none}
 
 .btn-secondary{
   width:100%;
   padding:16px;
   border:none;
-  border-radius:16px;
+  border-radius:14px;
   background:var(--surface-elevated);
   color:var(--text-secondary);
   font-size:16px;
   font-weight:600;
   cursor:pointer;
   margin-top:8px;
-  transition:transform .1s;
+  transition:transform 100ms ease;
 }
-.btn-secondary:active{transform:scale(.97)}
+.btn-secondary:active{transform:scale(.98)}
 
 /* ===== PROFILE REVIEW FIELDS ===== */
 .profile-review-title{
@@ -975,13 +974,13 @@ body{
   justify-content:space-between;
   align-items:center;
   padding:12px 0;
-  border-bottom:1px solid var(--border-subtle);
+  border-bottom:1px solid var(--border);
 }
 .profile-field:last-child{border-bottom:none}
 .profile-field label{
   font-size:14px;
-  color:var(--text-secondary);
-  font-weight:500;
+  color:#888;
+  font-weight:400;
 }
 .profile-field input,
 .profile-field select{
@@ -998,7 +997,7 @@ body{
   appearance:none;
 }
 .profile-field select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%2348484a'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%23555'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 10px center;
   padding-right:26px;
@@ -1010,16 +1009,16 @@ body{
   width:72px;height:72px;
   border-radius:50%;
   object-fit:cover;
-  border:2px solid rgba(255,255,255,0.08);
+  border:1.5px solid rgba(255,255,255,0.06);
 }
 .photo-placeholder-circle{
   width:72px;height:72px;
   border-radius:50%;
-  border:2px dashed var(--text-tertiary);
+  border:1.5px dashed #555;
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
 }
-.photo-placeholder-circle svg{width:28px;height:28px;opacity:.35}
+.photo-placeholder-circle svg{width:28px;height:28px;opacity:.3}
 .photo-btn{
   display:inline-flex;
   align-items:center;
@@ -1032,7 +1031,7 @@ body{
   font-size:14px;
   font-weight:500;
   cursor:pointer;
-  transition:background .15s;
+  transition:background 150ms ease;
 }
 .photo-btn:active{background:rgba(255,255,255,.08)}
 
@@ -1040,26 +1039,24 @@ body{
 .empty-state{
   text-align:center;
   padding:80px 24px 40px;
-  color:var(--text-tertiary);
+  color:#555;
 }
 .empty-state .icon{
-  font-size:48px;
   margin-bottom:16px;
-  opacity:.5;
   display:flex;
   align-items:center;
   justify-content:center;
 }
-.empty-state .icon svg{width:48px;height:48px;opacity:.5}
+.empty-state .icon svg{width:40px;height:40px;opacity:.35;stroke:#555}
 .empty-state p{
-  font-size:16px;
+  font-size:15px;
   font-weight:500;
   line-height:1.5;
-  color:var(--text-secondary);
+  color:#666;
 }
 .empty-state .sub{
   font-size:13px;
-  color:var(--text-tertiary);
+  color:#555;
   margin-top:6px;
 }
 
@@ -1069,13 +1066,13 @@ body{
   margin-top:16px;
   padding:10px 24px;
   border-radius:100px;
-  border:1.5px solid var(--green);
+  border:1px solid var(--green);
   background:var(--green-bg);
   color:var(--green);
   font-size:14px;
   font-weight:600;
   cursor:pointer;
-  transition:transform .1s;
+  transition:transform 100ms ease;
 }
 .clear-filters-btn:active{transform:scale(.95)}
 
@@ -1114,7 +1111,7 @@ body{
 /* ===== TAP FEEDBACK ===== */
 .tap-flash{animation:flash .4s ease}
 @keyframes flash{
-  0%{background:rgba(48,209,88,.12)}
+  0%{background:rgba(48,209,88,.08)}
   100%{background:var(--surface)}
 }
 
@@ -1163,8 +1160,8 @@ body{
 
 /* ===== ERROR BANNER ===== */
 .error-banner{
-  background:rgba(255,69,58,.08);
-  border:1px solid rgba(255,69,58,.15);
+  background:rgba(255,69,58,.06);
+  border:1px solid rgba(255,69,58,.1);
   border-radius:14px;
   padding:14px 16px;
   margin-bottom:12px;
@@ -1177,7 +1174,7 @@ body{
 /* ===== SOIL INFO ===== */
 .soil-info{
   font-size:11px;
-  color:var(--text-tertiary);
+  color:#555;
   margin-top:4px;
   font-style:italic;
 }
@@ -1187,15 +1184,15 @@ body{
 
 <div id="app">
   <div class="header">
-    <h1><span class="green">Plant</span>aroo</h1>
+    <h1>Plantaroo</h1>
     <div class="subtitle" id="header-subtitle"></div>
   </div>
   <div class="tab-content" id="tab-content"></div>
   <button class="fab" id="fab-add" aria-label="Add plant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
   <div class="bottom-nav">
     <div class="nav-bar">
-      <button class="nav-btn active" data-tab="today"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>To Do</button>
-      <button class="nav-btn" data-tab="all"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M12 8v8"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/></svg></span>All Plants</button>
+      <button class="nav-btn active" data-tab="today"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></span>To Do</button>
+      <button class="nav-btn" data-tab="all"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 21.34"/><path d="M12 2C6.5 2 3 7 3 12"/><path d="M21 12c0-3-2-6-5-8"/></svg></span>All Plants</button>
       <button class="nav-btn" data-tab="history"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>History</button>
     </div>
   </div>
@@ -1278,11 +1275,10 @@ var DISPLAY_LABELS = {
 // ============================================================
 
 var SVG_ICONS = {
-  droplet: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-8 9.27-8 14a8 8 0 0 0 16 0c0-4.73-8-14-8-14zm0 20a6 6 0 0 1-6-6c0-3.55 4.13-9.53 6-12.08C13.87 6.47 18 12.45 18 16a6 6 0 0 1-6 6z"/></svg>',
-  dropletFilled: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-8 9.27-8 14a8 8 0 0 0 16 0c0-4.73-8-14-8-14z"/></svg>',
+  droplet: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-8 9.27-8 14a8 8 0 0 0 16 0c0-4.73-8-14-8-14zm0 20a6 6 0 0 1-6-6c0-3.55 4.13-9.53 6-12.08C13.87 6.47 18 12.45 18 16a6 6 0 0 1-6 6z"/></svg>',
+  dropletFilled: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-8 9.27-8 14a8 8 0 0 0 16 0c0-4.73-8-14-8-14z"/></svg>',
   leaf: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66C7.72 17.05 10.08 13 17 8z"/><path d="M20.59 3.41A2 2 0 0 0 19 3H5a2 2 0 0 0-1.41.59"/></svg>',
   plant: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg>',
-  clock: '\u23F0',
   camera: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'
 };
 
@@ -1471,6 +1467,16 @@ function getDuePill(daysUntil, neverWatered) {
   return                       { text: 'In ' + daysUntil + ' days',      cls: 'pill-green'  };
 }
 
+function getNextDueTextAndClass(daysUntil, neverWatered) {
+  if (neverWatered) return { text: 'Never watered', cls: 'next-blue' };
+  if (daysUntil < -1) return { text: Math.abs(daysUntil) + 'd overdue', cls: 'next-red' };
+  if (daysUntil === -1) return { text: '1d overdue', cls: 'next-red' };
+  if (daysUntil === 0)  return { text: 'today', cls: 'next-red' };
+  if (daysUntil === 1)  return { text: 'tomorrow', cls: 'next-orange' };
+  if (daysUntil === 2)  return { text: 'in 2 days', cls: 'next-orange' };
+  return { text: 'in ' + daysUntil + ' days', cls: 'next-muted' };
+}
+
 function getNextPillText(daysUntil, neverWatered) {
   if (neverWatered) return { text: 'Next: New plant', cls: 'pill-blue' };
   if (daysUntil < -1) return { text: 'Next: ' + Math.abs(daysUntil) + ' days overdue', cls: 'pill-red' };
@@ -1505,7 +1511,7 @@ function formatTimeOnly(iso) {
 }
 
 function formatLastWatered(iso) {
-  if (!iso) return 'Never watered';
+  if (!iso) return 'Never';
   var d = new Date(iso);
   var now = new Date();
   var dDate = new Date(d); dDate.setHours(0,0,0,0);
@@ -1614,8 +1620,8 @@ async function renderToday() {
   if (overdue.length === 0 && dueToday.length === 0 && newPlants.length === 0) {
     tabContent.innerHTML =
       '<div class="empty-state">' +
-        '<div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>' +
-        '<p>All caught up!</p>' +
+        '<div class="icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>' +
+        '<p>All caught up</p>' +
         '<div class="sub">Nothing to do right now</div>' +
       '</div>';
     return;
@@ -1732,7 +1738,7 @@ async function renderAll() {
   html += '<div class="plant-count">' + filtered.length + ' plant' + (filtered.length !== 1 ? 's' : '') + '</div>';
 
   if (filtered.length === 0) {
-    html += '<div class="empty-state"><div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div><p>No plants match filters</p>';
+    html += '<div class="empty-state"><div class="icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div><p>No plants match filters</p>';
     if (hasActiveFilters) {
       html += '<button class="clear-filters-btn" id="clear-filters-btn">Clear filters</button>';
     }
@@ -1841,7 +1847,7 @@ async function renderHistory() {
   entries.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
   if (entries.length === 0) {
-    html += '<div class="empty-state"><div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>No history yet</p><div class="sub">Water a plant to see entries here</div></div>';
+    html += '<div class="empty-state"><div class="icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>No history yet</p><div class="sub">Water a plant to see entries here</div></div>';
   } else {
     // Group by date
     var currentGroup = '';
@@ -1895,53 +1901,55 @@ function plantCardHTML(plant, isTodoTab) {
   if (plant.photo) {
     photoHTML = '<img class="plant-photo" src="' + plant.photo + '" alt="" loading="lazy"/>';
   } else {
-    photoHTML = '<div class="plant-photo-placeholder"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div>';
+    photoHTML = '<div class="plant-photo-placeholder"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div>';
   }
 
   var html = '<div class="plant-card" data-plant-id="' + plant.id + '">';
   html += photoHTML;
   html += '<div class="plant-info">';
   html += '<div class="plant-name">' + esc(plant.name) + '</div>';
-  html += '<div class="plant-room">' + esc(plant.room || '') + (plant.light_type === 'grow' ? ' \u00B7 Grow Light' : '') + '</div>';
-
-  // Show last watered + next due on All Plants tab
-  if (!isTodoTab) {
-    html += '<div class="plant-meta"><span class="meta-icon">\u231A</span> ' + esc(formatLastWatered(plant.last_watered)) + '</div>';
-  }
-
-  // Action label on To Do tab: "water" or "water + feed"
-  if (isTodoTab && isDueOrOverdue) {
-    if (feedDue) {
-      html += '<div class="plant-action-label">Water + <span class="feed-label">Feed</span></div>';
-    } else {
-      html += '<div class="plant-action-label">Water</div>';
-    }
-  }
-
-  html += '<div class="plant-pills">';
 
   if (isTodoTab) {
-    // To Do tab: show due pill
-    var duePill = getDuePill(daysUntil, neverWatered);
-    html += '<span class="pill ' + duePill.cls + '">' + duePill.text + '</span>';
+    // To Do tab: simpler layout
+    // Line 2: Room
+    html += '<div class="plant-meta-line">' + esc(plant.room || '') + '</div>';
+    // Line 3: Action line
+    if (isDueOrOverdue) {
+      if (feedDue) {
+        html += '<div class="plant-action-line">Water + <span class="feed-label">Feed</span></div>';
+      } else {
+        html += '<div class="plant-action-line">Water</div>';
+      }
+    }
   } else {
-    // All Plants tab: show "Next: ..." pill
-    var nextPill = getNextPillText(daysUntil, neverWatered);
-    html += '<span class="pill ' + nextPill.cls + '">' + nextPill.text + '</span>';
+    // All Plants tab: full info layout
+    // Line 2: Room + Light
+    var metaParts = [];
+    if (plant.room) metaParts.push(esc(plant.room));
+    if (plant.light_type === 'grow') metaParts.push('Grow Light');
+    html += '<div class="plant-meta-line">' + metaParts.join(' \u00B7 ') + '</div>';
+
+    // Line 3: Last + Next
+    var lastText = 'Last: ' + formatLastWatered(plant.last_watered);
+    var nextInfo = getNextDueTextAndClass(daysUntil, neverWatered);
+    var nextPart = 'Next: <span class="next-text ' + nextInfo.cls + '">' + nextInfo.text + '</span>';
+
+    // Append feed due inline
+    if (feedDue) {
+      nextPart += ' <span class="feed-inline">\u00B7 Feed</span>';
+    }
+
+    // Append distilled inline for carnivore
+    if (plant.carnivore && plant.water_source === 'distilled_or_rain') {
+      nextPart += ' <span class="distilled-inline">\u00B7 Distilled</span>';
+    }
+
+    html += '<div class="plant-schedule-line">' + lastText + ' \u00B7 ' + nextPart + '</div>';
   }
 
-  if (feedDue) {
-    html += '<span class="pill pill-purple">Feed due</span>';
-  }
+  html += '</div>';
 
-  // Water source badge
-  if (plant.water_source === 'distilled_or_rain') {
-    html += '<span class="pill pill-distilled">Distilled</span>';
-  }
-
-  html += '</div></div>';
-
-  // Water button (right side) with SVG droplet — filled when due
+  // Water button (right side) with SVG droplet
   var waterBtnClass = 'card-water-btn' + (isDueOrOverdue ? ' due' : '');
   var dropletIcon = isDueOrOverdue ? SVG_ICONS.dropletFilled : SVG_ICONS.droplet;
   html += '<button class="' + waterBtnClass + '" data-water-id="' + plant.id + '" aria-label="Water">' + dropletIcon + '</button>';
@@ -2250,7 +2258,7 @@ async function showDetailView(plantId) {
   // Schedule section
   panelHTML += '<div class="detail-section">';
   panelHTML += '<div class="detail-section-title">Schedule</div>';
-  panelHTML += '<div class="detail-row"><span class="detail-row-label">Current interval (learned)</span><span class="detail-row-value">' + clampedInt.toFixed(1) + ' days</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Current interval</span><span class="detail-row-value">' + clampedInt.toFixed(1) + ' days</span></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Next due</span><span class="detail-row-value">' + esc(nextDueText) + '</span></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Seasonal multiplier</span><span class="detail-row-value">' + seasonal.toFixed(2) + 'x (' + getSeasonLabel() + ')</span></div>';
   panelHTML += '</div>';
@@ -2272,7 +2280,7 @@ async function showDetailView(plantId) {
   panelHTML += '<div class="detail-section">';
   panelHTML += '<div class="detail-section-title">History</div>';
   if (plantHistory.length === 0) {
-    panelHTML += '<div style="color:var(--text-tertiary);font-size:13px;padding:8px 0">No history yet</div>';
+    panelHTML += '<div style="color:#555;font-size:13px;padding:8px 0">No history yet</div>';
   } else {
     for (var h = 0; h < plantHistory.length; h++) {
       var entry = plantHistory[h];
@@ -2959,7 +2967,7 @@ openDB().then(function() {
   console.error('Plantaroo DB init failed:', err);
   tabContent.innerHTML =
     '<div class="empty-state">' +
-      '<div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
+      '<div class="icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
       '<p>Could not open database</p>' +
       '<div class="sub">' + esc(String(err)) + '</div>' +
     '</div>';
