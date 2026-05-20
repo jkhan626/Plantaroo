@@ -596,7 +596,7 @@ body{
   border-radius:24px 24px 0 0;
   width:100%;
   max-width:430px;
-  max-height:95vh;
+  max-height:92vh;
   overflow-y:auto;
   padding:0 0 28px;
   padding-bottom:max(28px,env(safe-area-inset-bottom));
@@ -604,6 +604,12 @@ body{
 }
 .detail-panel::-webkit-scrollbar{display:none}
 .detail-panel{scrollbar-width:none}
+.detail-handle{
+  width:40px;height:4px;
+  background:rgba(255,255,255,.2);
+  border-radius:2px;
+  margin:10px auto 0;
+}
 
 .detail-close{
   position:sticky;
@@ -611,8 +617,8 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:16px 20px 12px;
-  background:linear-gradient(#0f1117,rgba(15,17,23,.95));
+  padding:14px 20px 12px;
+  background:#0f1117;
   z-index:5;
 }
 .detail-close-btn{
@@ -2029,6 +2035,7 @@ async function showDetailView(plantId) {
   }
 
   var panelHTML = '<div class="detail-panel">';
+  panelHTML += '<div class="detail-handle"></div>';
   panelHTML += '<div class="detail-close">';
   panelHTML += '<button class="detail-close-btn" id="detail-back">&#8592; Back</button>';
   panelHTML += '<div></div>';
