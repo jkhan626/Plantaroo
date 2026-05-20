@@ -1,15 +1,1826 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#000000" />
-    <title>Plantaroo</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#000000"/>
+<title>Plantaroo</title>
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:#000}
+body{
+  height:100%;
+  background:#000;
+  color:#fff;
+  font-family:-apple-system,system-ui,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow:hidden;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ===== APP SHELL ===== */
+#app{
+  max-width:430px;
+  margin:0 auto;
+  height:100vh;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  overflow:hidden;
+  background:#0f1117;
+}
+
+/* ===== HEADER ===== */
+.header{
+  padding:20px 16px 10px;
+  text-align:center;
+  flex-shrink:0;
+}
+.header h1{
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:-0.5px;
+}
+.header h1 .green{color:#4cd964}
+.header .subtitle{
+  font-size:12px;
+  color:#555;
+  margin-top:2px;
+  font-weight:500;
+}
+
+/* ===== TAB CONTENT ===== */
+.tab-content{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:12px 16px 110px 16px;
+  scroll-behavior:smooth;
+}
+.tab-content::-webkit-scrollbar{display:none}
+.tab-content{scrollbar-width:none}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  padding:10px 16px;
+  padding-bottom:max(10px,env(safe-area-inset-bottom));
+  display:flex;
+  justify-content:center;
+  z-index:100;
+  background:linear-gradient(transparent,rgba(15,17,23,.95) 40%);
+  pointer-events:none;
+}
+.nav-bar{
+  background:rgba(28,28,46,.95);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-radius:28px;
+  display:flex;
+  padding:4px;
+  gap:4px;
+  width:100%;
+  pointer-events:all;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);
+}
+.nav-btn{
+  flex:1;
+  padding:12px 0;
+  border:none;
+  background:transparent;
+  color:#666;
+  font-size:13px;
+  font-weight:600;
+  border-radius:24px;
+  cursor:pointer;
+  transition:all .25s ease;
+  position:relative;
+}
+.nav-btn.active{
+  background:rgba(76,217,100,.12);
+  color:#4cd964;
+}
+
+/* ===== FAB ===== */
+.fab{
+  position:absolute;
+  bottom:84px;
+  right:20px;
+  width:56px;height:56px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#4cd964,#34c759);
+  border:none;
+  color:#000;
+  font-size:30px;
+  font-weight:300;
+  line-height:1;
+  cursor:pointer;
+  z-index:99;
+  box-shadow:0 4px 20px rgba(76,217,100,.45);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s ease,box-shadow .15s ease;
+}
+.fab:active{transform:scale(.88);box-shadow:0 2px 12px rgba(76,217,100,.3)}
+
+/* ===== SECTION TITLES ===== */
+.section-title{
+  font-size:17px;
+  font-weight:700;
+  margin-bottom:10px;
+  margin-top:8px;
+  color:#eee;
+}
+
+/* ===== ROOM GROUP ===== */
+.room-group{margin-bottom:20px}
+.room-label{
+  font-size:11px;
+  font-weight:700;
+  color:#666;
+  text-transform:uppercase;
+  letter-spacing:1.2px;
+  margin-bottom:8px;
+  padding-left:4px;
+}
+
+/* ===== PLANT CARD ===== */
+.plant-card{
+  background:#1a1a2e;
+  border-radius:16px;
+  padding:14px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:8px;
+  position:relative;
+  transition:background .15s ease,transform .1s ease;
+  cursor:pointer;
+  -webkit-user-select:none;
+  user-select:none;
+}
+.plant-card:active{
+  background:#22224a;
+  transform:scale(.985);
+}
+
+/* ===== PLANT PHOTO ===== */
+.plant-photo{
+  width:56px;height:56px;
+  border-radius:50%;
+  object-fit:cover;
+  background:#2a2a3e;
+  flex-shrink:0;
+  border:2px solid #2a2a3e;
+}
+.plant-photo-placeholder{
+  width:56px;height:56px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#1e3a1e,#2a2a3e);
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+}
+
+/* ===== PLANT INFO ===== */
+.plant-info{flex:1;min-width:0}
+.plant-name{
+  font-size:15px;
+  font-weight:700;
+  color:#fff;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  line-height:1.3;
+}
+.plant-room{
+  font-size:12px;
+  color:#555;
+  margin-top:1px;
+  line-height:1.3;
+}
+.plant-action-label{
+  font-size:11px;
+  color:#888;
+  margin-top:4px;
+  font-weight:500;
+}
+.plant-action-label .feed-label{color:#af52de;font-weight:600}
+
+/* ===== PILLS ===== */
+.plant-pills{
+  display:flex;
+  gap:6px;
+  margin-top:6px;
+  flex-wrap:wrap;
+}
+.pill{
+  font-size:11px;
+  font-weight:600;
+  padding:4px 10px;
+  border-radius:12px;
+  white-space:nowrap;
+  letter-spacing:-0.1px;
+}
+.pill-green{background:rgba(76,217,100,.12);color:#4cd964}
+.pill-orange{background:rgba(255,159,10,.12);color:#ff9f0a}
+.pill-blue{background:rgba(10,132,255,.12);color:#0a84ff}
+.pill-red{background:rgba(255,69,58,.12);color:#ff453a}
+.pill-purple{background:rgba(175,82,222,.12);color:#af52de}
+.pill-gray{background:rgba(142,142,147,.1);color:#8e8e93}
+
+/* ===== THREE-DOT MENU ===== */
+.card-menu-btn{
+  position:absolute;
+  top:10px;right:6px;
+  background:none;
+  border:none;
+  color:#555;
+  font-size:18px;
+  cursor:pointer;
+  padding:6px 10px;
+  line-height:1;
+  border-radius:8px;
+  transition:background .15s;
+}
+.card-menu-btn:active{background:rgba(255,255,255,.05)}
+
+.card-menu{
+  position:absolute;
+  top:36px;right:8px;
+  background:#2c2c44;
+  border-radius:14px;
+  padding:6px 0;
+  z-index:10;
+  min-width:170px;
+  box-shadow:0 12px 40px rgba(0,0,0,.6);
+  overflow:hidden;
+}
+.card-menu button{
+  display:block;
+  width:100%;
+  padding:12px 18px;
+  background:none;
+  border:none;
+  color:#fff;
+  font-size:14px;
+  font-weight:500;
+  text-align:left;
+  cursor:pointer;
+  transition:background .1s;
+}
+.card-menu button:active{background:rgba(255,255,255,.05)}
+.card-menu .danger{color:#ff453a}
+
+/* ===== CONFIRM BAR ===== */
+.confirm-bar{
+  background:rgba(255,69,58,.08);
+  border:1px solid rgba(255,69,58,.15);
+  border-radius:14px;
+  padding:14px;
+  margin-top:6px;
+  margin-bottom:4px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  animation:slideDown .2s ease;
+}
+.confirm-bar span{font-size:14px;color:#ff8a80;font-weight:500}
+.confirm-bar .btns{display:flex;gap:8px}
+.confirm-bar button{
+  padding:8px 16px;
+  border-radius:10px;
+  border:none;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform .1s;
+}
+.confirm-bar button:active{transform:scale(.95)}
+.confirm-bar .btn-cancel{background:#333;color:#ccc}
+.confirm-bar .btn-confirm-del{background:#ff453a;color:#fff}
+
+/* ===== LATE PROMPT (INLINE) ===== */
+.late-prompt{
+  background:#1c1c34;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:14px;
+  padding:14px;
+  margin-top:6px;
+  margin-bottom:4px;
+  animation:slideDown .2s ease;
+}
+.late-prompt p{
+  font-size:14px;
+  color:#bbb;
+  margin-bottom:10px;
+  font-weight:500;
+}
+.late-prompt-btns{display:flex;gap:8px}
+.late-prompt-btns button{
+  flex:1;
+  padding:12px;
+  border-radius:12px;
+  border:none;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform .1s;
+}
+.late-prompt-btns button:active{transform:scale(.96)}
+.btn-still-wet{background:rgba(10,132,255,.15);color:#0a84ff}
+.btn-too-busy{background:rgba(255,159,10,.15);color:#ff9f0a}
+
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* ===== FILTER BAR ===== */
+.filter-bar{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:14px;
+  padding-bottom:2px;
+}
+.filter-chip{
+  padding:7px 14px;
+  border-radius:16px;
+  border:1.5px solid #2a2a3e;
+  background:transparent;
+  color:#888;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s ease;
+  white-space:nowrap;
+  -webkit-user-select:none;
+  user-select:none;
+}
+.filter-chip:active{transform:scale(.95)}
+.filter-chip.active{
+  border-color:#4cd964;
+  color:#4cd964;
+  background:rgba(76,217,100,.08);
+}
+.filter-divider{
+  width:1px;
+  background:#2a2a3e;
+  margin:0 2px;
+  align-self:stretch;
+}
+
+.plant-count{
+  font-size:13px;
+  color:#555;
+  margin-bottom:10px;
+  font-weight:500;
+}
+
+/* ===== HISTORY ===== */
+.history-entry{
+  background:#1a1a2e;
+  border-radius:14px;
+  padding:14px 16px;
+  margin-bottom:8px;
+  transition:background .15s;
+}
+.history-date{font-size:11px;color:#555;font-weight:500}
+.history-name{font-size:15px;font-weight:600;color:#fff;margin-top:3px}
+.history-type{font-size:12px;color:#4cd964;margin-top:3px;font-weight:500}
+.history-type.fed{color:#af52de}
+.history-reason{
+  font-size:11px;
+  color:#ff9f0a;
+  margin-top:4px;
+  padding:3px 8px;
+  background:rgba(255,159,10,.08);
+  border-radius:6px;
+  display:inline-block;
+}
+
+.history-filter{margin-bottom:14px}
+.history-filter select{
+  background:#1a1a2e;
+  color:#fff;
+  border:1.5px solid #2a2a3e;
+  border-radius:14px;
+  padding:10px 14px;
+  font-size:14px;
+  font-weight:500;
+  width:100%;
+  -webkit-appearance:none;
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23666'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+}
+
+/* ===== MODAL ===== */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  z-index:200;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.modal{
+  background:#1a1a2e;
+  border-radius:24px 24px 0 0;
+  width:100%;
+  max-width:430px;
+  max-height:92vh;
+  overflow-y:auto;
+  padding:20px 20px 28px;
+  padding-bottom:max(28px,env(safe-area-inset-bottom));
+  animation:slideUp .3s ease;
+}
+@keyframes slideUp{
+  from{transform:translateY(100%)}
+  to{transform:translateY(0)}
+}
+.modal::-webkit-scrollbar{display:none}
+.modal{scrollbar-width:none}
+
+.modal-handle{
+  width:40px;height:4px;
+  background:#444;
+  border-radius:2px;
+  margin:0 auto 20px;
+}
+.modal h2{
+  font-size:20px;
+  font-weight:700;
+  margin-bottom:20px;
+  text-align:center;
+}
+
+/* ===== FORM FIELDS ===== */
+.form-group{margin-bottom:18px}
+.form-group label{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  color:#888;
+  margin-bottom:6px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select{
+  width:100%;
+  background:#0f1117;
+  border:1.5px solid #2a2a3e;
+  border-radius:14px;
+  padding:14px;
+  color:#fff;
+  font-size:16px;
+  font-weight:500;
+  -webkit-appearance:none;
+  appearance:none;
+  transition:border-color .2s;
+}
+.form-group input:focus,
+.form-group select:focus{
+  outline:none;
+  border-color:#4cd964;
+}
+.form-group select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23666'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+}
+.form-group .hint{
+  font-size:11px;
+  color:#555;
+  margin-top:4px;
+}
+
+/* ===== TOGGLE GROUP ===== */
+.toggle-group{
+  display:flex;
+  gap:4px;
+  background:#0f1117;
+  border-radius:14px;
+  padding:4px;
+  border:1.5px solid #2a2a3e;
+}
+.toggle-opt{
+  flex:1;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:transparent;
+  color:#666;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  text-align:center;
+  transition:all .2s;
+}
+.toggle-opt.active{
+  background:rgba(76,217,100,.12);
+  color:#4cd964;
+}
+
+/* ===== BUTTONS ===== */
+.btn-primary{
+  width:100%;
+  padding:16px;
+  border:none;
+  border-radius:14px;
+  background:linear-gradient(135deg,#4cd964,#34c759);
+  color:#000;
+  font-size:16px;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:12px;
+  transition:transform .1s,opacity .15s;
+}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+.btn-secondary{
+  width:100%;
+  padding:16px;
+  border:none;
+  border-radius:14px;
+  background:#2a2a3e;
+  color:#ccc;
+  font-size:16px;
+  font-weight:600;
+  cursor:pointer;
+  margin-top:8px;
+  transition:transform .1s;
+}
+.btn-secondary:active{transform:scale(.97)}
+
+/* ===== PROFILE REVIEW FIELDS ===== */
+.profile-review-title{
+  font-size:14px;
+  font-weight:600;
+  color:#888;
+  margin-bottom:12px;
+  text-align:center;
+}
+.profile-field{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 0;
+  border-bottom:1px solid rgba(255,255,255,.04);
+}
+.profile-field:last-child{border-bottom:none}
+.profile-field label{
+  font-size:14px;
+  color:#999;
+  font-weight:500;
+}
+.profile-field input,
+.profile-field select{
+  background:#0f1117;
+  border:1px solid #2a2a3e;
+  border-radius:10px;
+  padding:8px 12px;
+  color:#fff;
+  font-size:14px;
+  font-weight:500;
+  width:130px;
+  text-align:right;
+  -webkit-appearance:none;
+  appearance:none;
+}
+.profile-field select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%23666'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 10px center;
+  padding-right:26px;
+}
+
+/* ===== PHOTO ===== */
+.photo-area{display:flex;align-items:center;gap:12px}
+.photo-preview{
+  width:72px;height:72px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #2a2a3e;
+}
+.photo-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:#2a2a3e;
+  border:none;
+  color:#ccc;
+  padding:12px 18px;
+  border-radius:14px;
+  font-size:14px;
+  font-weight:500;
+  cursor:pointer;
+  transition:background .15s;
+}
+.photo-btn:active{background:#333355}
+
+/* ===== EMPTY STATE ===== */
+.empty-state{
+  text-align:center;
+  padding:80px 24px 40px;
+  color:#444;
+}
+.empty-state .icon{
+  font-size:56px;
+  margin-bottom:16px;
+  opacity:.7;
+}
+.empty-state p{
+  font-size:16px;
+  font-weight:500;
+  line-height:1.5;
+}
+.empty-state .sub{
+  font-size:13px;
+  color:#333;
+  margin-top:6px;
+}
+
+/* ===== LOADING ===== */
+.loading-spinner{
+  display:inline-block;
+  width:24px;height:24px;
+  border:2.5px solid #2a2a3e;
+  border-top-color:#4cd964;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-msg{
+  text-align:center;
+  padding:50px 20px;
+  color:#888;
+  font-size:14px;
+}
+.loading-msg .loading-spinner{margin-bottom:12px}
+
+/* ===== TAP FEEDBACK ===== */
+.tap-flash{animation:flash .4s ease}
+@keyframes flash{
+  0%{background:rgba(76,217,100,.15)}
+  100%{background:#1a1a2e}
+}
+
+/* ===== WATERED TOAST ===== */
+.toast{
+  position:fixed;
+  top:60px;
+  left:50%;
+  transform:translateX(-50%) translateY(-20px);
+  background:rgba(76,217,100,.9);
+  color:#000;
+  padding:10px 24px;
+  border-radius:20px;
+  font-size:14px;
+  font-weight:600;
+  z-index:300;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+  animation:toastIn .3s ease forwards;
+  pointer-events:none;
+}
+@keyframes toastIn{
+  from{opacity:0;transform:translateX(-50%) translateY(-20px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}
+}
+.toast.out{animation:toastOut .3s ease forwards}
+@keyframes toastOut{
+  from{opacity:1;transform:translateX(-50%) translateY(0)}
+  to{opacity:0;transform:translateX(-50%) translateY(-20px)}
+}
+
+/* ===== ERROR BANNER ===== */
+.error-banner{
+  background:rgba(255,69,58,.1);
+  border:1px solid rgba(255,69,58,.2);
+  border-radius:12px;
+  padding:12px 14px;
+  margin-bottom:12px;
+  font-size:13px;
+  color:#ff8a80;
+  text-align:center;
+}
+
+/* ===== SOIL INFO ===== */
+.soil-info{
+  font-size:11px;
+  color:#555;
+  margin-top:4px;
+  font-style:italic;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="header">
+    <h1><span class="green">Plantar</span>oo</h1>
+    <div class="subtitle" id="header-subtitle"></div>
+  </div>
+  <div class="tab-content" id="tab-content"></div>
+  <button class="fab" id="fab-add" aria-label="Add plant">+</button>
+  <div class="bottom-nav">
+    <div class="nav-bar">
+      <button class="nav-btn active" data-tab="today">Today</button>
+      <button class="nav-btn" data-tab="all">All Plants</button>
+      <button class="nav-btn" data-tab="history">History</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   Plantaroo — Adaptive Watering & Fertilizing Tracker
+   Single-file PWA — IndexedDB storage, no external dependencies
+   =========================================================================== */
+
+'use strict';
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+var SOIL_TABLE = {
+  chunky_aroid:    { label: 'Forbidden Cereal / Chunky Aroid', mult: 0.45 },
+  orchid_bark:     { label: 'Pure Orchid Bark',                mult: 0.5  },
+  sphagnum_moss:   { label: 'Sphagnum Moss',                  mult: 0.7  },
+  regular_perlite: { label: 'Regular Potting + Perlite',       mult: 1.0  },
+  cactus_gritty:   { label: 'Cactus / Succulent Gritty',      mult: 1.3  },
+  carnivore_peat:  { label: 'Carnivore Peat/Perlite',         mult: null }
+};
+
+var ROOMS = [
+  'Bedroom',
+  'Living Room',
+  'Office',
+  'Front Window',
+  'Side Window',
+  'Kitchen',
+  'Bathroom'
+];
+
+var MOISTURE_OPTIONS  = ['low', 'medium', 'high'];
+var FERT_TYPE_OPTIONS = ['balanced', 'acidic', 'orchid', 'cactus', 'none'];
+var WATER_SRC_OPTIONS = ['any', 'distilled', 'rain', 'filtered'];
+
+// ============================================================
+// IndexedDB PROMISE HELPERS (raw API, no libraries)
+// ============================================================
+
+var DB_NAME    = 'PlantarooDB';
+var DB_VERSION = 1;
+var _dbInstance = null;
+
+function openDB() {
+  if (_dbInstance) return Promise.resolve(_dbInstance);
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('plants')) {
+        db.createObjectStore('plants', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('history')) {
+        var hs = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+        hs.createIndex('plantId', 'plantId', { unique: false });
+        hs.createIndex('date', 'date', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('profileCache')) {
+        db.createObjectStore('profileCache', { keyPath: 'cacheKey' });
+      }
+    };
+    req.onsuccess = function() {
+      _dbInstance = req.result;
+      // Handle unexpected close (e.g. version change from another tab)
+      _dbInstance.onclose = function() { _dbInstance = null; };
+      resolve(_dbInstance);
+    };
+    req.onerror = function() { reject(req.error); };
+  });
+}
+
+function dbTx(storeName, mode) {
+  return openDB().then(function(db) {
+    return db.transaction(storeName, mode).objectStore(storeName);
+  });
+}
+
+function dbGetAll(storeName) {
+  return dbTx(storeName, 'readonly').then(function(store) {
+    return new Promise(function(resolve, reject) {
+      var r = store.getAll();
+      r.onsuccess = function() { resolve(r.result); };
+      r.onerror   = function() { reject(r.error); };
+    });
+  });
+}
+
+function dbGet(storeName, key) {
+  return dbTx(storeName, 'readonly').then(function(store) {
+    return new Promise(function(resolve, reject) {
+      var r = store.get(key);
+      r.onsuccess = function() { resolve(r.result); };
+      r.onerror   = function() { reject(r.error); };
+    });
+  });
+}
+
+function dbPut(storeName, item) {
+  return dbTx(storeName, 'readwrite').then(function(store) {
+    return new Promise(function(resolve, reject) {
+      var r = store.put(item);
+      r.onsuccess = function() { resolve(r.result); };
+      r.onerror   = function() { reject(r.error); };
+    });
+  });
+}
+
+function dbAdd(storeName, item) {
+  return dbTx(storeName, 'readwrite').then(function(store) {
+    return new Promise(function(resolve, reject) {
+      var r = store.add(item);
+      r.onsuccess = function() { resolve(r.result); };
+      r.onerror   = function() { reject(r.error); };
+    });
+  });
+}
+
+function dbDelete(storeName, key) {
+  return dbTx(storeName, 'readwrite').then(function(store) {
+    return new Promise(function(resolve, reject) {
+      var r = store.delete(key);
+      r.onsuccess = function() { resolve(); };
+      r.onerror   = function() { reject(r.error); };
+    });
+  });
+}
+
+// ============================================================
+// SEASONAL MULTIPLIER (display-time only, never stored)
+// ============================================================
+
+function getSeasonalMultiplier(lightType) {
+  if (lightType === 'grow') return 1.0;
+  var month = new Date().getMonth() + 1; // 1-12
+  if (month >= 11 || month <= 2) return 1.3;   // Nov-Feb
+  if (month === 9 || month === 10) return 1.15; // Sep-Oct
+  return 1.0;
+}
+
+function getSeasonLabel() {
+  var m = new Date().getMonth() + 1;
+  if (m >= 11 || m <= 2) return 'Winter';
+  if (m >= 3 && m <= 5) return 'Spring';
+  if (m >= 6 && m <= 8) return 'Summer';
+  return 'Fall';
+}
+
+// ============================================================
+// CORE WATERING ALGORITHM
+// ============================================================
+
+function getEffectiveStartingInterval(plant) {
+  var soil = SOIL_TABLE[plant.soil_type];
+  if (!soil || soil.mult === null) return 2; // carnivore peat: kept-wet
+  return plant.species_baseline_days * soil.mult;
+}
+
+function getClampedInterval(plant) {
+  var starting = getEffectiveStartingInterval(plant);
+  var ci = plant.current_interval || starting;
+  var lo = starting * 0.5;
+  var hi = starting * 2.0;
+  return Math.max(lo, Math.min(hi, ci));
+}
+
+function getNextDueDate(plant) {
+  if (!plant.last_watered) return null; // never watered
+  var clamped   = getClampedInterval(plant);
+  var seasonal  = getSeasonalMultiplier(plant.light_type);
+  var effective = clamped * seasonal;
+  var last = new Date(plant.last_watered);
+  return new Date(last.getTime() + effective * 86400000);
+}
+
+function getDaysUntilDue(plant) {
+  var due = getNextDueDate(plant);
+  if (!due) return -Infinity; // never watered => needs water now
+  var now = new Date(); now.setHours(0,0,0,0);
+  var d   = new Date(due); d.setHours(0,0,0,0);
+  return Math.round((d - now) / 86400000);
+}
+
+function updateIntervalFromGap(plant, gap) {
+  var gaps = (plant.recent_valid_gaps || []).slice();
+  gaps.push(gap);
+  if (gaps.length > 5) gaps.shift(); // rolling window of 5
+  plant.recent_valid_gaps = gaps;
+  var sum = 0;
+  for (var i = 0; i < gaps.length; i++) sum += gaps[i];
+  plant.current_interval = sum / gaps.length;
+}
+
+// ============================================================
+// FERTILIZING LOGIC
+// ============================================================
+
+function isFeedDue(plant) {
+  if (plant.carnivore) return false;
+  if (!plant.fert_type || plant.fert_type === 'none') return false;
+  if (!plant.feed_every_n_waterings || plant.feed_every_n_waterings <= 0) return false;
+  // Respect no_fert_until
+  if (plant.no_fert_until) {
+    if (new Date() < new Date(plant.no_fert_until)) return false;
+  }
+  var count     = plant.watering_count   || 0;
+  var lastFedAt = plant.last_fed_at_count || 0;
+  return (count - lastFedAt) >= plant.feed_every_n_waterings;
+}
+
+// ============================================================
+// DISPLAY HELPERS
+// ============================================================
+
+function getDuePill(daysUntil, neverWatered) {
+  if (neverWatered)     return { text: 'New',                            cls: 'pill-blue'   };
+  if (daysUntil < -1)   return { text: Math.abs(daysUntil) + ' days overdue', cls: 'pill-red' };
+  if (daysUntil === -1) return { text: '1 day overdue',                  cls: 'pill-red'    };
+  if (daysUntil === 0)  return { text: 'Due today',                      cls: 'pill-blue'   };
+  if (daysUntil === 1)  return { text: 'Due tomorrow',                   cls: 'pill-orange'  };
+  return                       { text: 'In ' + daysUntil + ' days',      cls: 'pill-green'  };
+}
+
+function esc(s) {
+  if (!s && s !== 0) return '';
+  var el = document.createElement('span');
+  el.textContent = String(s);
+  return el.innerHTML;
+}
+
+function formatDate(iso) {
+  var d = new Date(iso);
+  return d.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit'
+  });
+}
+
+function showToast(msg) {
+  var existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  var t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.getElementById('app').appendChild(t);
+  setTimeout(function() { t.classList.add('out'); }, 1800);
+  setTimeout(function() { t.remove(); }, 2200);
+}
+
+// ============================================================
+// APP STATE
+// ============================================================
+
+var currentTab          = 'today';
+var openMenuId          = null;
+var allPlantsFilters    = { rooms: [], light: null };
+var historyFilterPlantId = null;
+
+var tabContent = document.getElementById('tab-content');
+var headerSub  = document.getElementById('header-subtitle');
+
+// ============================================================
+// RENDER DISPATCHER
+// ============================================================
+
+async function render() {
+  openMenuId = null;
+  // Update subtitle with date + season
+  var today = new Date();
+  var dayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  headerSub.textContent = dayStr;
+
+  if      (currentTab === 'today')   await renderToday();
+  else if (currentTab === 'all')     await renderAll();
+  else if (currentTab === 'history') await renderHistory();
+}
+
+// ============================================================
+// TODAY TAB
+// ============================================================
+
+async function renderToday() {
+  var plants = await dbGetAll('plants');
+  var overdue   = [];
+  var dueToday  = [];
+  var newPlants = [];
+
+  for (var i = 0; i < plants.length; i++) {
+    var p = plants[i];
+    var nw = !p.last_watered;
+    if (nw) { newPlants.push(p); continue; }
+    var d = getDaysUntilDue(p);
+    if (d < 0) overdue.push(p);
+    else if (d === 0) dueToday.push(p);
+  }
+
+  if (overdue.length === 0 && dueToday.length === 0 && newPlants.length === 0) {
+    tabContent.innerHTML =
+      '<div class="empty-state">' +
+        '<div class="icon">&#127793;</div>' +
+        '<p>Nothing needs water today</p>' +
+        '<div class="sub">All your plants are happy</div>' +
+      '</div>';
+    return;
+  }
+
+  var html = '';
+  if (overdue.length > 0)  html += buildGroupedByRoom(overdue,  'Overdue');
+  if (dueToday.length > 0) html += buildGroupedByRoom(dueToday, 'Due Today');
+  if (newPlants.length > 0) {
+    html += '<div class="section-title">New Plants</div>';
+    for (var j = 0; j < newPlants.length; j++) html += plantCardHTML(newPlants[j], true);
+  }
+
+  tabContent.innerHTML = html;
+  attachCardListeners();
+}
+
+function buildGroupedByRoom(plants, title) {
+  var byRoom = {};
+  for (var i = 0; i < plants.length; i++) {
+    var r = plants[i].room || 'Unassigned';
+    if (!byRoom[r]) byRoom[r] = [];
+    byRoom[r].push(plants[i]);
+  }
+  var html = '<div class="section-title">' + esc(title) + '</div>';
+  var rooms = Object.keys(byRoom).sort();
+  for (var j = 0; j < rooms.length; j++) {
+    var room = rooms[j];
+    html += '<div class="room-group"><div class="room-label">' + esc(room) + '</div>';
+    for (var k = 0; k < byRoom[room].length; k++) {
+      html += plantCardHTML(byRoom[room][k], true);
+    }
+    html += '</div>';
+  }
+  return html;
+}
+
+// ============================================================
+// ALL PLANTS TAB
+// ============================================================
+
+async function renderAll() {
+  var plants = await dbGetAll('plants');
+
+  // Derive rooms from actual plant data
+  var roomSet = {};
+  for (var i = 0; i < plants.length; i++) {
+    if (plants[i].room) roomSet[plants[i].room] = true;
+  }
+  var plantRooms = Object.keys(roomSet).sort();
+
+  // Build filter bar
+  var html = '<div class="filter-bar">';
+  for (var r = 0; r < plantRooms.length; r++) {
+    var rm = plantRooms[r];
+    var active = allPlantsFilters.rooms.indexOf(rm) >= 0;
+    html += '<button class="filter-chip' + (active ? ' active' : '') + '" data-room="' + esc(rm) + '">' + esc(rm) + '</button>';
+  }
+  if (plantRooms.length > 0) html += '<div class="filter-divider"></div>';
+  html += '<button class="filter-chip' + (allPlantsFilters.light === 'grow'    ? ' active' : '') + '" data-light="grow">Grow Light</button>';
+  html += '<button class="filter-chip' + (allPlantsFilters.light === 'natural' ? ' active' : '') + '" data-light="natural">Natural</button>';
+  html += '</div>';
+
+  // Apply filters
+  var filtered = plants.slice();
+  if (allPlantsFilters.rooms.length > 0) {
+    filtered = filtered.filter(function(p) {
+      return allPlantsFilters.rooms.indexOf(p.room) >= 0;
+    });
+  }
+  if (allPlantsFilters.light) {
+    filtered = filtered.filter(function(p) {
+      return p.light_type === allPlantsFilters.light;
+    });
+  }
+
+  // Sort by soonest due
+  filtered.sort(function(a, b) { return getDaysUntilDue(a) - getDaysUntilDue(b); });
+
+  html += '<div class="plant-count">' + filtered.length + ' plant' + (filtered.length !== 1 ? 's' : '') + '</div>';
+
+  if (filtered.length === 0) {
+    html += '<div class="empty-state"><div class="icon">&#127807;</div><p>No plants match filters</p></div>';
+  } else {
+    for (var f = 0; f < filtered.length; f++) {
+      html += plantCardHTML(filtered[f], false);
+    }
+  }
+
+  tabContent.innerHTML = html;
+  attachCardListeners();
+
+  // Filter chip event handlers
+  var roomChips = tabContent.querySelectorAll('.filter-chip[data-room]');
+  for (var rc = 0; rc < roomChips.length; rc++) {
+    roomChips[rc].addEventListener('click', function() {
+      var rm = this.dataset.room;
+      var idx = allPlantsFilters.rooms.indexOf(rm);
+      if (idx >= 0) allPlantsFilters.rooms.splice(idx, 1);
+      else allPlantsFilters.rooms.push(rm);
+      renderAll();
+    });
+  }
+  var lightChips = tabContent.querySelectorAll('.filter-chip[data-light]');
+  for (var lc = 0; lc < lightChips.length; lc++) {
+    lightChips[lc].addEventListener('click', function() {
+      var lt = this.dataset.light;
+      allPlantsFilters.light = (allPlantsFilters.light === lt) ? null : lt;
+      renderAll();
+    });
+  }
+}
+
+// ============================================================
+// HISTORY TAB
+// ============================================================
+
+async function renderHistory() {
+  var plants     = await dbGetAll('plants');
+  var allHistory = await dbGetAll('history');
+
+  // Plant filter dropdown
+  var html = '<div class="history-filter"><select id="history-plant-filter">';
+  html += '<option value="">All Plants</option>';
+  for (var i = 0; i < plants.length; i++) {
+    var sel = (historyFilterPlantId == plants[i].id) ? ' selected' : '';
+    html += '<option value="' + plants[i].id + '"' + sel + '>' + esc(plants[i].name) + '</option>';
+  }
+  html += '</select></div>';
+
+  // Filter + sort
+  var entries = allHistory.slice();
+  if (historyFilterPlantId) {
+    entries = entries.filter(function(h) { return h.plantId == historyFilterPlantId; });
+  }
+  entries.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+  if (entries.length === 0) {
+    html += '<div class="empty-state"><div class="icon">&#128196;</div><p>No history yet</p><div class="sub">Water a plant to see entries here</div></div>';
+  } else {
+    for (var j = 0; j < entries.length; j++) {
+      var h = entries[j];
+      var isFed = h.type && h.type.indexOf('Fed') >= 0;
+      html += '<div class="history-entry">';
+      html += '<div class="history-date">' + esc(formatDate(h.date)) + '</div>';
+      html += '<div class="history-name">' + esc(h.plantName || 'Unknown') + '</div>';
+      html += '<div class="history-type' + (isFed ? ' fed' : '') + '">' + esc(h.type || 'Watered') + '</div>';
+      if (h.lateReason) {
+        html += '<div class="history-reason">' + esc(h.lateReason) + '</div>';
+      }
+      html += '</div>';
+    }
+  }
+
+  tabContent.innerHTML = html;
+
+  var sel = document.getElementById('history-plant-filter');
+  if (sel) {
+    sel.addEventListener('change', function() {
+      historyFilterPlantId = sel.value || null;
+      renderHistory();
+    });
+  }
+}
+
+// ============================================================
+// PLANT CARD HTML BUILDER
+// ============================================================
+
+function plantCardHTML(plant, showActionLabel) {
+  var neverWatered = !plant.last_watered;
+  var daysUntil    = getDaysUntilDue(plant);
+  var duePill      = getDuePill(daysUntil, neverWatered);
+  var feedDue      = isFeedDue(plant);
+  var isDueOrOverdue = neverWatered || daysUntil <= 0;
+
+  // Photo
+  var photoHTML;
+  if (plant.photo) {
+    photoHTML = '<img class="plant-photo" src="' + plant.photo + '" alt="" loading="lazy"/>';
+  } else {
+    photoHTML = '<div class="plant-photo-placeholder">&#127793;</div>';
+  }
+
+  var html = '<div class="plant-card" data-plant-id="' + plant.id + '">';
+  html += photoHTML;
+  html += '<div class="plant-info">';
+  html += '<div class="plant-name">' + esc(plant.name) + '</div>';
+  html += '<div class="plant-room">' + esc(plant.room || '') + (plant.light_type === 'grow' ? ' &middot; Grow Light' : '') + '</div>';
+
+  // Action label on Today tab: "water" or "water + feed"
+  if (showActionLabel && isDueOrOverdue) {
+    if (feedDue) {
+      html += '<div class="plant-action-label">Water + <span class="feed-label">Feed</span></div>';
+    } else {
+      html += '<div class="plant-action-label">Water</div>';
+    }
+  }
+
+  html += '<div class="plant-pills">';
+  html += '<span class="pill ' + duePill.cls + '">' + duePill.text + '</span>';
+  if (feedDue && isDueOrOverdue) {
+    html += '<span class="pill pill-purple">+ feed</span>';
+  }
+  // Show soil type as subtle pill on All Plants
+  if (!showActionLabel) {
+    var soilInfo = SOIL_TABLE[plant.soil_type];
+    if (soilInfo) {
+      var shortSoil = plant.soil_type.replace(/_/g, ' ');
+      html += '<span class="pill pill-gray">' + esc(shortSoil) + '</span>';
+    }
+  }
+  html += '</div></div>';
+  html += '<button class="card-menu-btn" data-menu-id="' + plant.id + '" aria-label="Menu">&#8942;</button>';
+  html += '</div>';
+  return html;
+}
+
+// ============================================================
+// CARD EVENT LISTENERS
+// ============================================================
+
+function attachCardListeners() {
+  var cards = tabContent.querySelectorAll('.plant-card');
+  for (var i = 0; i < cards.length; i++) {
+    (function(card) {
+      card.addEventListener('click', function(e) {
+        // Ignore clicks on menu elements
+        if (e.target.closest('.card-menu-btn') ||
+            e.target.closest('.card-menu') ||
+            e.target.closest('.confirm-bar') ||
+            e.target.closest('.late-prompt')) return;
+        var pid = parseInt(card.dataset.plantId, 10);
+        handleWaterTap(pid, card);
+      });
+    })(cards[i]);
+  }
+
+  var menuBtns = tabContent.querySelectorAll('.card-menu-btn');
+  for (var j = 0; j < menuBtns.length; j++) {
+    (function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var pid = parseInt(btn.dataset.menuId, 10);
+        toggleMenu(pid, btn);
+      });
+    })(menuBtns[j]);
+  }
+}
+
+// ============================================================
+// THREE-DOT MENU + DELETE CONFIRM
+// ============================================================
+
+function toggleMenu(plantId, btnEl) {
+  // Close existing menus
+  var existing = document.querySelectorAll('.card-menu');
+  for (var i = 0; i < existing.length; i++) existing[i].remove();
+
+  if (openMenuId === plantId) { openMenuId = null; return; }
+  openMenuId = plantId;
+
+  var menu = document.createElement('div');
+  menu.className = 'card-menu';
+  menu.innerHTML = '<button class="danger" data-action="remove">Remove plant</button>';
+  btnEl.parentElement.appendChild(menu);
+
+  menu.querySelector('[data-action="remove"]').addEventListener('click', function(e) {
+    e.stopPropagation();
+    menu.remove();
+    openMenuId = null;
+    showConfirmDelete(plantId);
+  });
+
+  // Close on outside click
+  setTimeout(function() {
+    function handler(ev) {
+      if (!menu.contains(ev.target) && ev.target !== btnEl) {
+        menu.remove();
+        openMenuId = null;
+        document.removeEventListener('click', handler, true);
+      }
+    }
+    document.addEventListener('click', handler, true);
+  }, 10);
+}
+
+function showConfirmDelete(plantId) {
+  var card = tabContent.querySelector('[data-plant-id="' + plantId + '"]');
+  if (!card) return;
+
+  // Remove any existing confirm bars
+  var old = document.querySelectorAll('.confirm-bar');
+  for (var i = 0; i < old.length; i++) old[i].remove();
+
+  var bar = document.createElement('div');
+  bar.className = 'confirm-bar';
+  bar.innerHTML =
+    '<span>Remove this plant?</span>' +
+    '<div class="btns">' +
+      '<button class="btn-cancel">Cancel</button>' +
+      '<button class="btn-confirm-del">Remove</button>' +
+    '</div>';
+  card.after(bar);
+
+  bar.querySelector('.btn-cancel').addEventListener('click', function(e) {
+    e.stopPropagation();
+    bar.remove();
+  });
+
+  bar.querySelector('.btn-confirm-del').addEventListener('click', async function(e) {
+    e.stopPropagation();
+    await dbDelete('plants', plantId);
+    showToast('Plant removed');
+    render();
+  });
+}
+
+// ============================================================
+// WATERING INTERACTION
+// ============================================================
+
+async function handleWaterTap(plantId, cardEl) {
+  var plant = await dbGet('plants', plantId);
+  if (!plant) return;
+
+  var neverWatered = !plant.last_watered;
+  var daysUntil    = getDaysUntilDue(plant);
+  var isLate       = !neverWatered && daysUntil < 0;
+
+  if (isLate) {
+    showLatePrompt(plant, cardEl);
+  } else {
+    await doWater(plant, null);
+  }
+}
+
+function showLatePrompt(plant, cardEl) {
+  // Remove existing prompts
+  var old = document.querySelectorAll('.late-prompt');
+  for (var i = 0; i < old.length; i++) old[i].remove();
+
+  var prompt = document.createElement('div');
+  prompt.className = 'late-prompt';
+  prompt.innerHTML =
+    '<p>Late watering &#8212; why?</p>' +
+    '<div class="late-prompt-btns">' +
+      '<button class="btn-still-wet">Still wet</button>' +
+      '<button class="btn-too-busy">Too busy</button>' +
+    '</div>';
+  cardEl.after(prompt);
+
+  prompt.querySelector('.btn-still-wet').addEventListener('click', async function(e) {
+    e.stopPropagation();
+    prompt.remove();
+    await doWater(plant, 'still_wet');
+  });
+
+  prompt.querySelector('.btn-too-busy').addEventListener('click', async function(e) {
+    e.stopPropagation();
+    prompt.remove();
+    await doWater(plant, 'too_busy');
+  });
+}
+
+async function doWater(plant, lateReason) {
+  var now     = new Date().toISOString();
+  var feedDue = isFeedDue(plant);
+
+  // --- Learning rule: compute gap and update interval ---
+  if (plant.last_watered) {
+    var gapDays = (new Date(now) - new Date(plant.last_watered)) / 86400000;
+
+    if (lateReason === 'too_busy') {
+      // DISCARD gap — interval unchanged, just reset anchor
+    } else {
+      // Valid gap: on-time, early, or late+"still wet"
+      updateIntervalFromGap(plant, gapDays);
+    }
+  } else {
+    // First watering: seed interval from effective starting
+    plant.current_interval  = getEffectiveStartingInterval(plant);
+    plant.recent_valid_gaps = [];
+  }
+
+  plant.last_watered  = now;
+  plant.watering_count = (plant.watering_count || 0) + 1;
+
+  // --- Fertilizing ---
+  var historyType = 'Watered';
+  if (feedDue) {
+    plant.last_fertilized  = now;
+    plant.last_fed_at_count = plant.watering_count;
+    historyType = 'Watered + Fed';
+  }
+
+  await dbPut('plants', plant);
+
+  // --- Log to history ---
+  var historyEntry = {
+    plantId:   plant.id,
+    plantName: plant.name,
+    date:      now,
+    type:      historyType,
+    lateReason: null
+  };
+  if (lateReason === 'still_wet') historyEntry.lateReason = 'Still wet';
+  else if (lateReason === 'too_busy') historyEntry.lateReason = 'Too busy';
+
+  await dbAdd('history', historyEntry);
+
+  // --- Visual feedback ---
+  var card = tabContent.querySelector('[data-plant-id="' + plant.id + '"]');
+  if (card) card.classList.add('tap-flash');
+
+  var toastMsg = feedDue ? (plant.name + ' watered + fed') : (plant.name + ' watered');
+  showToast(toastMsg);
+
+  setTimeout(function() { render(); }, 350);
+}
+
+// ============================================================
+// ADD PLANT MODAL (two-step)
+// ============================================================
+
+function showAddModal() {
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'add-modal-overlay';
+
+  // Build soil options
+  var soilOpts = '';
+  var soilKeys = Object.keys(SOIL_TABLE);
+  for (var s = 0; s < soilKeys.length; s++) {
+    var sk = soilKeys[s];
+    soilOpts += '<option value="' + sk + '">' + esc(SOIL_TABLE[sk].label) + '</option>';
+  }
+
+  // Build room options
+  var roomOpts = '';
+  for (var r = 0; r < ROOMS.length; r++) {
+    roomOpts += '<option value="' + esc(ROOMS[r]) + '">' + esc(ROOMS[r]) + '</option>';
+  }
+
+  overlay.innerHTML =
+    '<div class="modal">' +
+      '<div class="modal-handle"></div>' +
+      '<h2>Add Plant</h2>' +
+
+      '<!-- STEP 1 -->' +
+      '<div id="modal-step1">' +
+        '<div class="form-group">' +
+          '<label>Plant Name / Species</label>' +
+          '<input type="text" id="add-name" placeholder="e.g. Monstera Deliciosa" autocomplete="off"/>' +
+          '<div class="hint">Common or scientific name</div>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label>Room</label>' +
+          '<select id="add-room">' + roomOpts + '</select>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label>Light Type</label>' +
+          '<div class="toggle-group" id="light-toggle">' +
+            '<button class="toggle-opt active" data-light="natural">Natural Light</button>' +
+            '<button class="toggle-opt" data-light="grow">Grow Light</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label>Soil Type</label>' +
+          '<select id="add-soil">' + soilOpts + '</select>' +
+          '<div class="soil-info" id="soil-info-text"></div>' +
+        '</div>' +
+
+        '<div class="form-group">' +
+          '<label>Photo</label>' +
+          '<input type="file" accept="image/*" capture="environment" id="add-photo" style="display:none"/>' +
+          '<div class="photo-area">' +
+            '<img class="photo-preview" id="photo-preview" style="display:none" alt="Plant photo"/>' +
+            '<button class="photo-btn" id="photo-trigger" type="button">&#128247; Take / Choose Photo</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<button class="btn-primary" id="btn-next" type="button">Next</button>' +
+        '<button class="btn-secondary" id="btn-cancel-add" type="button">Cancel</button>' +
+      '</div>' +
+
+      '<!-- STEP 2 -->' +
+      '<div id="modal-step2" style="display:none">' +
+        '<div id="profile-loading" class="loading-msg">' +
+          '<div class="loading-spinner"></div><br>Looking up plant profile...' +
+        '</div>' +
+        '<div id="profile-error" class="error-banner" style="display:none"></div>' +
+        '<div class="profile-review-title" id="profile-title" style="display:none">Review &amp; adjust profile</div>' +
+        '<div id="profile-fields" style="display:none"></div>' +
+        '<button class="btn-primary" id="btn-save" type="button" style="display:none">Save Plant</button>' +
+        '<button class="btn-secondary" id="btn-back" type="button">Back</button>' +
+      '</div>' +
+    '</div>';
+
+  document.getElementById('app').appendChild(overlay);
+
+  // --- State for this modal ---
+  var selectedLight = 'natural';
+  var photoData     = null;
+  var profileData   = null;
+
+  // --- Soil info update ---
+  function updateSoilInfo() {
+    var soilKey  = overlay.querySelector('#add-soil').value;
+    var soilData = SOIL_TABLE[soilKey];
+    var infoEl   = overlay.querySelector('#soil-info-text');
+    if (soilData && soilData.mult !== null) {
+      infoEl.textContent = 'Drying speed: ' + soilData.mult + 'x baseline';
+    } else if (soilData) {
+      infoEl.textContent = 'Kept-wet substrate (interval fixed at 2 days)';
+    }
+  }
+  updateSoilInfo();
+  overlay.querySelector('#add-soil').addEventListener('change', updateSoilInfo);
+
+  // --- Light toggle ---
+  var lightBtns = overlay.querySelectorAll('#light-toggle .toggle-opt');
+  for (var lb = 0; lb < lightBtns.length; lb++) {
+    lightBtns[lb].addEventListener('click', function() {
+      for (var x = 0; x < lightBtns.length; x++) lightBtns[x].classList.remove('active');
+      this.classList.add('active');
+      selectedLight = this.dataset.light;
+    });
+  }
+
+  // --- Photo capture ---
+  var photoInput = overlay.querySelector('#add-photo');
+  overlay.querySelector('#photo-trigger').addEventListener('click', function() { photoInput.click(); });
+  photoInput.addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var maxDim = 200;
+        var w = img.width, h = img.height;
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else       { w = Math.round(w * maxDim / h); h = maxDim; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        photoData = canvas.toDataURL('image/jpeg', 0.7);
+        var preview = overlay.querySelector('#photo-preview');
+        preview.src = photoData;
+        preview.style.display = 'block';
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // --- Cancel / backdrop dismiss ---
+  overlay.querySelector('#btn-cancel-add').addEventListener('click', function() { overlay.remove(); });
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  // --- NEXT -> Step 2 ---
+  overlay.querySelector('#btn-next').addEventListener('click', async function() {
+    var nameInput = overlay.querySelector('#add-name');
+    var name = nameInput.value.trim();
+    if (!name) {
+      nameInput.style.borderColor = '#ff453a';
+      nameInput.focus();
+      return;
+    }
+    nameInput.style.borderColor = '';
+
+    var soil = overlay.querySelector('#add-soil').value;
+
+    // Switch to step 2
+    overlay.querySelector('#modal-step1').style.display = 'none';
+    overlay.querySelector('#modal-step2').style.display = 'block';
+    overlay.querySelector('#profile-loading').style.display = 'block';
+    overlay.querySelector('#profile-error').style.display   = 'none';
+    overlay.querySelector('#profile-title').style.display    = 'none';
+    overlay.querySelector('#profile-fields').style.display  = 'none';
+    overlay.querySelector('#btn-save').style.display         = 'none';
+
+    // Check cache
+    var cacheKey = (name + '_' + soil).toLowerCase().replace(/\s+/g, '_');
+    var profile  = await dbGet('profileCache', cacheKey);
+
+    if (!profile) {
+      try {
+        var resp = await fetch('/api/plant-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, soilType: soil })
+        });
+        if (!resp.ok) throw new Error('Server returned ' + resp.status);
+        profile = await resp.json();
+        profile.cacheKey = cacheKey;
+        await dbPut('profileCache', profile);
+      } catch (err) {
+        // Show error but use fallback defaults
+        overlay.querySelector('#profile-error').style.display = 'block';
+        overlay.querySelector('#profile-error').textContent =
+          'Could not reach plant API. Using defaults — adjust values below.';
+        profile = {
+          cacheKey: cacheKey,
+          species_baseline_days:   7,
+          moisture_pref:           'medium',
+          feed_every_n_waterings:  4,
+          fert_type:               'balanced',
+          carnivore:               false,
+          water_source:            'any'
+        };
+      }
+    }
+
+    profileData = profile;
+    showProfileReview(overlay, profile);
+  });
+
+  // --- BACK ---
+  overlay.querySelector('#btn-back').addEventListener('click', function() {
+    overlay.querySelector('#modal-step1').style.display = 'block';
+    overlay.querySelector('#modal-step2').style.display = 'none';
+  });
+
+  // --- SAVE ---
+  overlay.querySelector('#btn-save').addEventListener('click', async function() {
+    var name = overlay.querySelector('#add-name').value.trim();
+    var room = overlay.querySelector('#add-room').value;
+    var soil = overlay.querySelector('#add-soil').value;
+
+    // Read overridden profile values from step 2
+    var baselineDays = parseFloat(overlay.querySelector('#pf-baseline').value) || 7;
+    var moisturePref = overlay.querySelector('#pf-moisture').value;
+    var feedEvery    = parseInt(overlay.querySelector('#pf-feed-every').value, 10) || 0;
+    var fertType     = overlay.querySelector('#pf-fert-type').value;
+    var carnivore    = overlay.querySelector('#pf-carnivore').value === 'true';
+    var waterSource  = overlay.querySelector('#pf-water-source').value;
+
+    // Compute effective starting interval
+    var effectiveStart;
+    if (soil === 'carnivore_peat') {
+      effectiveStart = 2;
+    } else {
+      var mult = (SOIL_TABLE[soil] && SOIL_TABLE[soil].mult !== null) ? SOIL_TABLE[soil].mult : 1.0;
+      effectiveStart = baselineDays * mult;
+    }
+
+    var plant = {
+      name:                    name,
+      room:                    room,
+      light_type:              selectedLight,
+      soil_type:               soil,
+      photo:                   photoData,
+      species_baseline_days:   baselineDays,
+      moisture_pref:           moisturePref,
+      feed_every_n_waterings:  feedEvery,
+      fert_type:               fertType,
+      carnivore:               carnivore,
+      water_source:            waterSource,
+      current_interval:        effectiveStart,
+      recent_valid_gaps:       [],
+      last_watered:            null,
+      last_fertilized:         null,
+      last_fed_at_count:       0,
+      no_fert_until:           null,
+      watering_count:          0,
+      created_at:              new Date().toISOString()
+    };
+
+    await dbAdd('plants', plant);
+    overlay.remove();
+    showToast(name + ' added');
+    render();
+  });
+}
+
+// ============================================================
+// PROFILE REVIEW FIELDS (Step 2)
+// ============================================================
+
+function showProfileReview(overlay, profile) {
+  overlay.querySelector('#profile-loading').style.display = 'none';
+  overlay.querySelector('#profile-title').style.display    = 'block';
+
+  var container = overlay.querySelector('#profile-fields');
+  container.style.display = 'block';
+  overlay.querySelector('#btn-save').style.display = 'block';
+
+  function optionsHTML(options, selected) {
+    var h = '';
+    for (var i = 0; i < options.length; i++) {
+      var v = options[i];
+      var s = (v === selected) ? ' selected' : '';
+      h += '<option value="' + esc(v) + '"' + s + '>' + esc(v) + '</option>';
+    }
+    return h;
+  }
+
+  container.innerHTML =
+    '<div class="profile-field">' +
+      '<label>Baseline days</label>' +
+      '<input type="number" id="pf-baseline" value="' + (profile.species_baseline_days || 7) + '" min="1" max="90" step="0.5"/>' +
+    '</div>' +
+    '<div class="profile-field">' +
+      '<label>Moisture pref</label>' +
+      '<select id="pf-moisture">' + optionsHTML(MOISTURE_OPTIONS, profile.moisture_pref || 'medium') + '</select>' +
+    '</div>' +
+    '<div class="profile-field">' +
+      '<label>Feed every N waterings</label>' +
+      '<input type="number" id="pf-feed-every" value="' + (profile.feed_every_n_waterings || 4) + '" min="0" max="30"/>' +
+    '</div>' +
+    '<div class="profile-field">' +
+      '<label>Fertilizer type</label>' +
+      '<select id="pf-fert-type">' + optionsHTML(FERT_TYPE_OPTIONS, profile.fert_type || 'balanced') + '</select>' +
+    '</div>' +
+    '<div class="profile-field">' +
+      '<label>Carnivore</label>' +
+      '<select id="pf-carnivore">' +
+        '<option value="false"' + (!profile.carnivore ? ' selected' : '') + '>No</option>' +
+        '<option value="true"'  + (profile.carnivore  ? ' selected' : '') + '>Yes</option>' +
+      '</select>' +
+    '</div>' +
+    '<div class="profile-field">' +
+      '<label>Water source</label>' +
+      '<select id="pf-water-source">' + optionsHTML(WATER_SRC_OPTIONS, profile.water_source || 'any') + '</select>' +
+    '</div>';
+}
+
+// ============================================================
+// TAB NAVIGATION
+// ============================================================
+
+var navBtns = document.querySelectorAll('.nav-btn');
+for (var nb = 0; nb < navBtns.length; nb++) {
+  navBtns[nb].addEventListener('click', function() {
+    for (var x = 0; x < navBtns.length; x++) navBtns[x].classList.remove('active');
+    this.classList.add('active');
+    currentTab = this.dataset.tab;
+    tabContent.scrollTop = 0;
+    render();
+  });
+}
+
+// ============================================================
+// FAB
+// ============================================================
+
+document.getElementById('fab-add').addEventListener('click', showAddModal);
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
+openDB().then(function() {
+  render();
+  // Fallback signal
+  try { localStorage.setItem('plantaroo_init', Date.now()); } catch(e) {}
+}).catch(function(err) {
+  console.error('Plantaroo DB init failed:', err);
+  tabContent.innerHTML =
+    '<div class="empty-state">' +
+      '<div class="icon">&#9888;</div>' +
+      '<p>Could not open database</p>' +
+      '<div class="sub">' + esc(String(err)) + '</div>' +
+    '</div>';
+});
+
+</script>
+</body>
 </html>
