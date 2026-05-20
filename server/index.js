@@ -8,10 +8,18 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: ['https://jkhan626.github.io', 'http://localhost:5173', 'http://localhost:3001'],
+  methods: ['GET', 'POST', 'OPTIONS']
+}))
 app.use(express.json())
 
-// Serve index.html at root
+// Health check for Render keep-alive
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+})
+
+// Serve index.html at root (for local dev)
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'))
 })

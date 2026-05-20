@@ -8,14 +8,33 @@
 <meta name="theme-color" content="#000000"/>
 <title>Plantaroo</title>
 <style>
+/* ===== DESIGN TOKENS ===== */
+:root {
+  --bg: #000000;
+  --surface: #141419;
+  --surface-elevated: #1c1c24;
+  --border: rgba(255,255,255,0.06);
+  --border-subtle: rgba(255,255,255,0.04);
+  --text-primary: #f5f5f7;
+  --text-secondary: #86868b;
+  --text-tertiary: #48484a;
+  --green: #30d158;
+  --green-bg: rgba(48,209,88,0.12);
+  --orange: #ff9f0a;
+  --red: #ff453a;
+  --blue: #0a84ff;
+  --purple: #bf5af2;
+  --purple-bg: rgba(191,90,242,0.12);
+}
+
 /* ===== RESET & BASE ===== */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{height:100%;background:#000}
+html{height:100%;background:var(--bg)}
 body{
   height:100%;
-  background:#000;
-  color:#fff;
-  font-family:-apple-system,system-ui,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  background:var(--bg);
+  color:var(--text-primary);
+  font-family:-apple-system,system-ui,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
   overflow:hidden;
@@ -33,7 +52,7 @@ body{
   flex-direction:column;
   position:relative;
   overflow:hidden;
-  background:#0f1117;
+  background:var(--bg);
 }
 
 /* ===== HEADER ===== */
@@ -43,16 +62,16 @@ body{
   flex-shrink:0;
 }
 .header h1{
-  font-size:24px;
+  font-size:28px;
   font-weight:800;
-  letter-spacing:-0.5px;
+  letter-spacing:-1px;
 }
-.header h1 .green{color:#4cd964}
+.header h1 .green{color:var(--green)}
 .header .subtitle{
-  font-size:12px;
-  color:#888;
+  font-size:13px;
+  color:var(--text-secondary);
   margin-top:2px;
-  font-weight:500;
+  font-weight:600;
   letter-spacing:0.2px;
 }
 
@@ -76,67 +95,82 @@ body{
   display:flex;
   justify-content:center;
   z-index:100;
-  background:linear-gradient(transparent,rgba(15,17,23,.95) 40%);
+  background:linear-gradient(transparent,rgba(0,0,0,.85) 40%);
   pointer-events:none;
 }
 .nav-bar{
-  background:rgba(28,28,46,.95);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border-radius:28px;
+  background:rgba(20,20,25,0.92);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-radius:32px;
   display:flex;
   padding:4px;
   gap:4px;
   width:100%;
   pointer-events:all;
-  box-shadow:0 4px 24px rgba(0,0,0,.4);
+  box-shadow:0 4px 24px rgba(0,0,0,.5);
+  border:1px solid rgba(255,255,255,0.04);
+  min-height:64px;
+  align-items:center;
 }
 .nav-btn{
   flex:1;
-  padding:12px 0;
+  padding:10px 0 8px;
   border:none;
   background:transparent;
-  color:#666;
-  font-size:13px;
+  color:var(--text-tertiary);
+  font-size:11px;
   font-weight:600;
-  border-radius:24px;
+  border-radius:26px;
   cursor:pointer;
   transition:all .25s ease;
   position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  letter-spacing:0.2px;
+}
+.nav-btn .nav-icon{
+  font-size:20px;
+  line-height:1;
+  display:block;
 }
 .nav-btn.active{
-  background:rgba(76,217,100,.12);
-  color:#4cd964;
+  background:var(--green-bg);
+  color:var(--green);
 }
 
 /* ===== FAB ===== */
 .fab{
   position:absolute;
-  bottom:84px;
+  bottom:calc(90px + env(safe-area-inset-bottom, 0px));
   right:20px;
   width:56px;height:56px;
   border-radius:50%;
-  background:linear-gradient(135deg,#4cd964,#34c759);
+  background:var(--green);
   border:none;
   color:#000;
-  font-size:30px;
+  font-size:28px;
   font-weight:300;
   line-height:1;
   cursor:pointer;
   z-index:99;
-  box-shadow:0 4px 20px rgba(76,217,100,.45);
+  box-shadow:0 4px 16px rgba(48,209,88,0.35);
   display:flex;align-items:center;justify-content:center;
   transition:transform .15s ease,box-shadow .15s ease;
 }
-.fab:active{transform:scale(.88);box-shadow:0 2px 12px rgba(76,217,100,.3)}
+.fab:active{transform:scale(.88);box-shadow:0 2px 10px rgba(48,209,88,0.25)}
+.fab svg{width:22px;height:22px}
 
 /* ===== SECTION TITLES ===== */
 .section-title{
-  font-size:17px;
+  font-size:22px;
   font-weight:700;
-  margin-bottom:10px;
+  margin-bottom:12px;
   margin-top:8px;
-  color:#eee;
+  color:var(--text-primary);
+  letter-spacing:-0.3px;
 }
 
 /* ===== ROOM GROUP ===== */
@@ -144,7 +178,7 @@ body{
 .room-label{
   font-size:11px;
   font-weight:700;
-  color:#666;
+  color:var(--text-tertiary);
   text-transform:uppercase;
   letter-spacing:1.2px;
   margin-bottom:8px;
@@ -153,76 +187,88 @@ body{
 
 /* ===== PLANT CARD ===== */
 .plant-card{
-  background:#1a1a2e;
+  background:var(--surface);
   border-radius:16px;
-  padding:14px;
+  padding:14px 16px;
   display:flex;
   align-items:center;
-  gap:12px;
-  margin-bottom:8px;
+  gap:14px;
+  margin-bottom:6px;
   position:relative;
-  transition:background .15s ease,transform .1s ease,box-shadow .15s ease;
+  transition:background .15s ease,transform .15s ease,box-shadow .15s ease;
   cursor:pointer;
   -webkit-user-select:none;
   user-select:none;
+  border:1px solid var(--border);
+  box-shadow:none;
 }
 .plant-card:active{
-  background:#22224a;
-  transform:scale(.985);
+  background:var(--surface-elevated);
+  transform:scale(0.98);
 }
 .plant-card:hover{
-  background:#1e1e38;
-  box-shadow:0 2px 12px rgba(0,0,0,.3);
+  background:var(--surface-elevated);
 }
 
 /* ===== PLANT PHOTO ===== */
 .plant-photo{
-  width:56px;height:56px;
+  width:52px;height:52px;
   border-radius:50%;
   object-fit:cover;
-  background:#2a2a3e;
+  background:var(--surface-elevated);
   flex-shrink:0;
-  border:2px solid #2a2a3e;
+  border:2px solid rgba(255,255,255,0.08);
 }
 .plant-photo-placeholder{
-  width:56px;height:56px;
+  width:52px;height:52px;
   border-radius:50%;
-  background:linear-gradient(135deg,#1e3a1e,#2a2a3e);
+  background:linear-gradient(135deg,#1a2e1a,var(--surface-elevated));
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  font-size:26px;
+  border:2px solid rgba(255,255,255,0.08);
 }
+.plant-photo-placeholder svg{width:24px;height:24px;opacity:.5}
 
 /* ===== PLANT INFO ===== */
 .plant-info{flex:1;min-width:0}
 .plant-name{
-  font-size:15px;
-  font-weight:700;
-  color:#fff;
+  font-size:16px;
+  font-weight:600;
+  color:var(--text-primary);
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
   line-height:1.3;
 }
 .plant-room{
-  font-size:12px;
-  color:#555;
-  margin-top:1px;
-  line-height:1.3;
-}
-.plant-meta{
-  font-size:11px;
-  color:#555;
+  font-size:13px;
+  color:var(--text-secondary);
   margin-top:2px;
   line-height:1.3;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.plant-meta{
+  font-size:12px;
+  color:var(--text-tertiary);
+  margin-top:3px;
+  line-height:1.3;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.plant-meta .meta-icon{
+  font-size:11px;
+  opacity:.7;
 }
 .plant-action-label{
-  font-size:11px;
-  color:#888;
+  font-size:12px;
+  color:var(--text-secondary);
   margin-top:4px;
   font-weight:500;
 }
-.plant-action-label .feed-label{color:#af52de;font-weight:600}
+.plant-action-label .feed-label{color:var(--purple);font-weight:600}
 
 /* ===== PILLS ===== */
 .plant-pills{
@@ -235,27 +281,26 @@ body{
 .pill{
   font-size:11px;
   font-weight:600;
-  padding:4px 10px;
-  border-radius:12px;
+  padding:3px 10px;
+  border-radius:100px;
   white-space:nowrap;
-  letter-spacing:-0.1px;
+  letter-spacing:0.1px;
 }
-.pill-green{background:rgba(76,217,100,.12);color:#4cd964}
-.pill-orange{background:rgba(255,159,10,.12);color:#ff9f0a}
-.pill-blue{background:rgba(10,132,255,.12);color:#0a84ff}
-.pill-red{background:rgba(255,69,58,.12);color:#ff453a}
-.pill-purple{background:rgba(175,82,222,.12);color:#af52de}
+.pill-green{background:var(--green-bg);color:var(--green)}
+.pill-orange{background:rgba(255,159,10,.12);color:var(--orange)}
+.pill-blue{background:rgba(10,132,255,.12);color:var(--blue)}
+.pill-red{background:rgba(255,69,58,.12);color:var(--red)}
+.pill-purple{background:var(--purple-bg);color:var(--purple)}
 .pill-gray{background:rgba(142,142,147,.1);color:#8e8e93}
-.pill-distilled{background:rgba(10,132,255,.12);color:#5ac8fa;font-size:10px;padding:3px 8px}
+.pill-distilled{background:rgba(10,132,255,.10);color:#5ac8fa;font-size:11px;padding:3px 10px}
 
 /* ===== WATER BUTTON ON CARD ===== */
 .card-water-btn{
-  width:40px;height:40px;
+  width:44px;height:44px;
   border-radius:50%;
   border:none;
-  background:rgba(76,217,100,.12);
-  color:#4cd964;
-  font-size:18px;
+  background:var(--green-bg);
+  color:var(--green);
   cursor:pointer;
   flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
@@ -263,17 +308,18 @@ body{
   position:relative;
   z-index:2;
 }
+.card-water-btn svg{width:20px;height:20px}
 .card-water-btn:active{
   transform:scale(.88);
-  background:rgba(76,217,100,.25);
+  background:rgba(48,209,88,.25);
 }
 .card-water-btn.due{
-  background:rgba(76,217,100,.2);
+  background:rgba(48,209,88,.2);
   animation:waterPulse 2s ease-in-out infinite;
 }
 @keyframes waterPulse{
-  0%,100%{box-shadow:0 0 0 0 rgba(76,217,100,.3)}
-  50%{box-shadow:0 0 0 8px rgba(76,217,100,0)}
+  0%,100%{box-shadow:0 0 0 0 rgba(48,209,88,.3)}
+  50%{box-shadow:0 0 0 8px rgba(48,209,88,0)}
 }
 
 /* ===== THREE-DOT MENU ===== */
@@ -282,7 +328,7 @@ body{
   top:10px;right:6px;
   background:none;
   border:none;
-  color:#555;
+  color:var(--text-tertiary);
   font-size:18px;
   cursor:pointer;
   padding:6px 10px;
@@ -296,13 +342,14 @@ body{
 .card-menu{
   position:absolute;
   top:36px;right:8px;
-  background:#2c2c44;
+  background:var(--surface-elevated);
   border-radius:14px;
   padding:6px 0;
   z-index:10;
   min-width:170px;
   box-shadow:0 12px 40px rgba(0,0,0,.6);
   overflow:hidden;
+  border:1px solid var(--border);
 }
 .card-menu button{
   display:block;
@@ -310,7 +357,7 @@ body{
   padding:12px 18px;
   background:none;
   border:none;
-  color:#fff;
+  color:var(--text-primary);
   font-size:14px;
   font-weight:500;
   text-align:left;
@@ -318,13 +365,13 @@ body{
   transition:background .1s;
 }
 .card-menu button:active{background:rgba(255,255,255,.05)}
-.card-menu .danger{color:#ff453a}
+.card-menu .danger{color:var(--red)}
 
 /* ===== CONFIRM BAR ===== */
 .confirm-bar{
-  background:rgba(255,69,58,.08);
-  border:1px solid rgba(255,69,58,.15);
-  border-radius:14px;
+  background:rgba(255,69,58,.06);
+  border:1px solid rgba(255,69,58,.12);
+  border-radius:16px;
   padding:14px;
   margin-top:6px;
   margin-bottom:4px;
@@ -346,30 +393,30 @@ body{
   transition:transform .1s;
 }
 .confirm-bar button:active{transform:scale(.95)}
-.confirm-bar .btn-cancel{background:#333;color:#ccc}
-.confirm-bar .btn-confirm-del{background:#ff453a;color:#fff}
+.confirm-bar .btn-cancel{background:var(--surface-elevated);color:var(--text-secondary)}
+.confirm-bar .btn-confirm-del{background:var(--red);color:#fff}
 
 /* ===== LATE PROMPT (INLINE) ===== */
 .late-prompt{
-  background:#1c1c34;
-  border:1px solid rgba(255,255,255,.06);
-  border-radius:14px;
-  padding:14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:16px;
   margin-top:6px;
   margin-bottom:4px;
   animation:slideDown .2s ease;
 }
 .late-prompt p{
   font-size:14px;
-  color:#bbb;
-  margin-bottom:10px;
+  color:var(--text-secondary);
+  margin-bottom:12px;
   font-weight:500;
 }
 .late-prompt-btns{display:flex;gap:8px}
 .late-prompt-btns button{
   flex:1;
   padding:12px;
-  border-radius:12px;
+  border-radius:14px;
   border:none;
   font-size:14px;
   font-weight:600;
@@ -377,8 +424,8 @@ body{
   transition:transform .1s;
 }
 .late-prompt-btns button:active{transform:scale(.96)}
-.btn-still-wet{background:rgba(10,132,255,.15);color:#0a84ff}
-.btn-too-busy{background:rgba(255,159,10,.15);color:#ff9f0a}
+.btn-still-wet{background:rgba(10,132,255,.12);color:var(--blue)}
+.btn-too-busy{background:rgba(255,159,10,.12);color:var(--orange)}
 
 @keyframes slideDown{
   from{opacity:0;transform:translateY(-8px)}
@@ -392,11 +439,11 @@ body{
 }
 .search-bar input{
   width:100%;
-  background:#1a1a2e;
-  border:1.5px solid #2a2a3e;
-  border-radius:14px;
-  padding:12px 14px 12px 40px;
-  color:#fff;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:16px;
+  padding:13px 14px 13px 42px;
+  color:var(--text-primary);
   font-size:15px;
   font-weight:500;
   -webkit-appearance:none;
@@ -405,15 +452,15 @@ body{
 }
 .search-bar input:focus{
   outline:none;
-  border-color:#4cd964;
+  border-color:var(--green);
 }
-.search-bar input::placeholder{color:#555}
+.search-bar input::placeholder{color:var(--text-tertiary)}
 .search-bar .search-icon{
   position:absolute;
   left:14px;
   top:50%;
   transform:translateY(-50%);
-  color:#555;
+  color:var(--text-tertiary);
   font-size:16px;
   pointer-events:none;
 }
@@ -425,21 +472,21 @@ body{
   margin-bottom:12px;
 }
 .sort-btn{
-  padding:6px 12px;
-  border-radius:12px;
-  border:1.5px solid #2a2a3e;
+  padding:7px 14px;
+  border-radius:100px;
+  border:1.5px solid var(--border);
   background:transparent;
-  color:#666;
-  font-size:11px;
+  color:var(--text-tertiary);
+  font-size:12px;
   font-weight:600;
   cursor:pointer;
   transition:all .2s ease;
   white-space:nowrap;
 }
 .sort-btn.active{
-  border-color:#4cd964;
-  color:#4cd964;
-  background:rgba(76,217,100,.08);
+  border-color:var(--green);
+  color:var(--green);
+  background:var(--green-bg);
 }
 
 /* ===== FILTER BAR ===== */
@@ -452,10 +499,10 @@ body{
 }
 .filter-chip{
   padding:7px 14px;
-  border-radius:16px;
-  border:1.5px solid #2a2a3e;
+  border-radius:100px;
+  border:1.5px solid var(--border);
   background:transparent;
-  color:#888;
+  color:var(--text-secondary);
   font-size:12px;
   font-weight:600;
   cursor:pointer;
@@ -466,20 +513,20 @@ body{
 }
 .filter-chip:active{transform:scale(.95)}
 .filter-chip.active{
-  border-color:#4cd964;
-  color:#4cd964;
-  background:rgba(76,217,100,.08);
+  border-color:var(--green);
+  color:var(--green);
+  background:var(--green-bg);
 }
 .filter-divider{
   width:1px;
-  background:#2a2a3e;
+  background:var(--border);
   margin:0 2px;
   align-self:stretch;
 }
 
 .plant-count{
   font-size:13px;
-  color:#555;
+  color:var(--text-tertiary);
   margin-bottom:10px;
   font-weight:500;
 }
@@ -488,7 +535,7 @@ body{
 .history-group-label{
   font-size:12px;
   font-weight:700;
-  color:#555;
+  color:var(--text-tertiary);
   text-transform:uppercase;
   letter-spacing:1px;
   margin-top:16px;
@@ -497,41 +544,42 @@ body{
 }
 .history-group-label:first-child{margin-top:0}
 .history-entry{
-  background:#1a1a2e;
-  border-radius:14px;
+  background:var(--surface);
+  border-radius:16px;
   padding:14px 16px;
   margin-bottom:8px;
   transition:background .15s;
+  border:1px solid rgba(255,255,255,0.04);
 }
-.history-date{font-size:11px;color:#555;font-weight:500}
-.history-name{font-size:15px;font-weight:600;color:#fff;margin-top:3px}
-.history-type{font-size:12px;color:#4cd964;margin-top:3px;font-weight:500}
-.history-type.fed{color:#af52de}
-.history-type.repotted{color:#ff9f0a}
+.history-date{font-size:11px;color:var(--text-tertiary);font-weight:500}
+.history-name{font-size:15px;font-weight:600;color:var(--text-primary);margin-top:3px}
+.history-type{font-size:12px;color:var(--green);margin-top:3px;font-weight:500}
+.history-type.fed{color:var(--purple)}
+.history-type.repotted{color:var(--orange)}
 .history-type.skipped{color:#8e8e93}
 .history-reason{
   font-size:11px;
-  color:#ff9f0a;
+  color:var(--orange);
   margin-top:4px;
-  padding:3px 8px;
+  padding:4px 10px;
   background:rgba(255,159,10,.08);
-  border-radius:6px;
+  border-radius:100px;
   display:inline-block;
 }
 
 .history-filter{margin-bottom:14px}
 .history-filter select{
-  background:#1a1a2e;
-  color:#fff;
-  border:1.5px solid #2a2a3e;
-  border-radius:14px;
-  padding:10px 14px;
+  background:var(--surface);
+  color:var(--text-primary);
+  border:1.5px solid var(--border);
+  border-radius:16px;
+  padding:12px 14px;
   font-size:14px;
   font-weight:500;
   width:100%;
   -webkit-appearance:none;
   appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23666'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2348484a'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 14px center;
 }
@@ -550,7 +598,7 @@ body{
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 .modal{
-  background:#1a1a2e;
+  background:var(--surface);
   border-radius:24px 24px 0 0;
   width:100%;
   max-width:430px;
@@ -558,7 +606,8 @@ body{
   overflow-y:auto;
   padding:20px 20px 28px;
   padding-bottom:max(28px,env(safe-area-inset-bottom));
-  animation:slideUp .3s ease;
+  animation:slideUp .3s cubic-bezier(0.32, 0.72, 0, 1);
+  border-top:1px solid rgba(255,255,255,0.06);
 }
 @keyframes slideUp{
   from{transform:translateY(100%)}
@@ -569,34 +618,35 @@ body{
 
 .modal-handle{
   width:40px;height:4px;
-  background:#444;
+  background:var(--text-tertiary);
   border-radius:2px;
   margin:0 auto 20px;
 }
 .modal h2{
-  font-size:20px;
+  font-size:22px;
   font-weight:700;
   margin-bottom:20px;
   text-align:center;
+  letter-spacing:-0.3px;
 }
 
 /* ===== DETAIL PANEL ===== */
 .detail-overlay{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.7);
+  background:var(--bg);
   z-index:200;
   display:flex;
-  align-items:flex-end;
+  align-items:stretch;
   justify-content:center;
   animation:fadeIn .2s ease;
 }
 .detail-panel{
-  background:#0f1117;
+  background:var(--bg);
   width:100%;
   max-width:430px;
-  height:100vh;
-  height:100dvh;
+  height:100%;
+  border-radius:0;
   overflow-y:auto;
   padding:0 0 28px;
   padding-bottom:max(28px,env(safe-area-inset-bottom));
@@ -610,24 +660,27 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:56px 20px 12px 20px;
-  background:#0f1117;
-}
-@supports(padding-top:env(safe-area-inset-top)){
-  .detail-close{padding-top:calc(env(safe-area-inset-top) + 16px)}
+  padding-top:max(52px, calc(env(safe-area-inset-top, 0px) + 12px));
+  padding-left:20px;
+  padding-right:20px;
+  padding-bottom:14px;
+  background:var(--bg);
 }
 .detail-close-btn{
-  background:rgba(255,255,255,.08);
+  background:rgba(255,255,255,.06);
   border:none;
-  color:#ccc;
+  color:var(--text-secondary);
   font-size:14px;
   font-weight:600;
-  padding:8px 16px;
-  border-radius:12px;
+  padding:10px 18px;
+  border-radius:100px;
   cursor:pointer;
   transition:background .15s;
+  display:flex;
+  align-items:center;
+  gap:6px;
 }
-.detail-close-btn:active{background:rgba(255,255,255,.15)}
+.detail-close-btn:active{background:rgba(255,255,255,.1)}
 
 .detail-header{
   display:flex;
@@ -636,24 +689,24 @@ body{
   padding:0 20px 20px;
 }
 .detail-photo{
-  width:120px;height:120px;
+  width:100px;height:100px;
   border-radius:50%;
   object-fit:cover;
-  border:3px solid #2a2a3e;
-  background:#2a2a3e;
+  border:3px solid rgba(255,255,255,0.08);
+  background:var(--surface-elevated);
 }
 .detail-photo-placeholder{
-  width:120px;height:120px;
+  width:100px;height:100px;
   border-radius:50%;
-  background:linear-gradient(135deg,#1e3a1e,#2a2a3e);
+  background:linear-gradient(135deg,#1a2e1a,var(--surface-elevated));
   display:flex;align-items:center;justify-content:center;
-  font-size:48px;
-  border:3px solid #2a2a3e;
+  border:3px solid rgba(255,255,255,0.08);
 }
+.detail-photo-placeholder svg{width:40px;height:40px;opacity:.4}
 .detail-change-photo{
   background:none;
   border:none;
-  color:#4cd964;
+  color:var(--green);
   font-size:13px;
   font-weight:600;
   margin-top:8px;
@@ -663,7 +716,7 @@ body{
 .detail-name{
   font-size:22px;
   font-weight:700;
-  color:#fff;
+  color:var(--text-primary);
   margin-top:12px;
   text-align:center;
   cursor:pointer;
@@ -673,17 +726,18 @@ body{
   border:none;
   background:none;
   width:100%;
+  letter-spacing:-0.3px;
 }
-.detail-name:hover{background:rgba(255,255,255,.05)}
+.detail-name:hover{background:rgba(255,255,255,.04)}
 .detail-name-input{
   font-size:22px;
   font-weight:700;
-  color:#fff;
+  color:var(--text-primary);
   text-align:center;
-  background:#1a1a2e;
-  border:1.5px solid #4cd964;
-  border-radius:10px;
-  padding:6px 12px;
+  background:var(--surface);
+  border:1.5px solid var(--green);
+  border-radius:12px;
+  padding:8px 14px;
   width:100%;
   margin-top:12px;
   outline:none;
@@ -693,12 +747,12 @@ body{
 .detail-section{
   margin:0 20px;
   padding:16px 0;
-  border-top:1px solid rgba(255,255,255,.04);
+  border-top:1px solid var(--border-subtle);
 }
 .detail-section-title{
   font-size:13px;
   font-weight:700;
-  color:#666;
+  color:var(--text-tertiary);
   text-transform:uppercase;
   letter-spacing:0.8px;
   margin-bottom:12px;
@@ -709,20 +763,24 @@ body{
   align-items:center;
   padding:8px 0;
 }
-.detail-row-label{font-size:14px;color:#888;font-weight:500}
-.detail-row-value{font-size:14px;color:#fff;font-weight:500;text-align:right}
+.detail-row-label{font-size:14px;color:var(--text-secondary);font-weight:500}
+.detail-row-value{font-size:14px;color:var(--text-primary);font-weight:500;text-align:right}
 
 /* ===== CARNIVORE WARNING ===== */
 .carnivore-warning{
   margin:0 20px 4px;
   padding:12px 16px;
-  background:rgba(255,69,58,.1);
-  border:1px solid rgba(255,69,58,.2);
-  border-radius:12px;
+  background:rgba(255,69,58,.08);
+  border:1px solid rgba(255,69,58,.12);
+  border-radius:14px;
   font-size:13px;
   font-weight:600;
   color:#ff8a80;
   text-align:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
 }
 
 /* ===== QUICK ACTIONS ===== */
@@ -731,32 +789,37 @@ body{
   gap:10px;
   margin:0 20px;
   padding:16px 0;
-  border-top:1px solid rgba(255,255,255,.04);
+  border-top:1px solid var(--border-subtle);
 }
 .quick-action-btn{
   flex:1;
   padding:14px 8px;
+  height:50px;
   border:none;
-  border-radius:14px;
+  border-radius:16px;
   font-size:14px;
   font-weight:600;
   cursor:pointer;
   text-align:center;
   transition:transform .1s ease,opacity .15s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
 }
 .quick-action-btn:active{transform:scale(.95)}
-.qa-water{background:rgba(76,217,100,.15);color:#4cd964}
-.qa-skip{background:rgba(142,142,147,.12);color:#8e8e93}
-.qa-repot{background:rgba(255,159,10,.12);color:#ff9f0a}
+.qa-water{background:var(--green-bg);color:var(--green)}
+.qa-skip{background:rgba(142,142,147,.1);color:#8e8e93}
+.qa-repot{background:rgba(255,159,10,.1);color:var(--orange)}
 
 /* ===== NOTES ===== */
 .detail-notes{
   width:100%;
-  background:#1a1a2e;
-  border:1.5px solid #2a2a3e;
-  border-radius:12px;
-  padding:12px;
-  color:#fff;
+  background:var(--surface);
+  border:1.5px solid transparent;
+  border-radius:14px;
+  padding:14px;
+  color:var(--text-primary);
   font-size:14px;
   font-weight:400;
   font-family:inherit;
@@ -764,20 +827,20 @@ body{
   min-height:80px;
   transition:border-color .2s;
 }
-.detail-notes:focus{outline:none;border-color:#4cd964}
-.detail-notes::placeholder{color:#444}
+.detail-notes:focus{outline:none;border-color:var(--green)}
+.detail-notes::placeholder{color:var(--text-tertiary)}
 
 /* ===== DETAIL HISTORY ===== */
 .detail-history-entry{
-  background:#1a1a2e;
-  border-radius:10px;
-  padding:10px 12px;
+  background:var(--surface);
+  border-radius:12px;
+  padding:10px 14px;
   margin-bottom:6px;
 }
-.detail-history-date{font-size:11px;color:#555}
-.detail-history-type{font-size:13px;font-weight:600;color:#4cd964;margin-top:2px}
-.detail-history-type.fed{color:#af52de}
-.detail-history-type.repotted{color:#ff9f0a}
+.detail-history-date{font-size:11px;color:var(--text-tertiary)}
+.detail-history-type{font-size:13px;font-weight:600;color:var(--green);margin-top:2px}
+.detail-history-type.fed{color:var(--purple)}
+.detail-history-type.repotted{color:var(--orange)}
 .detail-history-type.skipped{color:#8e8e93}
 
 /* ===== DELETE BUTTON ===== */
@@ -786,17 +849,17 @@ body{
   width:calc(100% - 40px);
   margin:16px 20px 0;
   padding:14px;
-  border:1px solid rgba(255,69,58,.2);
-  border-radius:14px;
-  background:rgba(255,69,58,.06);
-  color:#ff453a;
+  border:1px solid rgba(255,69,58,.15);
+  border-radius:16px;
+  background:rgba(255,69,58,.05);
+  color:var(--red);
   font-size:15px;
   font-weight:600;
   text-align:center;
   cursor:pointer;
   transition:background .15s,transform .1s;
 }
-.detail-delete-btn:active{transform:scale(.97);background:rgba(255,69,58,.12)}
+.detail-delete-btn:active{transform:scale(.97);background:rgba(255,69,58,.1)}
 
 /* ===== FORM FIELDS ===== */
 .form-group{margin-bottom:18px}
@@ -804,7 +867,7 @@ body{
   display:block;
   font-size:12px;
   font-weight:600;
-  color:#888;
+  color:var(--text-secondary);
   margin-bottom:6px;
   text-transform:uppercase;
   letter-spacing:0.5px;
@@ -813,11 +876,11 @@ body{
 .form-group input[type="number"],
 .form-group select{
   width:100%;
-  background:#0f1117;
-  border:1.5px solid #2a2a3e;
+  background:var(--bg);
+  border:1.5px solid var(--border);
   border-radius:14px;
   padding:14px;
-  color:#fff;
+  color:var(--text-primary);
   font-size:16px;
   font-weight:500;
   -webkit-appearance:none;
@@ -827,16 +890,16 @@ body{
 .form-group input:focus,
 .form-group select:focus{
   outline:none;
-  border-color:#4cd964;
+  border-color:var(--green);
 }
 .form-group select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23666'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2348484a'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 14px center;
 }
 .form-group .hint{
   font-size:11px;
-  color:#555;
+  color:var(--text-tertiary);
   margin-top:4px;
 }
 
@@ -844,10 +907,10 @@ body{
 .toggle-group{
   display:flex;
   gap:4px;
-  background:#0f1117;
+  background:var(--bg);
   border-radius:14px;
   padding:4px;
-  border:1.5px solid #2a2a3e;
+  border:1.5px solid var(--border);
 }
 .toggle-opt{
   flex:1;
@@ -855,7 +918,7 @@ body{
   border:none;
   border-radius:10px;
   background:transparent;
-  color:#666;
+  color:var(--text-tertiary);
   font-size:14px;
   font-weight:600;
   cursor:pointer;
@@ -863,8 +926,8 @@ body{
   transition:all .2s;
 }
 .toggle-opt.active{
-  background:rgba(76,217,100,.12);
-  color:#4cd964;
+  background:var(--green-bg);
+  color:var(--green);
 }
 
 /* ===== BUTTONS ===== */
@@ -872,8 +935,8 @@ body{
   width:100%;
   padding:16px;
   border:none;
-  border-radius:14px;
-  background:linear-gradient(135deg,#4cd964,#34c759);
+  border-radius:16px;
+  background:var(--green);
   color:#000;
   font-size:16px;
   font-weight:700;
@@ -888,9 +951,9 @@ body{
   width:100%;
   padding:16px;
   border:none;
-  border-radius:14px;
-  background:#2a2a3e;
-  color:#ccc;
+  border-radius:16px;
+  background:var(--surface-elevated);
+  color:var(--text-secondary);
   font-size:16px;
   font-weight:600;
   cursor:pointer;
@@ -903,7 +966,7 @@ body{
 .profile-review-title{
   font-size:14px;
   font-weight:600;
-  color:#888;
+  color:var(--text-secondary);
   margin-bottom:12px;
   text-align:center;
 }
@@ -912,30 +975,30 @@ body{
   justify-content:space-between;
   align-items:center;
   padding:12px 0;
-  border-bottom:1px solid rgba(255,255,255,.04);
+  border-bottom:1px solid var(--border-subtle);
 }
 .profile-field:last-child{border-bottom:none}
 .profile-field label{
   font-size:14px;
-  color:#999;
+  color:var(--text-secondary);
   font-weight:500;
 }
 .profile-field input,
 .profile-field select{
-  background:#0f1117;
-  border:1px solid #2a2a3e;
+  background:var(--bg);
+  border:1px solid var(--border);
   border-radius:10px;
   padding:8px 12px;
-  color:#fff;
+  color:var(--text-primary);
   font-size:14px;
   font-weight:500;
-  width:130px;
+  width:140px;
   text-align:right;
   -webkit-appearance:none;
   appearance:none;
 }
 .profile-field select{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%23666'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='%2348484a'%3E%3Cpath d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 10px center;
   padding-right:26px;
@@ -947,15 +1010,23 @@ body{
   width:72px;height:72px;
   border-radius:50%;
   object-fit:cover;
-  border:2px solid #2a2a3e;
+  border:2px solid rgba(255,255,255,0.08);
 }
+.photo-placeholder-circle{
+  width:72px;height:72px;
+  border-radius:50%;
+  border:2px dashed var(--text-tertiary);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.photo-placeholder-circle svg{width:28px;height:28px;opacity:.35}
 .photo-btn{
   display:inline-flex;
   align-items:center;
   gap:8px;
-  background:#2a2a3e;
+  background:var(--surface-elevated);
   border:none;
-  color:#ccc;
+  color:var(--text-secondary);
   padding:12px 18px;
   border-radius:14px;
   font-size:14px;
@@ -963,36 +1034,71 @@ body{
   cursor:pointer;
   transition:background .15s;
 }
-.photo-btn:active{background:#333355}
+.photo-btn:active{background:rgba(255,255,255,.08)}
 
 /* ===== EMPTY STATE ===== */
 .empty-state{
   text-align:center;
   padding:80px 24px 40px;
-  color:#444;
+  color:var(--text-tertiary);
 }
 .empty-state .icon{
-  font-size:56px;
+  font-size:48px;
   margin-bottom:16px;
-  opacity:.7;
+  opacity:.5;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
+.empty-state .icon svg{width:48px;height:48px;opacity:.5}
 .empty-state p{
   font-size:16px;
   font-weight:500;
   line-height:1.5;
+  color:var(--text-secondary);
 }
 .empty-state .sub{
   font-size:13px;
-  color:#333;
+  color:var(--text-tertiary);
   margin-top:6px;
+}
+
+/* ===== CLEAR FILTERS BUTTON ===== */
+.clear-filters-btn{
+  display:inline-block;
+  margin-top:16px;
+  padding:10px 24px;
+  border-radius:100px;
+  border:1.5px solid var(--green);
+  background:var(--green-bg);
+  color:var(--green);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  transition:transform .1s;
+}
+.clear-filters-btn:active{transform:scale(.95)}
+
+/* ===== RETRY LINK ===== */
+.retry-link{
+  display:inline-block;
+  margin-top:8px;
+  background:none;
+  border:none;
+  color:var(--blue);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  text-decoration:underline;
+  padding:4px 8px;
 }
 
 /* ===== LOADING ===== */
 .loading-spinner{
   display:inline-block;
   width:24px;height:24px;
-  border:2.5px solid #2a2a3e;
-  border-top-color:#4cd964;
+  border:2.5px solid var(--surface-elevated);
+  border-top-color:var(--green);
   border-radius:50%;
   animation:spin .7s linear infinite;
 }
@@ -1000,7 +1106,7 @@ body{
 .loading-msg{
   text-align:center;
   padding:50px 20px;
-  color:#888;
+  color:var(--text-secondary);
   font-size:14px;
 }
 .loading-msg .loading-spinner{margin-bottom:12px}
@@ -1008,69 +1114,70 @@ body{
 /* ===== TAP FEEDBACK ===== */
 .tap-flash{animation:flash .4s ease}
 @keyframes flash{
-  0%{background:rgba(76,217,100,.15)}
-  100%{background:#1a1a2e}
+  0%{background:rgba(48,209,88,.12)}
+  100%{background:var(--surface)}
 }
 
 /* ===== WATERED TOAST ===== */
 .toast{
   position:fixed;
-  top:60px;
+  bottom:100px;
   left:50%;
-  transform:translateX(-50%) translateY(-20px);
-  background:rgba(76,217,100,.9);
+  transform:translateX(-50%) translateY(20px);
+  background:rgba(48,209,88,.92);
   color:#000;
-  padding:10px 24px;
-  border-radius:20px;
+  padding:12px 24px;
+  border-radius:100px;
   font-size:14px;
   font-weight:600;
   z-index:300;
   box-shadow:0 4px 16px rgba(0,0,0,.3);
-  animation:toastIn .3s ease forwards;
+  animation:toastIn .35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
   pointer-events:auto;
   display:flex;align-items:center;gap:12px;
 }
 .toast.toast-info{
-  background:rgba(255,159,10,.9);
+  background:rgba(255,159,10,.92);
 }
 .toast-undo{
-  background:rgba(0,0,0,.25);
+  background:rgba(0,0,0,.2);
   border:none;
   color:#000;
   font-size:13px;
   font-weight:700;
-  padding:4px 12px;
-  border-radius:10px;
+  padding:5px 14px;
+  border-radius:100px;
   cursor:pointer;
   text-transform:uppercase;
   letter-spacing:.5px;
 }
 @keyframes toastIn{
-  from{opacity:0;transform:translateX(-50%) translateY(-20px)}
+  from{opacity:0;transform:translateX(-50%) translateY(20px)}
   to{opacity:1;transform:translateX(-50%) translateY(0)}
 }
 .toast.out{animation:toastOut .3s ease forwards}
 @keyframes toastOut{
   from{opacity:1;transform:translateX(-50%) translateY(0)}
-  to{opacity:0;transform:translateX(-50%) translateY(-20px)}
+  to{opacity:0;transform:translateX(-50%) translateY(20px)}
 }
 
 /* ===== ERROR BANNER ===== */
 .error-banner{
-  background:rgba(255,69,58,.1);
-  border:1px solid rgba(255,69,58,.2);
-  border-radius:12px;
-  padding:12px 14px;
+  background:rgba(255,69,58,.08);
+  border:1px solid rgba(255,69,58,.15);
+  border-radius:14px;
+  padding:14px 16px;
   margin-bottom:12px;
   font-size:13px;
   color:#ff8a80;
   text-align:center;
+  line-height:1.5;
 }
 
 /* ===== SOIL INFO ===== */
 .soil-info{
   font-size:11px;
-  color:#555;
+  color:var(--text-tertiary);
   margin-top:4px;
   font-style:italic;
 }
@@ -1080,16 +1187,16 @@ body{
 
 <div id="app">
   <div class="header">
-    <h1><span class="green">Plantar</span>oo</h1>
+    <h1><span class="green">Plant</span>aroo</h1>
     <div class="subtitle" id="header-subtitle"></div>
   </div>
   <div class="tab-content" id="tab-content"></div>
-  <button class="fab" id="fab-add" aria-label="Add plant">+</button>
+  <button class="fab" id="fab-add" aria-label="Add plant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
   <div class="bottom-nav">
     <div class="nav-bar">
-      <button class="nav-btn active" data-tab="today">To Do</button>
-      <button class="nav-btn" data-tab="all">All Plants</button>
-      <button class="nav-btn" data-tab="history">History</button>
+      <button class="nav-btn active" data-tab="today"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>To Do</button>
+      <button class="nav-btn" data-tab="all"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M12 8v8"/><path d="M8 12c0-2.2 1.8-4 4-4s4 1.8 4 4-1.8 4-4 4"/></svg></span>All Plants</button>
+      <button class="nav-btn" data-tab="history"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>History</button>
     </div>
   </div>
 </div>
@@ -1101,6 +1208,15 @@ body{
    =========================================================================== */
 
 'use strict';
+
+// ============================================================
+// API BASE URL (Render deployment)
+// ============================================================
+
+var API_BASE = 'https://plantaroo-api.onrender.com';
+
+// Warm up Render server
+try { fetch(API_BASE + '/health').catch(function(){}); } catch(e) {}
 
 // ============================================================
 // CONSTANTS
@@ -1125,9 +1241,50 @@ var ROOMS = [
   'Bathroom'
 ];
 
-var MOISTURE_OPTIONS  = ['low', 'medium', 'high'];
-var FERT_TYPE_OPTIONS = ['balanced', 'acidic', 'orchid', 'cactus', 'none'];
-var WATER_SRC_OPTIONS = ['any', 'distilled', 'rain', 'filtered'];
+var MOISTURE_OPTIONS  = ['moist', 'light_dry', 'moderate_dry', 'full_dry'];
+var FERT_TYPE_OPTIONS = ['balanced', 'orchid_30_10_10', 'high_phosphorus', 'none'];
+var WATER_SRC_OPTIONS = ['tap_ok', 'distilled_or_rain'];
+
+// Human-readable labels for dropdown display
+var DROPDOWN_LABELS = {
+  'moist':            'Moist (keep evenly moist)',
+  'light_dry':        'Light dry (top inch)',
+  'moderate_dry':     'Moderate dry (top half)',
+  'full_dry':         'Full dry (whole pot)',
+  'balanced':         'Balanced',
+  'orchid_30_10_10':  'Orchid 30-10-10',
+  'high_phosphorus':  'High Phosphorus',
+  'none':             'None',
+  'tap_ok':           'Tap OK',
+  'distilled_or_rain':'Distilled or rain only'
+};
+
+// Shorter labels for detail view display
+var DISPLAY_LABELS = {
+  'moist':            'Moist',
+  'light_dry':        'Light dry',
+  'moderate_dry':     'Moderate dry',
+  'full_dry':         'Full dry',
+  'balanced':         'Balanced',
+  'orchid_30_10_10':  'Orchid 30-10-10',
+  'high_phosphorus':  'High Phosphorus',
+  'none':             'None',
+  'tap_ok':           'Tap OK',
+  'distilled_or_rain':'Distilled/rain only'
+};
+
+// ============================================================
+// SVG ICON HELPERS
+// ============================================================
+
+var SVG_ICONS = {
+  droplet: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-8 9.27-8 14a8 8 0 0 0 16 0c0-4.73-8-14-8-14zm0 20a6 6 0 0 1-6-6c0-3.55 4.13-9.53 6-12.08C13.87 6.47 18 12.45 18 16a6 6 0 0 1-6 6z"/></svg>',
+  dropletFilled: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c0 0-8 9.27-8 14a8 8 0 0 0 16 0c0-4.73-8-14-8-14z"/></svg>',
+  leaf: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66C7.72 17.05 10.08 13 17 8z"/><path d="M20.59 3.41A2 2 0 0 0 19 3H5a2 2 0 0 0-1.41.59"/></svg>',
+  plant: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg>',
+  clock: '\u23F0',
+  camera: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>'
+};
 
 // ============================================================
 // IndexedDB PROMISE HELPERS (raw API, no libraries)
@@ -1330,6 +1487,10 @@ function esc(s) {
   return el.innerHTML;
 }
 
+function displayLabel(val) {
+  return DISPLAY_LABELS[val] || val || '';
+}
+
 function formatDate(iso) {
   var d = new Date(iso);
   return d.toLocaleDateString('en-US', {
@@ -1350,10 +1511,10 @@ function formatLastWatered(iso) {
   var dDate = new Date(d); dDate.setHours(0,0,0,0);
   var nDate = new Date(now); nDate.setHours(0,0,0,0);
   var diffDays = Math.round((nDate - dDate) / 86400000);
-  if (diffDays === 0) return 'Last watered: Today';
-  if (diffDays === 1) return 'Last watered: 1 day ago';
-  if (diffDays < 7) return 'Last watered: ' + diffDays + ' days ago';
-  return 'Last watered: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 7) return diffDays + ' days ago';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function showToast(msg, undoFn, isInfo) {
@@ -1453,8 +1614,9 @@ async function renderToday() {
   if (overdue.length === 0 && dueToday.length === 0 && newPlants.length === 0) {
     tabContent.innerHTML =
       '<div class="empty-state">' +
-        '<div class="icon">&#10024;</div>' +
-        '<p>All caught up! Nothing to do right now.</p>' +
+        '<div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>' +
+        '<p>All caught up!</p>' +
+        '<div class="sub">Nothing to do right now</div>' +
       '</div>';
     return;
   }
@@ -1507,7 +1669,7 @@ async function renderAll() {
 
   // Search bar
   var html = '<div class="search-bar">' +
-    '<span class="search-icon">&#128269;</span>' +
+    '<span class="search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>' +
     '<input type="text" id="all-search" placeholder="Search plants..." value="' + esc(allPlantsSearch) + '"/>' +
     '</div>';
 
@@ -1564,10 +1726,17 @@ async function renderAll() {
     });
   }
 
+  // Check if any filters are active
+  var hasActiveFilters = allPlantsFilters.rooms.length > 0 || allPlantsFilters.light !== null || allPlantsSearch.length > 0;
+
   html += '<div class="plant-count">' + filtered.length + ' plant' + (filtered.length !== 1 ? 's' : '') + '</div>';
 
   if (filtered.length === 0) {
-    html += '<div class="empty-state"><div class="icon">&#127807;</div><p>No plants match filters</p></div>';
+    html += '<div class="empty-state"><div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div><p>No plants match filters</p>';
+    if (hasActiveFilters) {
+      html += '<button class="clear-filters-btn" id="clear-filters-btn">Clear filters</button>';
+    }
+    html += '</div>';
   } else if (allPlantsSort === 'room') {
     // Group by room
     var byRoom = {};
@@ -1592,6 +1761,16 @@ async function renderAll() {
 
   tabContent.innerHTML = html;
   attachCardListeners();
+
+  // Clear filters button handler
+  var clearFiltersBtn = document.getElementById('clear-filters-btn');
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', function() {
+      allPlantsFilters = { rooms: [], light: null };
+      allPlantsSearch = '';
+      renderAll();
+    });
+  }
 
   // Search handler
   var searchInput = document.getElementById('all-search');
@@ -1662,7 +1841,7 @@ async function renderHistory() {
   entries.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 
   if (entries.length === 0) {
-    html += '<div class="empty-state"><div class="icon">&#128196;</div><p>No history yet</p><div class="sub">Water a plant to see entries here</div></div>';
+    html += '<div class="empty-state"><div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p>No history yet</p><div class="sub">Water a plant to see entries here</div></div>';
   } else {
     // Group by date
     var currentGroup = '';
@@ -1716,18 +1895,18 @@ function plantCardHTML(plant, isTodoTab) {
   if (plant.photo) {
     photoHTML = '<img class="plant-photo" src="' + plant.photo + '" alt="" loading="lazy"/>';
   } else {
-    photoHTML = '<div class="plant-photo-placeholder">&#127793;</div>';
+    photoHTML = '<div class="plant-photo-placeholder"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div>';
   }
 
   var html = '<div class="plant-card" data-plant-id="' + plant.id + '">';
   html += photoHTML;
   html += '<div class="plant-info">';
   html += '<div class="plant-name">' + esc(plant.name) + '</div>';
-  html += '<div class="plant-room">' + esc(plant.room || '') + (plant.light_type === 'grow' ? ' &middot; Grow Light' : '') + '</div>';
+  html += '<div class="plant-room">' + esc(plant.room || '') + (plant.light_type === 'grow' ? ' \u00B7 Grow Light' : '') + '</div>';
 
   // Show last watered + next due on All Plants tab
   if (!isTodoTab) {
-    html += '<div class="plant-meta">' + esc(formatLastWatered(plant.last_watered)) + '</div>';
+    html += '<div class="plant-meta"><span class="meta-icon">\u231A</span> ' + esc(formatLastWatered(plant.last_watered)) + '</div>';
   }
 
   // Action label on To Do tab: "water" or "water + feed"
@@ -1762,12 +1941,13 @@ function plantCardHTML(plant, isTodoTab) {
 
   html += '</div></div>';
 
-  // Water button (right side)
+  // Water button (right side) with SVG droplet — filled when due
   var waterBtnClass = 'card-water-btn' + (isDueOrOverdue ? ' due' : '');
-  html += '<button class="' + waterBtnClass + '" data-water-id="' + plant.id + '" aria-label="Water">&#128167;</button>';
+  var dropletIcon = isDueOrOverdue ? SVG_ICONS.dropletFilled : SVG_ICONS.droplet;
+  html += '<button class="' + waterBtnClass + '" data-water-id="' + plant.id + '" aria-label="Water">' + dropletIcon + '</button>';
 
   // Three-dot menu
-  html += '<button class="card-menu-btn" data-menu-id="' + plant.id + '" aria-label="Menu">&#8942;</button>';
+  html += '<button class="card-menu-btn" data-menu-id="' + plant.id + '" aria-label="Menu">\u22EE</button>';
   html += '</div>';
   return html;
 }
@@ -1909,7 +2089,7 @@ function showLatePrompt(plant, cardEl) {
   var prompt = document.createElement('div');
   prompt.className = 'late-prompt';
   prompt.innerHTML =
-    '<p>Late watering &#8212; why?</p>' +
+    '<p>Late watering \u2014 why?</p>' +
     '<div class="late-prompt-btns">' +
       '<button class="btn-still-wet">Still wet</button>' +
       '<button class="btn-too-busy">Too busy</button>' +
@@ -2017,7 +2197,7 @@ async function showDetailView(plantId) {
   if (plant.photo) {
     photoHTML = '<img class="detail-photo" src="' + plant.photo + '" alt=""/>';
   } else {
-    photoHTML = '<div class="detail-photo-placeholder">&#127793;</div>';
+    photoHTML = '<div class="detail-photo-placeholder"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div>';
   }
 
   // Next due text
@@ -2032,7 +2212,7 @@ async function showDetailView(plantId) {
   var panelHTML = '<div class="detail-panel">';
   panelHTML += '<div class="detail-handle"></div>';
   panelHTML += '<div class="detail-close">';
-  panelHTML += '<button class="detail-close-btn" id="detail-back">&#8592; Back</button>';
+  panelHTML += '<button class="detail-close-btn" id="detail-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Back</button>';
   panelHTML += '<div></div>';
   panelHTML += '</div>';
 
@@ -2046,7 +2226,7 @@ async function showDetailView(plantId) {
 
   // Carnivore warning
   if (plant.carnivore) {
-    panelHTML += '<div class="carnivore-warning">&#9888; Carnivorous &#8212; distilled/rain water only, never fertilize</div>';
+    panelHTML += '<div class="carnivore-warning"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Carnivorous \u2014 distilled/rain water only, never fertilize</div>';
   }
 
   // Info section
@@ -2057,14 +2237,14 @@ async function showDetailView(plantId) {
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Soil</span><span class="detail-row-value">' + esc(soilInfo ? soilInfo.label : plant.soil_type) + '</span></div>';
   panelHTML += '</div>';
 
-  // Care Profile section
+  // Care Profile section (with display labels)
   panelHTML += '<div class="detail-section">';
   panelHTML += '<div class="detail-section-title">Care Profile</div>';
-  panelHTML += '<div class="detail-row"><span class="detail-row-label">Moisture pref</span><span class="detail-row-value">' + esc(plant.moisture_pref || 'medium') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Moisture pref</span><span class="detail-row-value">' + esc(displayLabel(plant.moisture_pref)) + '</span></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Baseline days</span><span class="detail-row-value">' + (plant.species_baseline_days || '?') + '</span></div>';
-  panelHTML += '<div class="detail-row"><span class="detail-row-label">Fertilizer type</span><span class="detail-row-value">' + esc(plant.fert_type || 'none') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Fertilizer type</span><span class="detail-row-value">' + esc(displayLabel(plant.fert_type)) + '</span></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Feed frequency</span><span class="detail-row-value">' + (plant.feed_every_n_waterings ? 'Every ' + plant.feed_every_n_waterings + ' waterings' : 'None') + '</span></div>';
-  panelHTML += '<div class="detail-row"><span class="detail-row-label">Water source</span><span class="detail-row-value">' + esc(plant.water_source || 'any') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Water source</span><span class="detail-row-value">' + esc(displayLabel(plant.water_source)) + '</span></div>';
   panelHTML += '</div>';
 
   // Schedule section
@@ -2077,9 +2257,9 @@ async function showDetailView(plantId) {
 
   // Quick Actions
   panelHTML += '<div class="quick-actions">';
-  panelHTML += '<button class="quick-action-btn qa-water" id="detail-water">&#128167; Water</button>';
-  panelHTML += '<button class="quick-action-btn qa-skip" id="detail-skip">&#9193; Skip</button>';
-  panelHTML += '<button class="quick-action-btn qa-repot" id="detail-repot">&#127793; Repot</button>';
+  panelHTML += '<button class="quick-action-btn qa-water" id="detail-water">' + SVG_ICONS.droplet + ' Water</button>';
+  panelHTML += '<button class="quick-action-btn qa-skip" id="detail-skip">Skip</button>';
+  panelHTML += '<button class="quick-action-btn qa-repot" id="detail-repot">Repot</button>';
   panelHTML += '</div>';
 
   // Notes
@@ -2092,7 +2272,7 @@ async function showDetailView(plantId) {
   panelHTML += '<div class="detail-section">';
   panelHTML += '<div class="detail-section-title">History</div>';
   if (plantHistory.length === 0) {
-    panelHTML += '<div style="color:#555;font-size:13px;padding:8px 0">No history yet</div>';
+    panelHTML += '<div style="color:var(--text-tertiary);font-size:13px;padding:8px 0">No history yet</div>';
   } else {
     for (var h = 0; h < plantHistory.length; h++) {
       var entry = plantHistory[h];
@@ -2160,11 +2340,11 @@ async function showDetailView(plantId) {
       img.onload = async function() {
         var canvas = document.createElement('canvas');
         var maxDim = 200;
-        var w = img.width, hh = img.height;
-        if (w > hh) { hh = Math.round(hh * maxDim / w); w = maxDim; }
-        else { w = Math.round(w * maxDim / hh); hh = maxDim; }
-        canvas.width = w; canvas.height = hh;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, hh);
+        var w = img.width, h = img.height;
+        if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         plant.photo = canvas.toDataURL('image/jpeg', 0.7);
         await dbPut('plants', plant);
         var photoEl = overlay.querySelector('.detail-photo, .detail-photo-placeholder');
@@ -2181,9 +2361,12 @@ async function showDetailView(plantId) {
     reader.readAsDataURL(file);
   });
 
-  // Editable name
+  // Editable name (with double-click guard — bug fix #5)
   var nameDisplay = overlay.querySelector('#detail-name-display');
-  nameDisplay.addEventListener('click', function() {
+  function handleNameClick() {
+    // Guard: if an input already exists, don't create another one
+    if (overlay.querySelector('.detail-name-input')) return;
+
     var currentName = plant.name;
     var input = document.createElement('input');
     input.type = 'text';
@@ -2207,17 +2390,16 @@ async function showDetailView(plantId) {
       newDisplay.id = 'detail-name-display';
       newDisplay.textContent = plant.name;
       input.replaceWith(newDisplay);
-      newDisplay.addEventListener('click', function() {
-        nameDisplay = newDisplay;
-        nameDisplay.click();
-      });
+      nameDisplay = newDisplay;
+      newDisplay.addEventListener('click', handleNameClick);
     }
 
     input.addEventListener('blur', saveName);
     input.addEventListener('keydown', function(ev) {
       if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
     });
-  });
+  }
+  nameDisplay.addEventListener('click', handleNameClick);
 
   // Water action
   overlay.querySelector('#detail-water').addEventListener('click', async function() {
@@ -2280,26 +2462,14 @@ async function showDetailView(plantId) {
     notesEl.addEventListener('blur', saveNotes);
   }
 
-  // Delete
+  // Delete (bug fix #4 — use window.confirm instead of double-tap race condition)
   overlay.querySelector('#detail-delete').addEventListener('click', function() {
-    var btn = overlay.querySelector('#detail-delete');
-    if (btn.dataset.confirmed) {
+    if (window.confirm('Remove ' + plant.name + '? This cannot be undone.')) {
       dbDelete('plants', plant.id).then(function() {
         overlay.remove();
         showToast(plant.name + ' removed');
         render();
       });
-    } else {
-      btn.textContent = 'Tap again to confirm removal';
-      btn.dataset.confirmed = 'true';
-      btn.style.background = 'rgba(255,69,58,.15)';
-      setTimeout(function() {
-        if (btn && btn.parentNode) {
-          btn.textContent = 'Remove Plant';
-          delete btn.dataset.confirmed;
-          btn.style.background = '';
-        }
-      }, 3000);
     }
   });
 }
@@ -2361,8 +2531,9 @@ function showAddModal() {
           '<label>Photo</label>' +
           '<input type="file" accept="image/*" capture="environment" id="add-photo" style="display:none"/>' +
           '<div class="photo-area">' +
+            '<div class="photo-placeholder-circle" id="photo-placeholder"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' +
             '<img class="photo-preview" id="photo-preview" style="display:none" alt="Plant photo"/>' +
-            '<button class="photo-btn" id="photo-trigger" type="button">&#128247; Take / Choose Photo</button>' +
+            '<button class="photo-btn" id="photo-trigger" type="button">' + SVG_ICONS.camera + ' Take / Choose Photo</button>' +
           '</div>' +
         '</div>' +
 
@@ -2376,6 +2547,7 @@ function showAddModal() {
           '<div class="loading-spinner"></div><br>Looking up plant profile...' +
         '</div>' +
         '<div id="profile-error" class="error-banner" style="display:none"></div>' +
+        '<div id="profile-retry-container" style="display:none;text-align:center"></div>' +
         '<div class="profile-review-title" id="profile-title" style="display:none">Review &amp; adjust profile</div>' +
         '<div id="profile-fields" style="display:none"></div>' +
         '<button class="btn-primary" id="btn-save" type="button" style="display:none">Save Plant</button>' +
@@ -2431,6 +2603,8 @@ function showAddModal() {
         var preview = overlay.querySelector('#photo-preview');
         preview.src = photoData;
         preview.style.display = 'block';
+        var placeholder = overlay.querySelector('#photo-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
       };
       img.src = ev.target.result;
     };
@@ -2442,11 +2616,67 @@ function showAddModal() {
     if (e.target === overlay) overlay.remove();
   });
 
+  // Fetch profile helper (used by both Next and Retry)
+  async function fetchProfile(name, soil, cacheKey) {
+    overlay.querySelector('#profile-loading').style.display = 'block';
+    overlay.querySelector('#profile-error').style.display   = 'none';
+    overlay.querySelector('#profile-retry-container').style.display = 'none';
+    overlay.querySelector('#profile-title').style.display    = 'none';
+    overlay.querySelector('#profile-fields').style.display  = 'none';
+    overlay.querySelector('#btn-save').style.display         = 'none';
+
+    var profile = await dbGet('profileCache', cacheKey);
+
+    if (!profile) {
+      try {
+        var resp = await fetch(API_BASE + '/api/plant-profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, soilType: soil })
+        });
+        if (!resp.ok) throw new Error('Server returned ' + resp.status);
+        profile = await resp.json();
+        // Only cache successful API responses (bug fix #1)
+        profile.cacheKey = cacheKey;
+        await dbPut('profileCache', profile);
+      } catch (err) {
+        overlay.querySelector('#profile-error').style.display = 'block';
+        overlay.querySelector('#profile-error').textContent =
+          'Could not reach plant API (' + err.message + '). Using defaults \u2014 adjust values below.';
+
+        // Show retry link (bug fix #8)
+        var retryContainer = overlay.querySelector('#profile-retry-container');
+        retryContainer.style.display = 'block';
+        retryContainer.innerHTML = '';
+        var retryBtn = document.createElement('button');
+        retryBtn.className = 'retry-link';
+        retryBtn.textContent = 'Retry API';
+        retryBtn.addEventListener('click', function() {
+          fetchProfile(name, soil, cacheKey);
+        });
+        retryContainer.appendChild(retryBtn);
+
+        // Fallback profile — NOT cached (bug fix #1)
+        profile = {
+          species_baseline_days:   7,
+          moisture_pref:           'light_dry',
+          feed_every_n_waterings:  3,
+          fert_type:               'balanced',
+          carnivore:               false,
+          water_source:            'tap_ok'
+        };
+      }
+    }
+
+    profileData = profile;
+    showProfileReview(overlay, profile);
+  }
+
   overlay.querySelector('#btn-next').addEventListener('click', async function() {
     var nameInput = overlay.querySelector('#add-name');
     var name = nameInput.value.trim();
     if (!name) {
-      nameInput.style.borderColor = '#ff453a';
+      nameInput.style.borderColor = 'var(--red)';
       nameInput.focus();
       return;
     }
@@ -2456,44 +2686,9 @@ function showAddModal() {
 
     overlay.querySelector('#modal-step1').style.display = 'none';
     overlay.querySelector('#modal-step2').style.display = 'block';
-    overlay.querySelector('#profile-loading').style.display = 'block';
-    overlay.querySelector('#profile-error').style.display   = 'none';
-    overlay.querySelector('#profile-title').style.display    = 'none';
-    overlay.querySelector('#profile-fields').style.display  = 'none';
-    overlay.querySelector('#btn-save').style.display         = 'none';
 
     var cacheKey = (name + '_' + soil).toLowerCase().replace(/\s+/g, '_');
-    var profile  = await dbGet('profileCache', cacheKey);
-
-    if (!profile) {
-      try {
-        var resp = await fetch('/api/plant-profile', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name, soilType: soil })
-        });
-        if (!resp.ok) throw new Error('Server returned ' + resp.status);
-        profile = await resp.json();
-        profile.cacheKey = cacheKey;
-        await dbPut('profileCache', profile);
-      } catch (err) {
-        overlay.querySelector('#profile-error').style.display = 'block';
-        overlay.querySelector('#profile-error').textContent =
-          'Could not reach plant API. Using defaults \u2014 adjust values below.';
-        profile = {
-          cacheKey: cacheKey,
-          species_baseline_days:   7,
-          moisture_pref:           'medium',
-          feed_every_n_waterings:  4,
-          fert_type:               'balanced',
-          carnivore:               false,
-          water_source:            'any'
-        };
-      }
-    }
-
-    profileData = profile;
-    showProfileReview(overlay, profile);
+    await fetchProfile(name, soil, cacheKey);
   });
 
   overlay.querySelector('#btn-back').addEventListener('click', function() {
@@ -2567,8 +2762,9 @@ function showProfileReview(overlay, profile) {
     var h = '';
     for (var i = 0; i < options.length; i++) {
       var v = options[i];
+      var label = DROPDOWN_LABELS[v] || v;
       var s = (v === selected) ? ' selected' : '';
-      h += '<option value="' + esc(v) + '"' + s + '>' + esc(v) + '</option>';
+      h += '<option value="' + esc(v) + '"' + s + '>' + esc(label) + '</option>';
     }
     return h;
   }
@@ -2580,11 +2776,11 @@ function showProfileReview(overlay, profile) {
     '</div>' +
     '<div class="profile-field">' +
       '<label>Moisture pref</label>' +
-      '<select id="pf-moisture">' + optionsHTML(MOISTURE_OPTIONS, profile.moisture_pref || 'medium') + '</select>' +
+      '<select id="pf-moisture">' + optionsHTML(MOISTURE_OPTIONS, profile.moisture_pref || 'light_dry') + '</select>' +
     '</div>' +
     '<div class="profile-field">' +
       '<label>Feed every N waterings</label>' +
-      '<input type="number" id="pf-feed-every" value="' + (profile.feed_every_n_waterings || 4) + '" min="0" max="30"/>' +
+      '<input type="number" id="pf-feed-every" value="' + (profile.feed_every_n_waterings || 3) + '" min="0" max="30"/>' +
     '</div>' +
     '<div class="profile-field">' +
       '<label>Fertilizer type</label>' +
@@ -2599,7 +2795,7 @@ function showProfileReview(overlay, profile) {
     '</div>' +
     '<div class="profile-field">' +
       '<label>Water source</label>' +
-      '<select id="pf-water-source">' + optionsHTML(WATER_SRC_OPTIONS, profile.water_source || 'any') + '</select>' +
+      '<select id="pf-water-source">' + optionsHTML(WATER_SRC_OPTIONS, profile.water_source || 'tap_ok') + '</select>' +
     '</div>';
 }
 
@@ -2763,7 +2959,7 @@ openDB().then(function() {
   console.error('Plantaroo DB init failed:', err);
   tabContent.innerHTML =
     '<div class="empty-state">' +
-      '<div class="icon">&#9888;</div>' +
+      '<div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
       '<p>Could not open database</p>' +
       '<div class="sub">' + esc(String(err)) + '</div>' +
     '</div>';
