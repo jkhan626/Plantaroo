@@ -7,17 +7,18 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 - **Frontend:** Single `index.html` file — all HTML/CSS/JS inline, no build tools, no npm required for the UI
 - **Backend:** Express server (`server/index.js`) proxying Claude API calls (keeps API key server-side in `.env`)
 - **Storage:** IndexedDB (raw API, no libraries) — client-side, works offline, stores plants + photos + history
-- **Hosting:** GitHub Pages at https://jkhan626.github.io/Plantaroo/ (static — works for everything except adding new plants which needs the API server)
+- **Hosting:** GitHub Pages at https://jkhan626.github.io/Plantaroo/ (frontend), Render at https://plantaroo-api.onrender.com (API proxy)
 - **AI:** Claude Sonnet 4.6 for one-time plant profile lookup on add (6-field structured JSON)
 
 ## Project structure
 
 ```
-├── index.html               # THE APP — single file, all CSS/JS inline (~2700 lines)
-├── server/index.js           # Express API proxy (POST /api/plant-profile)
+├── index.html               # THE APP — single file, all CSS/JS inline (~2800 lines)
+├── server/index.js           # Express API proxy (POST /api/plant-profile, GET /health)
+├── render.yaml               # Render.com deployment blueprint
 ├── .env                      # ANTHROPIC_API_KEY (gitignored, never in client code)
 ├── .gitignore
-├── package.json              # Server deps only (express, @anthropic-ai/sdk, dotenv)
+├── package.json              # Server deps (express, @anthropic-ai/sdk, dotenv, cors)
 ├── CLAUDE.md
 └── plant-app-spec.md         # Original design spec
 ```
