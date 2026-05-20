@@ -1804,10 +1804,91 @@ for (var nb = 0; nb < navBtns.length; nb++) {
 document.getElementById('fab-add').addEventListener('click', showAddModal);
 
 // ============================================================
+// BATCH SEED — Jamal's collection from Planta
+// ============================================================
+
+var SEED_PLANTS = [
+  // Bedroom
+  { name:'Syngonium',                        room:'Bedroom',      light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Umbrella Tree',                    room:'Bedroom',      light_type:'grow', soil_type:'regular_perlite', species_baseline_days:10, moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Dark Lord",                        room:'Bedroom',      light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Moth Orchid',                      room:'Bedroom',      light_type:'grow', soil_type:'orchid_bark',     species_baseline_days:10, moisture_pref:'moist',        feed_every_n_waterings:2, fert_type:'orchid_30_10_10', carnivore:false, water_source:'tap_ok' },
+  { name:"Philodendron 'Ring Of Fire'",      room:'Bedroom',      light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Monkey Mask',                      room:'Bedroom',      light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:10, moisture_pref:'moderate_dry', feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Heart Leaf Philodendron 'Brasil'", room:'Bedroom',      light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+
+  // Front Window
+  { name:"Wax Plant 'Variegata'",            room:'Front Window', light_type:'natural', soil_type:'cactus_gritty',   species_baseline_days:14, moisture_pref:'full_dry',     feed_every_n_waterings:4, fert_type:'high_phosphorus', carnivore:false, water_source:'tap_ok' },
+  { name:"Neon Pothos",                      room:'Front Window', light_type:'natural', soil_type:'regular_perlite', species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Inch Plant 'Mini Purple'",         room:'Front Window', light_type:'natural', soil_type:'regular_perlite', species_baseline_days:7,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+
+  // Living Room
+  { name:"Snake Plant 'Laurentii'",          room:'Living Room',  light_type:'natural', soil_type:'cactus_gritty',   species_baseline_days:18, moisture_pref:'full_dry',     feed_every_n_waterings:6, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'White Bird of Paradise',           room:'Living Room',  light_type:'natural', soil_type:'regular_perlite', species_baseline_days:10, moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Corn Plant',                       room:'Living Room',  light_type:'natural', soil_type:'regular_perlite', species_baseline_days:10, moisture_pref:'light_dry',    feed_every_n_waterings:4, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+
+  // Office
+  { name:"Philodendron 'Bloody Mary'",       room:'Office',       light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Philodendron 'Spiritus-Sancti'",   room:'Office',       light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:10, moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Alocasia 'Platinum'",              room:'Office',       light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Alocasia 'Frydek'",               room:'Office',       light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Alocasia 'Dragon Scale'",          room:'Office',       light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Philodendron 'Pink Princess'",     room:'Office',       light_type:'grow', soil_type:'chunky_aroid',    species_baseline_days:9,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Marble Queen Pothos',              room:'Office',       light_type:'grow', soil_type:'regular_perlite', species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Cape Sundew',                      room:'Office',       light_type:'grow', soil_type:'carnivore_peat',  species_baseline_days:3,  moisture_pref:'moist',        feed_every_n_waterings:0, fert_type:'none',            carnivore:true,  water_source:'distilled_or_rain' },
+  { name:"Begonia 'Burning Bush'",           room:'Office',       light_type:'grow', soil_type:'regular_perlite', species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'ZZ Plant',                         room:'Office',       light_type:'grow', soil_type:'cactus_gritty',   species_baseline_days:18, moisture_pref:'full_dry',     feed_every_n_waterings:6, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Episcia 'Slinky Pink'",            room:'Office',       light_type:'grow', soil_type:'regular_perlite', species_baseline_days:6,  moisture_pref:'moist',        feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Polka Dot Begonia 'Benigo Pink'",  room:'Office',       light_type:'grow', soil_type:'regular_perlite', species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+
+  // Side Window
+  { name:'Pitcher Plant - Mixed Varieties',  room:'Side Window',  light_type:'natural', soil_type:'carnivore_peat',  species_baseline_days:3,  moisture_pref:'moist',        feed_every_n_waterings:0, fert_type:'none',            carnivore:true,  water_source:'distilled_or_rain' },
+  { name:"Watermelon Ivy 'Pulchra'",         room:'Side Window',  light_type:'natural', soil_type:'regular_perlite', species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:'Satin Pothos',                     room:'Side Window',  light_type:'natural', soil_type:'regular_perlite', species_baseline_days:8,  moisture_pref:'light_dry',    feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+  { name:"Thai Constellation",              room:'Side Window',  light_type:'natural', soil_type:'chunky_aroid',    species_baseline_days:8,  moisture_pref:'moist',        feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
+];
+
+async function seedPlants() {
+  var existing = await dbGetAll('plants');
+  if (existing.length > 0) return; // already seeded
+
+  for (var i = 0; i < SEED_PLANTS.length; i++) {
+    var s = SEED_PLANTS[i];
+    var soil = SOIL_TABLE[s.soil_type];
+    var effectiveStart = (soil && soil.mult !== null) ? s.species_baseline_days * soil.mult : 2;
+
+    await dbAdd('plants', {
+      name:                    s.name,
+      room:                    s.room,
+      light_type:              s.light_type,
+      soil_type:               s.soil_type,
+      photo:                   null,
+      species_baseline_days:   s.species_baseline_days,
+      moisture_pref:           s.moisture_pref,
+      feed_every_n_waterings:  s.feed_every_n_waterings,
+      fert_type:               s.fert_type,
+      carnivore:               s.carnivore,
+      water_source:            s.water_source,
+      current_interval:        effectiveStart,
+      recent_valid_gaps:       [],
+      last_watered:            null,
+      last_fertilized:         null,
+      last_fed_at_count:       0,
+      no_fert_until:           null,
+      watering_count:          0,
+      created_at:              new Date().toISOString()
+    });
+  }
+  console.log('Seeded ' + SEED_PLANTS.length + ' plants');
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 
 openDB().then(function() {
+  return seedPlants();
+}).then(function() {
   render();
   // Fallback signal
   try { localStorage.setItem('plantaroo_init', Date.now()); } catch(e) {}
