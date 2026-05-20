@@ -50,9 +50,10 @@ body{
 .header h1 .green{color:#4cd964}
 .header .subtitle{
   font-size:12px;
-  color:#555;
+  color:#888;
   margin-top:2px;
   font-weight:500;
+  letter-spacing:0.2px;
 }
 
 /* ===== TAB CONTENT ===== */
@@ -160,7 +161,7 @@ body{
   gap:12px;
   margin-bottom:8px;
   position:relative;
-  transition:background .15s ease,transform .1s ease;
+  transition:background .15s ease,transform .1s ease,box-shadow .15s ease;
   cursor:pointer;
   -webkit-user-select:none;
   user-select:none;
@@ -168,6 +169,10 @@ body{
 .plant-card:active{
   background:#22224a;
   transform:scale(.985);
+}
+.plant-card:hover{
+  background:#1e1e38;
+  box-shadow:0 2px 12px rgba(0,0,0,.3);
 }
 
 /* ===== PLANT PHOTO ===== */
@@ -205,6 +210,12 @@ body{
   margin-top:1px;
   line-height:1.3;
 }
+.plant-meta{
+  font-size:11px;
+  color:#555;
+  margin-top:2px;
+  line-height:1.3;
+}
 .plant-action-label{
   font-size:11px;
   color:#888;
@@ -219,6 +230,7 @@ body{
   gap:6px;
   margin-top:6px;
   flex-wrap:wrap;
+  align-items:center;
 }
 .pill{
   font-size:11px;
@@ -234,6 +246,35 @@ body{
 .pill-red{background:rgba(255,69,58,.12);color:#ff453a}
 .pill-purple{background:rgba(175,82,222,.12);color:#af52de}
 .pill-gray{background:rgba(142,142,147,.1);color:#8e8e93}
+.pill-distilled{background:rgba(10,132,255,.12);color:#5ac8fa;font-size:10px;padding:3px 8px}
+
+/* ===== WATER BUTTON ON CARD ===== */
+.card-water-btn{
+  width:40px;height:40px;
+  border-radius:50%;
+  border:none;
+  background:rgba(76,217,100,.12);
+  color:#4cd964;
+  font-size:18px;
+  cursor:pointer;
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s ease,background .15s ease;
+  position:relative;
+  z-index:2;
+}
+.card-water-btn:active{
+  transform:scale(.88);
+  background:rgba(76,217,100,.25);
+}
+.card-water-btn.due{
+  background:rgba(76,217,100,.2);
+  animation:waterPulse 2s ease-in-out infinite;
+}
+@keyframes waterPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(76,217,100,.3)}
+  50%{box-shadow:0 0 0 8px rgba(76,217,100,0)}
+}
 
 /* ===== THREE-DOT MENU ===== */
 .card-menu-btn{
@@ -248,6 +289,7 @@ body{
   line-height:1;
   border-radius:8px;
   transition:background .15s;
+  z-index:3;
 }
 .card-menu-btn:active{background:rgba(255,255,255,.05)}
 
@@ -343,6 +385,63 @@ body{
   to{opacity:1;transform:translateY(0)}
 }
 
+/* ===== SEARCH BAR ===== */
+.search-bar{
+  position:relative;
+  margin-bottom:12px;
+}
+.search-bar input{
+  width:100%;
+  background:#1a1a2e;
+  border:1.5px solid #2a2a3e;
+  border-radius:14px;
+  padding:12px 14px 12px 40px;
+  color:#fff;
+  font-size:15px;
+  font-weight:500;
+  -webkit-appearance:none;
+  appearance:none;
+  transition:border-color .2s;
+}
+.search-bar input:focus{
+  outline:none;
+  border-color:#4cd964;
+}
+.search-bar input::placeholder{color:#555}
+.search-bar .search-icon{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#555;
+  font-size:16px;
+  pointer-events:none;
+}
+
+/* ===== SORT BAR ===== */
+.sort-bar{
+  display:flex;
+  gap:6px;
+  margin-bottom:12px;
+}
+.sort-btn{
+  padding:6px 12px;
+  border-radius:12px;
+  border:1.5px solid #2a2a3e;
+  background:transparent;
+  color:#666;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s ease;
+  white-space:nowrap;
+}
+.sort-btn.active{
+  border-color:#4cd964;
+  color:#4cd964;
+  background:rgba(76,217,100,.08);
+}
+
 /* ===== FILTER BAR ===== */
 .filter-bar{
   display:flex;
@@ -386,6 +485,17 @@ body{
 }
 
 /* ===== HISTORY ===== */
+.history-group-label{
+  font-size:12px;
+  font-weight:700;
+  color:#555;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-top:16px;
+  margin-bottom:8px;
+  padding-left:4px;
+}
+.history-group-label:first-child{margin-top:0}
 .history-entry{
   background:#1a1a2e;
   border-radius:14px;
@@ -397,6 +507,8 @@ body{
 .history-name{font-size:15px;font-weight:600;color:#fff;margin-top:3px}
 .history-type{font-size:12px;color:#4cd964;margin-top:3px;font-weight:500}
 .history-type.fed{color:#af52de}
+.history-type.repotted{color:#ff9f0a}
+.history-type.skipped{color:#8e8e93}
 .history-reason{
   font-size:11px;
   color:#ff9f0a;
@@ -467,6 +579,223 @@ body{
   margin-bottom:20px;
   text-align:center;
 }
+
+/* ===== DETAIL PANEL ===== */
+.detail-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.7);
+  z-index:200;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  animation:fadeIn .2s ease;
+}
+.detail-panel{
+  background:#0f1117;
+  border-radius:24px 24px 0 0;
+  width:100%;
+  max-width:430px;
+  max-height:95vh;
+  overflow-y:auto;
+  padding:0 0 28px;
+  padding-bottom:max(28px,env(safe-area-inset-bottom));
+  animation:slideUp .35s cubic-bezier(.22,1,.36,1);
+}
+.detail-panel::-webkit-scrollbar{display:none}
+.detail-panel{scrollbar-width:none}
+
+.detail-close{
+  position:sticky;
+  top:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:16px 20px 12px;
+  background:linear-gradient(#0f1117,rgba(15,17,23,.95));
+  z-index:5;
+}
+.detail-close-btn{
+  background:rgba(255,255,255,.08);
+  border:none;
+  color:#ccc;
+  font-size:14px;
+  font-weight:600;
+  padding:8px 16px;
+  border-radius:12px;
+  cursor:pointer;
+  transition:background .15s;
+}
+.detail-close-btn:active{background:rgba(255,255,255,.15)}
+
+.detail-header{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:0 20px 20px;
+}
+.detail-photo{
+  width:120px;height:120px;
+  border-radius:50%;
+  object-fit:cover;
+  border:3px solid #2a2a3e;
+  background:#2a2a3e;
+}
+.detail-photo-placeholder{
+  width:120px;height:120px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#1e3a1e,#2a2a3e);
+  display:flex;align-items:center;justify-content:center;
+  font-size:48px;
+  border:3px solid #2a2a3e;
+}
+.detail-change-photo{
+  background:none;
+  border:none;
+  color:#4cd964;
+  font-size:13px;
+  font-weight:600;
+  margin-top:8px;
+  cursor:pointer;
+  padding:4px 12px;
+}
+.detail-name{
+  font-size:22px;
+  font-weight:700;
+  color:#fff;
+  margin-top:12px;
+  text-align:center;
+  cursor:pointer;
+  padding:4px 8px;
+  border-radius:8px;
+  transition:background .15s;
+  border:none;
+  background:none;
+  width:100%;
+}
+.detail-name:hover{background:rgba(255,255,255,.05)}
+.detail-name-input{
+  font-size:22px;
+  font-weight:700;
+  color:#fff;
+  text-align:center;
+  background:#1a1a2e;
+  border:1.5px solid #4cd964;
+  border-radius:10px;
+  padding:6px 12px;
+  width:100%;
+  margin-top:12px;
+  outline:none;
+}
+
+/* ===== DETAIL SECTIONS ===== */
+.detail-section{
+  margin:0 20px;
+  padding:16px 0;
+  border-top:1px solid rgba(255,255,255,.04);
+}
+.detail-section-title{
+  font-size:13px;
+  font-weight:700;
+  color:#666;
+  text-transform:uppercase;
+  letter-spacing:0.8px;
+  margin-bottom:12px;
+}
+.detail-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:8px 0;
+}
+.detail-row-label{font-size:14px;color:#888;font-weight:500}
+.detail-row-value{font-size:14px;color:#fff;font-weight:500;text-align:right}
+
+/* ===== CARNIVORE WARNING ===== */
+.carnivore-warning{
+  margin:0 20px 4px;
+  padding:12px 16px;
+  background:rgba(255,69,58,.1);
+  border:1px solid rgba(255,69,58,.2);
+  border-radius:12px;
+  font-size:13px;
+  font-weight:600;
+  color:#ff8a80;
+  text-align:center;
+}
+
+/* ===== QUICK ACTIONS ===== */
+.quick-actions{
+  display:flex;
+  gap:10px;
+  margin:0 20px;
+  padding:16px 0;
+  border-top:1px solid rgba(255,255,255,.04);
+}
+.quick-action-btn{
+  flex:1;
+  padding:14px 8px;
+  border:none;
+  border-radius:14px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  text-align:center;
+  transition:transform .1s ease,opacity .15s;
+}
+.quick-action-btn:active{transform:scale(.95)}
+.qa-water{background:rgba(76,217,100,.15);color:#4cd964}
+.qa-skip{background:rgba(142,142,147,.12);color:#8e8e93}
+.qa-repot{background:rgba(255,159,10,.12);color:#ff9f0a}
+
+/* ===== NOTES ===== */
+.detail-notes{
+  width:100%;
+  background:#1a1a2e;
+  border:1.5px solid #2a2a3e;
+  border-radius:12px;
+  padding:12px;
+  color:#fff;
+  font-size:14px;
+  font-weight:400;
+  font-family:inherit;
+  resize:vertical;
+  min-height:80px;
+  transition:border-color .2s;
+}
+.detail-notes:focus{outline:none;border-color:#4cd964}
+.detail-notes::placeholder{color:#444}
+
+/* ===== DETAIL HISTORY ===== */
+.detail-history-entry{
+  background:#1a1a2e;
+  border-radius:10px;
+  padding:10px 12px;
+  margin-bottom:6px;
+}
+.detail-history-date{font-size:11px;color:#555}
+.detail-history-type{font-size:13px;font-weight:600;color:#4cd964;margin-top:2px}
+.detail-history-type.fed{color:#af52de}
+.detail-history-type.repotted{color:#ff9f0a}
+.detail-history-type.skipped{color:#8e8e93}
+
+/* ===== DELETE BUTTON ===== */
+.detail-delete-btn{
+  display:block;
+  width:calc(100% - 40px);
+  margin:16px 20px 0;
+  padding:14px;
+  border:1px solid rgba(255,69,58,.2);
+  border-radius:14px;
+  background:rgba(255,69,58,.06);
+  color:#ff453a;
+  font-size:15px;
+  font-weight:600;
+  text-align:center;
+  cursor:pointer;
+  transition:background .15s,transform .1s;
+}
+.detail-delete-btn:active{transform:scale(.97);background:rgba(255,69,58,.12)}
 
 /* ===== FORM FIELDS ===== */
 .form-group{margin-bottom:18px}
@@ -700,6 +1029,9 @@ body{
   pointer-events:auto;
   display:flex;align-items:center;gap:12px;
 }
+.toast.toast-info{
+  background:rgba(255,159,10,.9);
+}
 .toast-undo{
   background:rgba(0,0,0,.25);
   border:none;
@@ -754,7 +1086,7 @@ body{
   <button class="fab" id="fab-add" aria-label="Add plant">+</button>
   <div class="bottom-nav">
     <div class="nav-bar">
-      <button class="nav-btn active" data-tab="today">Today</button>
+      <button class="nav-btn active" data-tab="today">To Do</button>
       <button class="nav-btn" data-tab="all">All Plants</button>
       <button class="nav-btn" data-tab="history">History</button>
     </div>
@@ -824,7 +1156,6 @@ function openDB() {
     };
     req.onsuccess = function() {
       _dbInstance = req.result;
-      // Handle unexpected close (e.g. version change from another tab)
       _dbInstance.onclose = function() { _dbInstance = null; };
       resolve(_dbInstance);
     };
@@ -961,7 +1292,6 @@ function isFeedDue(plant) {
   if (plant.carnivore) return false;
   if (!plant.fert_type || plant.fert_type === 'none') return false;
   if (!plant.feed_every_n_waterings || plant.feed_every_n_waterings <= 0) return false;
-  // Respect no_fert_until
   if (plant.no_fert_until) {
     if (new Date() < new Date(plant.no_fert_until)) return false;
   }
@@ -983,6 +1313,15 @@ function getDuePill(daysUntil, neverWatered) {
   return                       { text: 'In ' + daysUntil + ' days',      cls: 'pill-green'  };
 }
 
+function getNextPillText(daysUntil, neverWatered) {
+  if (neverWatered) return { text: 'Next: New plant', cls: 'pill-blue' };
+  if (daysUntil < -1) return { text: 'Next: ' + Math.abs(daysUntil) + ' days overdue', cls: 'pill-red' };
+  if (daysUntil === -1) return { text: 'Next: 1 day overdue', cls: 'pill-red' };
+  if (daysUntil === 0)  return { text: 'Next: Today', cls: 'pill-blue' };
+  if (daysUntil === 1)  return { text: 'Next: Tomorrow', cls: 'pill-orange' };
+  return { text: 'Next: in ' + daysUntil + ' days', cls: 'pill-green' };
+}
+
 function esc(s) {
   if (!s && s !== 0) return '';
   var el = document.createElement('span');
@@ -998,11 +1337,29 @@ function formatDate(iso) {
   });
 }
 
-function showToast(msg, undoFn) {
+function formatTimeOnly(iso) {
+  var d = new Date(iso);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatLastWatered(iso) {
+  if (!iso) return 'Never watered';
+  var d = new Date(iso);
+  var now = new Date();
+  var dDate = new Date(d); dDate.setHours(0,0,0,0);
+  var nDate = new Date(now); nDate.setHours(0,0,0,0);
+  var diffDays = Math.round((nDate - dDate) / 86400000);
+  if (diffDays === 0) return 'Last watered: Today';
+  if (diffDays === 1) return 'Last watered: 1 day ago';
+  if (diffDays < 7) return 'Last watered: ' + diffDays + ' days ago';
+  return 'Last watered: ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function showToast(msg, undoFn, isInfo) {
   var existing = document.querySelector('.toast');
   if (existing) existing.remove();
   var t = document.createElement('div');
-  t.className = 'toast';
+  t.className = 'toast' + (isInfo ? ' toast-info' : '');
   var span = document.createElement('span');
   span.textContent = msg;
   t.appendChild(span);
@@ -1022,12 +1379,30 @@ function showToast(msg, undoFn) {
 }
 
 // ============================================================
+// HISTORY DATE GROUPING
+// ============================================================
+
+function getHistoryGroupLabel(dateStr) {
+  var d = new Date(dateStr);
+  var now = new Date();
+  var dDate = new Date(d); dDate.setHours(0,0,0,0);
+  var nDate = new Date(now); nDate.setHours(0,0,0,0);
+  var diffDays = Math.round((nDate - dDate) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'This Week';
+  return 'Earlier';
+}
+
+// ============================================================
 // APP STATE
 // ============================================================
 
 var currentTab          = 'today';
 var openMenuId          = null;
 var allPlantsFilters    = { rooms: [], light: null };
+var allPlantsSort       = 'due'; // 'due', 'name', 'room'
+var allPlantsSearch     = '';
 var historyFilterPlantId = null;
 
 var tabContent = document.getElementById('tab-content');
@@ -1039,10 +1414,16 @@ var headerSub  = document.getElementById('header-subtitle');
 
 async function render() {
   openMenuId = null;
-  // Update subtitle with date + season
-  var today = new Date();
-  var dayStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  headerSub.textContent = dayStr;
+  // Update subtitle with dynamic stats
+  var plants = await dbGetAll('plants');
+  var needWater = 0;
+  for (var i = 0; i < plants.length; i++) {
+    var nw = !plants[i].last_watered;
+    var du = getDaysUntilDue(plants[i]);
+    if (nw || du <= 0) needWater++;
+  }
+  var season = getSeasonLabel();
+  headerSub.textContent = plants.length + ' plants \u00B7 ' + needWater + ' need water \u00B7 ' + season;
 
   if      (currentTab === 'today')   await renderToday();
   else if (currentTab === 'all')     await renderAll();
@@ -1050,7 +1431,7 @@ async function render() {
 }
 
 // ============================================================
-// TODAY TAB
+// TO DO TAB (formerly Today)
 // ============================================================
 
 async function renderToday() {
@@ -1071,9 +1452,8 @@ async function renderToday() {
   if (overdue.length === 0 && dueToday.length === 0 && newPlants.length === 0) {
     tabContent.innerHTML =
       '<div class="empty-state">' +
-        '<div class="icon">&#127793;</div>' +
-        '<p>Nothing needs water today</p>' +
-        '<div class="sub">All your plants are happy</div>' +
+        '<div class="icon">&#10024;</div>' +
+        '<p>All caught up! Nothing to do right now.</p>' +
       '</div>';
     return;
   }
@@ -1124,8 +1504,14 @@ async function renderAll() {
   }
   var plantRooms = Object.keys(roomSet).sort();
 
+  // Search bar
+  var html = '<div class="search-bar">' +
+    '<span class="search-icon">&#128269;</span>' +
+    '<input type="text" id="all-search" placeholder="Search plants..." value="' + esc(allPlantsSearch) + '"/>' +
+    '</div>';
+
   // Build filter bar
-  var html = '<div class="filter-bar">';
+  html += '<div class="filter-bar">';
   for (var r = 0; r < plantRooms.length; r++) {
     var rm = plantRooms[r];
     var active = allPlantsFilters.rooms.indexOf(rm) >= 0;
@@ -1136,8 +1522,23 @@ async function renderAll() {
   html += '<button class="filter-chip' + (allPlantsFilters.light === 'natural' ? ' active' : '') + '" data-light="natural">Natural</button>';
   html += '</div>';
 
-  // Apply filters
+  // Sort bar
+  html += '<div class="sort-bar">';
+  html += '<button class="sort-btn' + (allPlantsSort === 'due' ? ' active' : '') + '" data-sort="due">Due date</button>';
+  html += '<button class="sort-btn' + (allPlantsSort === 'name' ? ' active' : '') + '" data-sort="name">Name</button>';
+  html += '<button class="sort-btn' + (allPlantsSort === 'room' ? ' active' : '') + '" data-sort="room">Room</button>';
+  html += '</div>';
+
+  // Apply search
   var filtered = plants.slice();
+  if (allPlantsSearch) {
+    var q = allPlantsSearch.toLowerCase();
+    filtered = filtered.filter(function(p) {
+      return p.name.toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  // Apply filters
   if (allPlantsFilters.rooms.length > 0) {
     filtered = filtered.filter(function(p) {
       return allPlantsFilters.rooms.indexOf(p.room) >= 0;
@@ -1149,13 +1550,39 @@ async function renderAll() {
     });
   }
 
-  // Sort by soonest due
-  filtered.sort(function(a, b) { return getDaysUntilDue(a) - getDaysUntilDue(b); });
+  // Sort
+  if (allPlantsSort === 'due') {
+    filtered.sort(function(a, b) { return getDaysUntilDue(a) - getDaysUntilDue(b); });
+  } else if (allPlantsSort === 'name') {
+    filtered.sort(function(a, b) { return a.name.localeCompare(b.name); });
+  } else if (allPlantsSort === 'room') {
+    filtered.sort(function(a, b) {
+      var rc = (a.room || '').localeCompare(b.room || '');
+      if (rc !== 0) return rc;
+      return a.name.localeCompare(b.name);
+    });
+  }
 
   html += '<div class="plant-count">' + filtered.length + ' plant' + (filtered.length !== 1 ? 's' : '') + '</div>';
 
   if (filtered.length === 0) {
     html += '<div class="empty-state"><div class="icon">&#127807;</div><p>No plants match filters</p></div>';
+  } else if (allPlantsSort === 'room') {
+    // Group by room
+    var byRoom = {};
+    for (var g = 0; g < filtered.length; g++) {
+      var grp = filtered[g].room || 'Unassigned';
+      if (!byRoom[grp]) byRoom[grp] = [];
+      byRoom[grp].push(filtered[g]);
+    }
+    var sortedRooms = Object.keys(byRoom).sort();
+    for (var sr = 0; sr < sortedRooms.length; sr++) {
+      html += '<div class="room-group"><div class="room-label">' + esc(sortedRooms[sr]) + '</div>';
+      for (var sg = 0; sg < byRoom[sortedRooms[sr]].length; sg++) {
+        html += plantCardHTML(byRoom[sortedRooms[sr]][sg], false);
+      }
+      html += '</div>';
+    }
   } else {
     for (var f = 0; f < filtered.length; f++) {
       html += plantCardHTML(filtered[f], false);
@@ -1164,6 +1591,29 @@ async function renderAll() {
 
   tabContent.innerHTML = html;
   attachCardListeners();
+
+  // Search handler
+  var searchInput = document.getElementById('all-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      allPlantsSearch = this.value;
+      renderAll();
+    });
+    // Re-focus if there was search text
+    if (allPlantsSearch) {
+      searchInput.focus();
+      searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    }
+  }
+
+  // Sort handlers
+  var sortBtns = tabContent.querySelectorAll('.sort-btn');
+  for (var sb = 0; sb < sortBtns.length; sb++) {
+    sortBtns[sb].addEventListener('click', function() {
+      allPlantsSort = this.dataset.sort;
+      renderAll();
+    });
+  }
 
   // Filter chip event handlers
   var roomChips = tabContent.querySelectorAll('.filter-chip[data-room]');
@@ -1213,13 +1663,25 @@ async function renderHistory() {
   if (entries.length === 0) {
     html += '<div class="empty-state"><div class="icon">&#128196;</div><p>No history yet</p><div class="sub">Water a plant to see entries here</div></div>';
   } else {
+    // Group by date
+    var currentGroup = '';
     for (var j = 0; j < entries.length; j++) {
       var h = entries[j];
-      var isFed = h.type && h.type.indexOf('Fed') >= 0;
+      var groupLabel = getHistoryGroupLabel(h.date);
+      if (groupLabel !== currentGroup) {
+        currentGroup = groupLabel;
+        html += '<div class="history-group-label">' + esc(groupLabel) + '</div>';
+      }
+      var typeClass = '';
+      var typeStr = h.type || 'Watered';
+      if (typeStr.indexOf('Fed') >= 0) typeClass = ' fed';
+      else if (typeStr === 'Repotted') typeClass = ' repotted';
+      else if (typeStr === 'Skipped') typeClass = ' skipped';
+
       html += '<div class="history-entry">';
-      html += '<div class="history-date">' + esc(formatDate(h.date)) + '</div>';
+      html += '<div class="history-date">' + esc(formatTimeOnly(h.date)) + '</div>';
       html += '<div class="history-name">' + esc(h.plantName || 'Unknown') + '</div>';
-      html += '<div class="history-type' + (isFed ? ' fed' : '') + '">' + esc(h.type || 'Watered') + '</div>';
+      html += '<div class="history-type' + typeClass + '">' + esc(typeStr) + '</div>';
       if (h.lateReason) {
         html += '<div class="history-reason">' + esc(h.lateReason) + '</div>';
       }
@@ -1229,10 +1691,10 @@ async function renderHistory() {
 
   tabContent.innerHTML = html;
 
-  var sel = document.getElementById('history-plant-filter');
-  if (sel) {
-    sel.addEventListener('change', function() {
-      historyFilterPlantId = sel.value || null;
+  var selEl = document.getElementById('history-plant-filter');
+  if (selEl) {
+    selEl.addEventListener('change', function() {
+      historyFilterPlantId = selEl.value || null;
       renderHistory();
     });
   }
@@ -1242,10 +1704,9 @@ async function renderHistory() {
 // PLANT CARD HTML BUILDER
 // ============================================================
 
-function plantCardHTML(plant, showActionLabel) {
+function plantCardHTML(plant, isTodoTab) {
   var neverWatered = !plant.last_watered;
   var daysUntil    = getDaysUntilDue(plant);
-  var duePill      = getDuePill(daysUntil, neverWatered);
   var feedDue      = isFeedDue(plant);
   var isDueOrOverdue = neverWatered || daysUntil <= 0;
 
@@ -1263,8 +1724,13 @@ function plantCardHTML(plant, showActionLabel) {
   html += '<div class="plant-name">' + esc(plant.name) + '</div>';
   html += '<div class="plant-room">' + esc(plant.room || '') + (plant.light_type === 'grow' ? ' &middot; Grow Light' : '') + '</div>';
 
-  // Action label on Today tab: "water" or "water + feed"
-  if (showActionLabel && isDueOrOverdue) {
+  // Show last watered + next due on All Plants tab
+  if (!isTodoTab) {
+    html += '<div class="plant-meta">' + esc(formatLastWatered(plant.last_watered)) + '</div>';
+  }
+
+  // Action label on To Do tab: "water" or "water + feed"
+  if (isTodoTab && isDueOrOverdue) {
     if (feedDue) {
       html += '<div class="plant-action-label">Water + <span class="feed-label">Feed</span></div>';
     } else {
@@ -1273,19 +1739,33 @@ function plantCardHTML(plant, showActionLabel) {
   }
 
   html += '<div class="plant-pills">';
-  html += '<span class="pill ' + duePill.cls + '">' + duePill.text + '</span>';
-  if (feedDue && isDueOrOverdue) {
-    html += '<span class="pill pill-purple">+ feed</span>';
+
+  if (isTodoTab) {
+    // To Do tab: show due pill
+    var duePill = getDuePill(daysUntil, neverWatered);
+    html += '<span class="pill ' + duePill.cls + '">' + duePill.text + '</span>';
+  } else {
+    // All Plants tab: show "Next: ..." pill
+    var nextPill = getNextPillText(daysUntil, neverWatered);
+    html += '<span class="pill ' + nextPill.cls + '">' + nextPill.text + '</span>';
   }
-  // Show soil type as subtle pill on All Plants
-  if (!showActionLabel) {
-    var soilInfo = SOIL_TABLE[plant.soil_type];
-    if (soilInfo) {
-      var shortSoil = plant.soil_type.replace(/_/g, ' ');
-      html += '<span class="pill pill-gray">' + esc(shortSoil) + '</span>';
-    }
+
+  if (feedDue) {
+    html += '<span class="pill pill-purple">Feed due</span>';
   }
+
+  // Water source badge
+  if (plant.water_source === 'distilled_or_rain') {
+    html += '<span class="pill pill-distilled">Distilled</span>';
+  }
+
   html += '</div></div>';
+
+  // Water button (right side)
+  var waterBtnClass = 'card-water-btn' + (isDueOrOverdue ? ' due' : '');
+  html += '<button class="' + waterBtnClass + '" data-water-id="' + plant.id + '" aria-label="Water">&#128167;</button>';
+
+  // Three-dot menu
   html += '<button class="card-menu-btn" data-menu-id="' + plant.id + '" aria-label="Menu">&#8942;</button>';
   html += '</div>';
   return html;
@@ -1299,16 +1779,30 @@ function attachCardListeners() {
   var cards = tabContent.querySelectorAll('.plant-card');
   for (var i = 0; i < cards.length; i++) {
     (function(card) {
+      // Tapping the card opens detail view
       card.addEventListener('click', function(e) {
-        // Ignore clicks on menu elements
         if (e.target.closest('.card-menu-btn') ||
             e.target.closest('.card-menu') ||
             e.target.closest('.confirm-bar') ||
-            e.target.closest('.late-prompt')) return;
+            e.target.closest('.late-prompt') ||
+            e.target.closest('.card-water-btn')) return;
         var pid = parseInt(card.dataset.plantId, 10);
-        handleWaterTap(pid, card);
+        showDetailView(pid);
       });
     })(cards[i]);
+  }
+
+  // Water buttons
+  var waterBtns = tabContent.querySelectorAll('.card-water-btn');
+  for (var w = 0; w < waterBtns.length; w++) {
+    (function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var pid = parseInt(btn.dataset.waterId, 10);
+        var card = btn.closest('.plant-card');
+        handleWaterTap(pid, card);
+      });
+    })(waterBtns[w]);
   }
 
   var menuBtns = tabContent.querySelectorAll('.card-menu-btn');
@@ -1328,7 +1822,6 @@ function attachCardListeners() {
 // ============================================================
 
 function toggleMenu(plantId, btnEl) {
-  // Close existing menus
   var existing = document.querySelectorAll('.card-menu');
   for (var i = 0; i < existing.length; i++) existing[i].remove();
 
@@ -1347,7 +1840,6 @@ function toggleMenu(plantId, btnEl) {
     showConfirmDelete(plantId);
   });
 
-  // Close on outside click
   setTimeout(function() {
     function handler(ev) {
       if (!menu.contains(ev.target) && ev.target !== btnEl) {
@@ -1364,7 +1856,6 @@ function showConfirmDelete(plantId) {
   var card = tabContent.querySelector('[data-plant-id="' + plantId + '"]');
   if (!card) return;
 
-  // Remove any existing confirm bars
   var old = document.querySelectorAll('.confirm-bar');
   for (var i = 0; i < old.length; i++) old[i].remove();
 
@@ -1411,7 +1902,6 @@ async function handleWaterTap(plantId, cardEl) {
 }
 
 function showLatePrompt(plant, cardEl) {
-  // Remove existing prompts
   var old = document.querySelectorAll('.late-prompt');
   for (var i = 0; i < old.length; i++) old[i].remove();
 
@@ -1439,24 +1929,19 @@ function showLatePrompt(plant, cardEl) {
 }
 
 async function doWater(plant, lateReason) {
-  // Snapshot previous state for undo
   var snapshot = JSON.parse(JSON.stringify(plant));
 
   var now     = new Date().toISOString();
   var feedDue = isFeedDue(plant);
 
-  // --- Learning rule: compute gap and update interval ---
   if (plant.last_watered) {
     var gapDays = (new Date(now) - new Date(plant.last_watered)) / 86400000;
-
     if (lateReason === 'too_busy') {
-      // DISCARD gap — interval unchanged, just reset anchor
+      // DISCARD gap
     } else {
-      // Valid gap: on-time, early, or late+"still wet"
       updateIntervalFromGap(plant, gapDays);
     }
   } else {
-    // First watering: seed interval from effective starting
     plant.current_interval  = getEffectiveStartingInterval(plant);
     plant.recent_valid_gaps = [];
   }
@@ -1464,7 +1949,6 @@ async function doWater(plant, lateReason) {
   plant.last_watered  = now;
   plant.watering_count = (plant.watering_count || 0) + 1;
 
-  // --- Fertilizing ---
   var historyType = 'Watered';
   if (feedDue) {
     plant.last_fertilized  = now;
@@ -1474,7 +1958,6 @@ async function doWater(plant, lateReason) {
 
   await dbPut('plants', plant);
 
-  // --- Log to history ---
   var historyEntry = {
     plantId:   plant.id,
     plantName: plant.name,
@@ -1487,13 +1970,11 @@ async function doWater(plant, lateReason) {
 
   var historyId = await dbAdd('history', historyEntry);
 
-  // --- Visual feedback ---
   var card = tabContent.querySelector('[data-plant-id="' + plant.id + '"]');
   if (card) card.classList.add('tap-flash');
 
   var toastMsg = feedDue ? (plant.name + ' watered + fed') : (plant.name + ' watered');
   showToast(toastMsg, async function() {
-    // Undo: restore plant snapshot and delete history entry
     await dbPut('plants', snapshot);
     await dbDelete('history', historyId);
     showToast('Undone');
@@ -1501,6 +1982,324 @@ async function doWater(plant, lateReason) {
   });
 
   setTimeout(function() { render(); }, 350);
+}
+
+// ============================================================
+// PLANT DETAIL VIEW
+// ============================================================
+
+async function showDetailView(plantId) {
+  var plant = await dbGet('plants', plantId);
+  if (!plant) return;
+
+  // Handle missing notes field gracefully
+  if (plant.notes === undefined) plant.notes = '';
+
+  // Get history for this plant
+  var allHistory = await dbGetAll('history');
+  var plantHistory = allHistory.filter(function(h) { return h.plantId === plantId; });
+  plantHistory.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+  plantHistory = plantHistory.slice(0, 10);
+
+  var overlay = document.createElement('div');
+  overlay.className = 'detail-overlay';
+
+  var neverWatered = !plant.last_watered;
+  var daysUntil = getDaysUntilDue(plant);
+  var nextDue = getNextDueDate(plant);
+  var seasonal = getSeasonalMultiplier(plant.light_type);
+  var clampedInt = getClampedInterval(plant);
+  var soilInfo = SOIL_TABLE[plant.soil_type];
+
+  // Photo
+  var photoHTML;
+  if (plant.photo) {
+    photoHTML = '<img class="detail-photo" src="' + plant.photo + '" alt=""/>';
+  } else {
+    photoHTML = '<div class="detail-photo-placeholder">&#127793;</div>';
+  }
+
+  // Next due text
+  var nextDueText = 'Never watered';
+  if (nextDue) {
+    nextDueText = nextDue.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (daysUntil === 0) nextDueText = 'Today';
+    else if (daysUntil === 1) nextDueText = 'Tomorrow';
+    else if (daysUntil < 0) nextDueText = Math.abs(daysUntil) + ' days overdue';
+  }
+
+  var panelHTML = '<div class="detail-panel">';
+  panelHTML += '<div class="detail-close">';
+  panelHTML += '<button class="detail-close-btn" id="detail-back">&#8592; Back</button>';
+  panelHTML += '<div></div>';
+  panelHTML += '</div>';
+
+  // Header with photo
+  panelHTML += '<div class="detail-header">';
+  panelHTML += photoHTML;
+  panelHTML += '<button class="detail-change-photo" id="detail-change-photo">Change photo</button>';
+  panelHTML += '<input type="file" accept="image/*" capture="environment" id="detail-photo-input" style="display:none"/>';
+  panelHTML += '<div class="detail-name" id="detail-name-display">' + esc(plant.name) + '</div>';
+  panelHTML += '</div>';
+
+  // Carnivore warning
+  if (plant.carnivore) {
+    panelHTML += '<div class="carnivore-warning">&#9888; Carnivorous &#8212; distilled/rain water only, never fertilize</div>';
+  }
+
+  // Info section
+  panelHTML += '<div class="detail-section">';
+  panelHTML += '<div class="detail-section-title">Plant Info</div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Room</span><span class="detail-row-value">' + esc(plant.room) + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Light</span><span class="detail-row-value">' + esc(plant.light_type === 'grow' ? 'Grow Light' : 'Natural') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Soil</span><span class="detail-row-value">' + esc(soilInfo ? soilInfo.label : plant.soil_type) + '</span></div>';
+  panelHTML += '</div>';
+
+  // Care Profile section
+  panelHTML += '<div class="detail-section">';
+  panelHTML += '<div class="detail-section-title">Care Profile</div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Moisture pref</span><span class="detail-row-value">' + esc(plant.moisture_pref || 'medium') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Baseline days</span><span class="detail-row-value">' + (plant.species_baseline_days || '?') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Fertilizer type</span><span class="detail-row-value">' + esc(plant.fert_type || 'none') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Feed frequency</span><span class="detail-row-value">' + (plant.feed_every_n_waterings ? 'Every ' + plant.feed_every_n_waterings + ' waterings' : 'None') + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Water source</span><span class="detail-row-value">' + esc(plant.water_source || 'any') + '</span></div>';
+  panelHTML += '</div>';
+
+  // Schedule section
+  panelHTML += '<div class="detail-section">';
+  panelHTML += '<div class="detail-section-title">Schedule</div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Current interval (learned)</span><span class="detail-row-value">' + clampedInt.toFixed(1) + ' days</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Next due</span><span class="detail-row-value">' + esc(nextDueText) + '</span></div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Seasonal multiplier</span><span class="detail-row-value">' + seasonal.toFixed(2) + 'x (' + getSeasonLabel() + ')</span></div>';
+  panelHTML += '</div>';
+
+  // Quick Actions
+  panelHTML += '<div class="quick-actions">';
+  panelHTML += '<button class="quick-action-btn qa-water" id="detail-water">&#128167; Water</button>';
+  panelHTML += '<button class="quick-action-btn qa-skip" id="detail-skip">&#9193; Skip</button>';
+  panelHTML += '<button class="quick-action-btn qa-repot" id="detail-repot">&#127793; Repot</button>';
+  panelHTML += '</div>';
+
+  // Notes
+  panelHTML += '<div class="detail-section">';
+  panelHTML += '<div class="detail-section-title">Notes</div>';
+  panelHTML += '<textarea class="detail-notes" id="detail-notes" placeholder="Add notes about this plant...">' + esc(plant.notes || '') + '</textarea>';
+  panelHTML += '</div>';
+
+  // History
+  panelHTML += '<div class="detail-section">';
+  panelHTML += '<div class="detail-section-title">History</div>';
+  if (plantHistory.length === 0) {
+    panelHTML += '<div style="color:#555;font-size:13px;padding:8px 0">No history yet</div>';
+  } else {
+    for (var h = 0; h < plantHistory.length; h++) {
+      var entry = plantHistory[h];
+      var hTypeClass = '';
+      var hType = entry.type || 'Watered';
+      if (hType.indexOf('Fed') >= 0) hTypeClass = ' fed';
+      else if (hType === 'Repotted') hTypeClass = ' repotted';
+      else if (hType === 'Skipped') hTypeClass = ' skipped';
+      panelHTML += '<div class="detail-history-entry">';
+      panelHTML += '<div class="detail-history-date">' + esc(formatDate(entry.date)) + '</div>';
+      panelHTML += '<div class="detail-history-type' + hTypeClass + '">' + esc(hType) + '</div>';
+      if (entry.lateReason) {
+        panelHTML += '<div class="history-reason">' + esc(entry.lateReason) + '</div>';
+      }
+      panelHTML += '</div>';
+    }
+  }
+  panelHTML += '</div>';
+
+  // Delete button
+  panelHTML += '<button class="detail-delete-btn" id="detail-delete">Remove Plant</button>';
+
+  panelHTML += '</div>';
+
+  overlay.innerHTML = panelHTML;
+  document.getElementById('app').appendChild(overlay);
+
+  // --- Event handlers ---
+
+  // Save notes helper
+  function saveNotes() {
+    var notesEl = overlay.querySelector('#detail-notes');
+    if (!notesEl) return;
+    var newNotes = notesEl.value;
+    if (newNotes !== (plant.notes || '')) {
+      plant.notes = newNotes;
+      dbPut('plants', plant);
+    }
+  }
+
+  // Close
+  overlay.querySelector('#detail-back').addEventListener('click', function() {
+    saveNotes();
+    overlay.remove();
+    render();
+  });
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      saveNotes();
+      overlay.remove();
+      render();
+    }
+  });
+
+  // Change photo
+  overlay.querySelector('#detail-change-photo').addEventListener('click', function() {
+    overlay.querySelector('#detail-photo-input').click();
+  });
+  overlay.querySelector('#detail-photo-input').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = async function() {
+        var canvas = document.createElement('canvas');
+        var maxDim = 200;
+        var w = img.width, hh = img.height;
+        if (w > hh) { hh = Math.round(hh * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / hh); hh = maxDim; }
+        canvas.width = w; canvas.height = hh;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, hh);
+        plant.photo = canvas.toDataURL('image/jpeg', 0.7);
+        await dbPut('plants', plant);
+        var photoEl = overlay.querySelector('.detail-photo, .detail-photo-placeholder');
+        if (photoEl) {
+          var newImg = document.createElement('img');
+          newImg.className = 'detail-photo';
+          newImg.src = plant.photo;
+          photoEl.replaceWith(newImg);
+        }
+        showToast('Photo updated');
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Editable name
+  var nameDisplay = overlay.querySelector('#detail-name-display');
+  nameDisplay.addEventListener('click', function() {
+    var currentName = plant.name;
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'detail-name-input';
+    input.value = currentName;
+    nameDisplay.replaceWith(input);
+    input.focus();
+    input.select();
+
+    var saved = false;
+    function saveName() {
+      if (saved) return;
+      saved = true;
+      var newName = input.value.trim();
+      if (newName && newName !== plant.name) {
+        plant.name = newName;
+        dbPut('plants', plant);
+      }
+      var newDisplay = document.createElement('div');
+      newDisplay.className = 'detail-name';
+      newDisplay.id = 'detail-name-display';
+      newDisplay.textContent = plant.name;
+      input.replaceWith(newDisplay);
+      newDisplay.addEventListener('click', function() {
+        nameDisplay = newDisplay;
+        nameDisplay.click();
+      });
+    }
+
+    input.addEventListener('blur', saveName);
+    input.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+    });
+  });
+
+  // Water action
+  overlay.querySelector('#detail-water').addEventListener('click', async function() {
+    saveNotes();
+    overlay.remove();
+    var card = tabContent.querySelector('[data-plant-id="' + plant.id + '"]');
+    await handleWaterTap(plant.id, card || tabContent);
+  });
+
+  // Skip action
+  overlay.querySelector('#detail-skip').addEventListener('click', async function() {
+    var snapshot = JSON.parse(JSON.stringify(plant));
+    var now = new Date().toISOString();
+    plant.last_watered = now;
+    await dbPut('plants', plant);
+
+    var historyId = await dbAdd('history', {
+      plantId: plant.id,
+      plantName: plant.name,
+      date: now,
+      type: 'Skipped',
+      lateReason: null
+    });
+
+    saveNotes();
+    overlay.remove();
+    showToast(plant.name + ' skipped', async function() {
+      await dbPut('plants', snapshot);
+      await dbDelete('history', historyId);
+      showToast('Undone');
+      render();
+    });
+    render();
+  });
+
+  // Repot action
+  overlay.querySelector('#detail-repot').addEventListener('click', async function() {
+    var now = new Date();
+    var twoWeeksLater = new Date(now.getTime() + 14 * 86400000).toISOString();
+    plant.no_fert_until = twoWeeksLater;
+    await dbPut('plants', plant);
+
+    await dbAdd('history', {
+      plantId: plant.id,
+      plantName: plant.name,
+      date: now.toISOString(),
+      type: 'Repotted',
+      lateReason: null
+    });
+
+    saveNotes();
+    overlay.remove();
+    showToast('Repotted \u2014 no fertilizer for 2 weeks', null, true);
+    render();
+  });
+
+  // Notes auto-save on blur
+  var notesEl = overlay.querySelector('#detail-notes');
+  if (notesEl) {
+    notesEl.addEventListener('blur', saveNotes);
+  }
+
+  // Delete
+  overlay.querySelector('#detail-delete').addEventListener('click', function() {
+    var btn = overlay.querySelector('#detail-delete');
+    if (btn.dataset.confirmed) {
+      dbDelete('plants', plant.id).then(function() {
+        overlay.remove();
+        showToast(plant.name + ' removed');
+        render();
+      });
+    } else {
+      btn.textContent = 'Tap again to confirm removal';
+      btn.dataset.confirmed = 'true';
+      btn.style.background = 'rgba(255,69,58,.15)';
+      setTimeout(function() {
+        if (btn && btn.parentNode) {
+          btn.textContent = 'Remove Plant';
+          delete btn.dataset.confirmed;
+          btn.style.background = '';
+        }
+      }, 3000);
+    }
+  });
 }
 
 // ============================================================
@@ -1512,7 +2311,6 @@ function showAddModal() {
   overlay.className = 'modal-overlay';
   overlay.id = 'add-modal-overlay';
 
-  // Build soil options
   var soilOpts = '';
   var soilKeys = Object.keys(SOIL_TABLE);
   for (var s = 0; s < soilKeys.length; s++) {
@@ -1520,7 +2318,6 @@ function showAddModal() {
     soilOpts += '<option value="' + sk + '">' + esc(SOIL_TABLE[sk].label) + '</option>';
   }
 
-  // Build room options
   var roomOpts = '';
   for (var r = 0; r < ROOMS.length; r++) {
     roomOpts += '<option value="' + esc(ROOMS[r]) + '">' + esc(ROOMS[r]) + '</option>';
@@ -1586,12 +2383,10 @@ function showAddModal() {
 
   document.getElementById('app').appendChild(overlay);
 
-  // --- State for this modal ---
   var selectedLight = 'natural';
   var photoData     = null;
   var profileData   = null;
 
-  // --- Soil info update ---
   function updateSoilInfo() {
     var soilKey  = overlay.querySelector('#add-soil').value;
     var soilData = SOIL_TABLE[soilKey];
@@ -1605,7 +2400,6 @@ function showAddModal() {
   updateSoilInfo();
   overlay.querySelector('#add-soil').addEventListener('change', updateSoilInfo);
 
-  // --- Light toggle ---
   var lightBtns = overlay.querySelectorAll('#light-toggle .toggle-opt');
   for (var lb = 0; lb < lightBtns.length; lb++) {
     lightBtns[lb].addEventListener('click', function() {
@@ -1615,7 +2409,6 @@ function showAddModal() {
     });
   }
 
-  // --- Photo capture ---
   var photoInput = overlay.querySelector('#add-photo');
   overlay.querySelector('#photo-trigger').addEventListener('click', function() { photoInput.click(); });
   photoInput.addEventListener('change', function(e) {
@@ -1642,13 +2435,11 @@ function showAddModal() {
     reader.readAsDataURL(file);
   });
 
-  // --- Cancel / backdrop dismiss ---
   overlay.querySelector('#btn-cancel-add').addEventListener('click', function() { overlay.remove(); });
   overlay.addEventListener('click', function(e) {
     if (e.target === overlay) overlay.remove();
   });
 
-  // --- NEXT -> Step 2 ---
   overlay.querySelector('#btn-next').addEventListener('click', async function() {
     var nameInput = overlay.querySelector('#add-name');
     var name = nameInput.value.trim();
@@ -1661,7 +2452,6 @@ function showAddModal() {
 
     var soil = overlay.querySelector('#add-soil').value;
 
-    // Switch to step 2
     overlay.querySelector('#modal-step1').style.display = 'none';
     overlay.querySelector('#modal-step2').style.display = 'block';
     overlay.querySelector('#profile-loading').style.display = 'block';
@@ -1670,7 +2460,6 @@ function showAddModal() {
     overlay.querySelector('#profile-fields').style.display  = 'none';
     overlay.querySelector('#btn-save').style.display         = 'none';
 
-    // Check cache
     var cacheKey = (name + '_' + soil).toLowerCase().replace(/\s+/g, '_');
     var profile  = await dbGet('profileCache', cacheKey);
 
@@ -1686,10 +2475,9 @@ function showAddModal() {
         profile.cacheKey = cacheKey;
         await dbPut('profileCache', profile);
       } catch (err) {
-        // Show error but use fallback defaults
         overlay.querySelector('#profile-error').style.display = 'block';
         overlay.querySelector('#profile-error').textContent =
-          'Could not reach plant API. Using defaults — adjust values below.';
+          'Could not reach plant API. Using defaults \u2014 adjust values below.';
         profile = {
           cacheKey: cacheKey,
           species_baseline_days:   7,
@@ -1706,19 +2494,16 @@ function showAddModal() {
     showProfileReview(overlay, profile);
   });
 
-  // --- BACK ---
   overlay.querySelector('#btn-back').addEventListener('click', function() {
     overlay.querySelector('#modal-step1').style.display = 'block';
     overlay.querySelector('#modal-step2').style.display = 'none';
   });
 
-  // --- SAVE ---
   overlay.querySelector('#btn-save').addEventListener('click', async function() {
     var name = overlay.querySelector('#add-name').value.trim();
     var room = overlay.querySelector('#add-room').value;
     var soil = overlay.querySelector('#add-soil').value;
 
-    // Read overridden profile values from step 2
     var baselineDays = parseFloat(overlay.querySelector('#pf-baseline').value) || 7;
     var moisturePref = overlay.querySelector('#pf-moisture').value;
     var feedEvery    = parseInt(overlay.querySelector('#pf-feed-every').value, 10) || 0;
@@ -1726,7 +2511,6 @@ function showAddModal() {
     var carnivore    = overlay.querySelector('#pf-carnivore').value === 'true';
     var waterSource  = overlay.querySelector('#pf-water-source').value;
 
-    // Compute effective starting interval
     var effectiveStart;
     if (soil === 'carnivore_peat') {
       effectiveStart = 2;
@@ -1754,6 +2538,7 @@ function showAddModal() {
       last_fed_at_count:       0,
       no_fert_until:           null,
       watering_count:          0,
+      notes:                   '',
       created_at:              new Date().toISOString()
     };
 
@@ -1882,14 +2667,23 @@ var SEED_PLANTS = [
   { name:"Thai Constellation",              room:'Side Window',  light_type:'natural', soil_type:'chunky_aroid',    species_baseline_days:8,  moisture_pref:'moist',        feed_every_n_waterings:3, fert_type:'balanced',        carnivore:false, water_source:'tap_ok' },
 ];
 
+// Plants that get last_watered set to 6 days ago
+var SIX_DAY_PLANTS = ["Satin Pothos", "Marble Queen Pothos", "Wax Plant 'Variegata'"];
+
 async function seedPlants() {
   var existing = await dbGetAll('plants');
   if (existing.length > 0) return; // already seeded
+
+  var yesterday = new Date(Date.now() - 86400000).toISOString();
+  var sixDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString();
 
   for (var i = 0; i < SEED_PLANTS.length; i++) {
     var s = SEED_PLANTS[i];
     var soil = SOIL_TABLE[s.soil_type];
     var effectiveStart = (soil && soil.mult !== null) ? s.species_baseline_days * soil.mult : 2;
+
+    var isSixDay = SIX_DAY_PLANTS.indexOf(s.name) >= 0;
+    var lastWatered = isSixDay ? sixDaysAgo : yesterday;
 
     await dbAdd('plants', {
       name:                    s.name,
@@ -1905,11 +2699,12 @@ async function seedPlants() {
       water_source:            s.water_source,
       current_interval:        effectiveStart,
       recent_valid_gaps:       [],
-      last_watered:            null,
+      last_watered:            lastWatered,
       last_fertilized:         null,
       last_fed_at_count:       0,
       no_fert_until:           null,
-      watering_count:          0,
+      watering_count:          1,
+      notes:                   '',
       created_at:              new Date().toISOString()
     });
   }
@@ -1924,7 +2719,6 @@ openDB().then(function() {
   return seedPlants();
 }).then(function() {
   render();
-  // Fallback signal
   try { localStorage.setItem('plantaroo_init', Date.now()); } catch(e) {}
 }).catch(function(err) {
   console.error('Plantaroo DB init failed:', err);
