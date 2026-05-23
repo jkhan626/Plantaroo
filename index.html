@@ -184,6 +184,34 @@ body{
   color:var(--text-primary);
   letter-spacing:-0.3px;
 }
+.section-title-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.section-title-row .section-title{margin-bottom:12px}
+/* Tap-target label with an invisible native date input overlaid on top. */
+.bulk-date-btn{
+  position:relative;
+  display:inline-flex;align-items:center;
+  padding:8px 14px;
+  border-radius:100px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--green);
+  font-size:13px;font-weight:600;
+  white-space:nowrap;
+  cursor:pointer;
+  -webkit-user-select:none;user-select:none;
+}
+.bulk-date-btn:active{transform:scale(.97)}
+.bulk-date-btn input{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  opacity:0;
+  cursor:pointer;
+}
 
 /* ===== ROOM GROUP ===== */
 .room-group{margin-bottom:20px}
@@ -785,6 +813,19 @@ body{
 .detail-row:last-child{border-bottom:none}
 .detail-row-label{font-size:14px;color:#888;font-weight:400}
 .detail-row-value{font-size:14px;color:var(--text-primary);font-weight:500;text-align:right}
+.detail-date-input{
+  background:var(--surface-elevated);
+  color:var(--text-primary);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:7px 10px;
+  font-size:14px;
+  font-weight:500;
+  font-family:inherit;
+  -webkit-appearance:none;appearance:none;
+  cursor:pointer;
+}
+.detail-date-input:focus{outline:none;border-color:var(--green)}
 
 /* ===== CARNIVORE WARNING ===== */
 .carnivore-warning{
@@ -1728,6 +1769,19 @@ function isWateredToday(plant) {
   return d.getTime() === n.getTime();
 }
 
+// Local YYYY-MM-DD (for <input type="date"> values).
+function toYMD(d) {
+  var x = new Date(d);
+  var m = x.getMonth() + 1, day = x.getDate();
+  return x.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+}
+
+// Parse a YYYY-MM-DD value to a local-noon ISO string (avoids TZ off-by-one).
+function ymdToISO(v) {
+  var p = v.split('-');
+  return new Date(+p[0], +p[1] - 1, +p[2], 12, 0, 0).toISOString();
+}
+
 function showToast(msg, undoFn, isInfo) {
   var existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -1837,12 +1891,37 @@ async function renderToday() {
   if (overdue.length > 0)  html += buildGroupedByRoom(overdue,  'Overdue');
   if (dueToday.length > 0) html += buildGroupedByRoom(dueToday, 'Due Today');
   if (newPlants.length > 0) {
-    html += '<div class="section-title">New Plants</div>';
+    html += '<div class="section-title-row">' +
+      '<div class="section-title">New Plants</div>' +
+      '<label class="bulk-date-btn">Set last watered' +
+        '<input type="date" id="bulk-last-watered" max="' + toYMD(new Date()) + '"/>' +
+      '</label>' +
+    '</div>';
     for (var j = 0; j < newPlants.length; j++) html += plantCardHTML(newPlants[j], true);
   }
 
   tabContent.innerHTML = html;
   attachCardListeners();
+
+  // Bulk: set "last watered" for every never-watered plant at once.
+  var bulkInput = document.getElementById('bulk-last-watered');
+  if (bulkInput) bulkInput.addEventListener('change', async function() {
+    var v = this.value;
+    if (!v) return;
+    var iso = ymdToISO(v);
+    var all = await dbGetAll('plants');
+    var n = 0;
+    for (var b = 0; b < all.length; b++) {
+      if (!all[b].last_watered) {
+        all[b].last_watered = iso;
+        if (!all[b].watering_count) all[b].watering_count = 1;
+        await dbPut('plants', all[b]);
+        n++;
+      }
+    }
+    showToast('Set last watered for ' + n + ' plant' + (n !== 1 ? 's' : ''), null, true);
+    render();
+  });
 }
 
 function buildGroupedByRoom(plants, title) {
@@ -2470,6 +2549,9 @@ async function showDetailView(plantId) {
   // Schedule section
   panelHTML += '<div class="detail-section">';
   panelHTML += '<div class="detail-section-title">Schedule</div>';
+  panelHTML += '<div class="detail-row"><span class="detail-row-label">Last watered</span>' +
+    '<input type="date" class="detail-date-input" id="detail-last-watered" value="' +
+    (plant.last_watered ? toYMD(plant.last_watered) : '') + '" max="' + toYMD(new Date()) + '"/></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Current interval</span><span class="detail-row-value">' + clampedInt.toFixed(1) + ' days</span></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Next due</span><span class="detail-row-value">' + esc(nextDueText) + '</span></div>';
   panelHTML += '<div class="detail-row"><span class="detail-row-label">Seasonal multiplier</span><span class="detail-row-value">' + seasonal.toFixed(2) + 'x (' + getSeasonLabel() + ')</span></div>';
@@ -2620,6 +2702,28 @@ async function showDetailView(plantId) {
     });
   }
   nameDisplay.addEventListener('click', handleNameClick);
+
+  // Edit "Last watered" date (sets the schedule anchor; does NOT log a
+  // learning gap — it's a correction, not a watering event).
+  var lwInput = overlay.querySelector('#detail-last-watered');
+  if (lwInput) lwInput.addEventListener('change', async function() {
+    var v = this.value;
+    if (!v) {
+      plant.last_watered    = null;
+      plant.recent_valid_gaps = [];
+      plant.current_interval  = getEffectiveStartingInterval(plant);
+      plant.watering_count    = 0;
+    } else {
+      plant.last_watered = ymdToISO(v);
+      if (!plant.watering_count) plant.watering_count = 1;
+    }
+    var notesElNow = overlay.querySelector('#detail-notes');
+    if (notesElNow) plant.notes = notesElNow.value;
+    await dbPut('plants', plant);
+    overlay.remove();
+    render();
+    showDetailView(plant.id);
+  });
 
   // Water action
   overlay.querySelector('#detail-water').addEventListener('click', async function() {
