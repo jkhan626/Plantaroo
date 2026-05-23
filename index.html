@@ -191,9 +191,7 @@ body{
   gap:10px;
 }
 .section-title-row .section-title{margin-bottom:12px}
-/* Tap-target label with an invisible native date input overlaid on top. */
 .bulk-date-btn{
-  position:relative;
   display:inline-flex;align-items:center;
   padding:8px 14px;
   border-radius:100px;
@@ -201,16 +199,19 @@ body{
   background:var(--surface);
   color:var(--green);
   font-size:13px;font-weight:600;
+  font-family:inherit;
   white-space:nowrap;
   cursor:pointer;
   -webkit-user-select:none;user-select:none;
 }
 .bulk-date-btn:active{transform:scale(.97)}
-.bulk-date-btn input{
-  position:absolute;inset:0;
-  width:100%;height:100%;
+/* Rendered (so showPicker works) but visually out of the way. */
+.bulk-date-hidden{
+  position:absolute;
+  left:-9999px;
+  width:1px;height:1px;
   opacity:0;
-  cursor:pointer;
+  pointer-events:none;
 }
 
 /* ===== ROOM GROUP ===== */
@@ -1893,10 +1894,9 @@ async function renderToday() {
   if (newPlants.length > 0) {
     html += '<div class="section-title-row">' +
       '<div class="section-title">New Plants</div>' +
-      '<label class="bulk-date-btn">Set last watered' +
-        '<input type="date" id="bulk-last-watered" max="' + toYMD(new Date()) + '"/>' +
-      '</label>' +
-    '</div>';
+      '<button type="button" class="bulk-date-btn" id="bulk-date-trigger">Set last watered</button>' +
+    '</div>' +
+    '<input type="date" id="bulk-last-watered" class="bulk-date-hidden" max="' + toYMD(new Date()) + '"/>';
     for (var j = 0; j < newPlants.length; j++) html += plantCardHTML(newPlants[j], true);
   }
 
@@ -1904,24 +1904,34 @@ async function renderToday() {
   attachCardListeners();
 
   // Bulk: set "last watered" for every never-watered plant at once.
-  var bulkInput = document.getElementById('bulk-last-watered');
-  if (bulkInput) bulkInput.addEventListener('change', async function() {
-    var v = this.value;
-    if (!v) return;
-    var iso = ymdToISO(v);
-    var all = await dbGetAll('plants');
-    var n = 0;
-    for (var b = 0; b < all.length; b++) {
-      if (!all[b].last_watered) {
-        all[b].last_watered = iso;
-        if (!all[b].watering_count) all[b].watering_count = 1;
-        await dbPut('plants', all[b]);
-        n++;
+  var bulkTrigger = document.getElementById('bulk-date-trigger');
+  var bulkInput   = document.getElementById('bulk-last-watered');
+  if (bulkTrigger && bulkInput) {
+    bulkTrigger.addEventListener('click', function() {
+      // showPicker() is the reliable way to open a native date picker on iOS.
+      if (typeof bulkInput.showPicker === 'function') {
+        try { bulkInput.showPicker(); return; } catch (e) {}
       }
-    }
-    showToast('Set last watered for ' + n + ' plant' + (n !== 1 ? 's' : ''), null, true);
-    render();
-  });
+      bulkInput.focus(); bulkInput.click();
+    });
+    bulkInput.addEventListener('change', async function() {
+      var v = this.value;
+      if (!v) return;
+      var iso = ymdToISO(v);
+      var all = await dbGetAll('plants');
+      var n = 0;
+      for (var b = 0; b < all.length; b++) {
+        if (!all[b].last_watered) {
+          all[b].last_watered = iso;
+          if (!all[b].watering_count) all[b].watering_count = 1;
+          await dbPut('plants', all[b]);
+          n++;
+        }
+      }
+      showToast('Set last watered for ' + n + ' plant' + (n !== 1 ? 's' : ''), null, true);
+      render();
+    });
+  }
 }
 
 function buildGroupedByRoom(plants, title) {
@@ -3303,6 +3313,38 @@ async function cleanSlateRepair() {
   catch (e) { console.warn('cleanSlate: could not set guard', e); }
 }
 
+// One-time: set last-watered to 2026-05-19 for the specific plants Jamal
+// watered that day (asked directly while the bulk UI was broken). Only
+// touches plants that are currently never-watered, so it can't clobber a
+// real log. Guarded durably in Firestore so it runs exactly once.
+async function setMay19Anchors() {
+  var FB = _fb();
+  var flagRef = FB.doc(FB.db, 'users', FB.uid, 'meta', 'flags');
+  var snap;
+  try { snap = await FB.getDoc(flagRef); } catch (e) { return; }
+  if (snap.exists() && snap.data().may19AnchorsV1) return;
+
+  var TARGETS = ['wax plant', 'neon pothos', 'snake plant', 'bird of paradise',
+                 'corn plant', 'spiritus', 'zz plant', 'watermelon', 'satin pothos'];
+  var iso = ymdToISO('2026-05-19');
+  var n = 0;
+  for (var i = 0; i < _cache.plants.length; i++) {
+    var p = _cache.plants[i];
+    if (p.last_watered) continue; // never override a real watering
+    var nm = (p.name || '').toLowerCase();
+    var hit = false;
+    for (var t = 0; t < TARGETS.length; t++) { if (nm.indexOf(TARGETS[t]) >= 0) { hit = true; break; } }
+    if (hit) {
+      p.last_watered = iso;
+      if (!p.watering_count) p.watering_count = 1;
+      await dbPut('plants', p);
+      n++;
+    }
+  }
+  try { await FB.setDoc(flagRef, { may19AnchorsV1: true }, { merge: true }); } catch (e) {}
+  console.log('Set May 19 last-watered on ' + n + ' plants');
+}
+
 async function bootstrapData() {
   await loadAllFromCloud();
   if (_cache.plants.length === 0) {
@@ -3311,6 +3353,7 @@ async function bootstrapData() {
     else await seedPlants();
   }
   await cleanSlateRepair();
+  await setMay19Anchors();
 }
 
 // ============================================================
