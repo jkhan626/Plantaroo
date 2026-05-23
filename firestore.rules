@@ -7,5 +7,14 @@ service cloud.firestore {
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Names-free watering summary published for the nightly "Water Plants"
+    // Notion routine (counts + next-due dates only, no plant names/notes/
+    // photos). World-readable so the cloud routine (not signed in) can fetch
+    // it via the Firestore REST API; only a signed-in user (Jamal) can write.
+    match /public/{doc} {
+      allow read:  if true;
+      allow write: if request.auth != null;
+    }
   }
 }

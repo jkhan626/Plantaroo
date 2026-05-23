@@ -1783,6 +1783,62 @@ function ymdToISO(v) {
   return new Date(+p[0], +p[1] - 1, +p[2], 12, 0, 0).toISOString();
 }
 
+// ============================================================
+// PUBLIC WATERING SUMMARY
+// ============================================================
+// A tiny, names-free document the nightly "Water Plants" routine (in the
+// Claude Agent project) reads to decide whether to drop a reminder on the
+// Notion Life OS to-do list. It can't read this user's private plant data
+// (firestore.rules locks users/{uid}/** to the signed-in account, and the
+// cloud routine isn't signed in), so the app publishes only what the routine
+// needs at a world-readable path: public/summary.
+//
+// PRIVACY: only counts + computed next-due DATES — never plant names, notes,
+// rooms, or photos. Dates let the routine recompute "overdue as of today"
+// itself, so the reminder stays correct even if the app hasn't been opened in
+// a few days (a stale doc still has accurate absolute due dates).
+//
+// The doc is rewritten only when its meaningful contents change (not on every
+// render, e.g. tab switches), to avoid needless Firestore writes.
+var _lastSummaryJSON = null;
+
+function buildWateringSummary(plants) {
+  var dueDates = [];      // computed next_due (YYYY-MM-DD) for each watered plant
+  var neverWatered = 0;   // plants with no last_watered yet (need water now)
+  var newestMs = null;    // most recent watering across the whole collection
+  for (var i = 0; i < plants.length; i++) {
+    var p = plants[i];
+    if (!p.last_watered) { neverWatered++; continue; }
+    var lwMs = new Date(p.last_watered).getTime();
+    if (newestMs === null || lwMs > newestMs) newestMs = lwMs;
+    var due = getNextDueDate(p);            // uses the same schedule the UI shows
+    if (due) dueDates.push(toYMD(due));
+  }
+  dueDates.sort();
+  return {
+    totalPlants:           plants.length,
+    neverWateredCount:     neverWatered,
+    dueDates:              dueDates,
+    newestWateringDaysAgo: newestMs === null ? null
+                             : Math.floor((Date.now() - newestMs) / 86400000)
+  };
+}
+
+// Fire-and-forget; never throws (must not be able to break the UI).
+function writeWateringSummary() {
+  try {
+    if (!window.FB || !window.FB.uid) return;        // only once signed in
+    var summary = buildWateringSummary(_cache.plants);
+    var json = JSON.stringify(summary);
+    if (json === _lastSummaryJSON) return;           // unchanged -> skip the write
+    _lastSummaryJSON = json;
+    summary.updatedAt = new Date().toISOString();
+    var FB = window.FB;
+    FB.setDoc(FB.doc(FB.db, 'public', 'summary'), summary)
+      .catch(function (e) { console.warn('watering summary write failed', e); });
+  } catch (e) { console.warn('watering summary build failed', e); }
+}
+
 function showToast(msg, undoFn, isInfo) {
   var existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -1857,6 +1913,10 @@ async function render() {
   if      (currentTab === 'today')   await renderToday();
   else if (currentTab === 'all')     await renderAll();
   else if (currentTab === 'history') await renderHistory();
+
+  // Publish the names-free watering summary for the nightly Notion routine.
+  // Fire-and-forget; only writes when contents actually changed.
+  writeWateringSummary();
 }
 
 // ============================================================
