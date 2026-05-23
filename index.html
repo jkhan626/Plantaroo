@@ -3092,17 +3092,13 @@ async function seedPlants() {
   var existing = await dbGetAll('plants');
   if (existing.length > 0) return; // already seeded
 
-  var yesterday = new Date(Date.now() - 86400000).toISOString();
-  var sixDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString();
-
   for (var i = 0; i < SEED_PLANTS.length; i++) {
     var s = SEED_PLANTS[i];
     var soil = SOIL_TABLE[s.soil_type];
     var effectiveStart = (soil && soil.mult !== null) ? s.species_baseline_days * soil.mult : 2;
 
-    var isSixDay = SIX_DAY_PLANTS.indexOf(s.name) >= 0;
-    var lastWatered = isSixDay ? sixDaysAgo : yesterday;
-
+    // Seed as never-watered: no synthetic "watered yesterday" anchor. The
+    // first real watering sets a clean schedule anchor (see doWater).
     await dbAdd('plants', {
       name:                    s.name,
       room:                    s.room,
@@ -3117,11 +3113,11 @@ async function seedPlants() {
       water_source:            s.water_source,
       current_interval:        effectiveStart,
       recent_valid_gaps:       [],
-      last_watered:            lastWatered,
+      last_watered:            null,
       last_fertilized:         null,
       last_fed_at_count:       0,
       no_fert_until:           null,
-      watering_count:          1,
+      watering_count:          0,
       notes:                   '',
       created_at:              new Date().toISOString()
     });
@@ -3159,16 +3155,58 @@ async function importLegacyPlants(legacy) {
   console.log('Imported ' + legacy.plants.length + ' plants from local storage');
 }
 
+// ONE-TIME clean-up: remove the synthetic "watered yesterday" anchor that
+// seeding/import stamped on plants. Plants the user has ACTUALLY watered are
+// preserved (and their first, synthetic gap is cleared so learning starts
+// clean); plants never really watered become "never watered". Guarded durably
+// in Firestore so it runs exactly once and can never wipe a real watering on a
+// later run. If the guard can't be read, we do nothing (fail safe).
+async function cleanSlateRepair() {
+  var FB = _fb();
+  var flagRef = FB.doc(FB.db, 'users', FB.uid, 'meta', 'flags');
+  var snap;
+  try { snap = await FB.getDoc(flagRef); }
+  catch (e) { console.warn('cleanSlate: guard unreadable, skipping', e); return; }
+  if (snap.exists() && snap.data().cleanSlateV1) return;
+
+  for (var i = 0; i < _cache.plants.length; i++) {
+    var p = _cache.plants[i];
+    var baseline = getEffectiveStartingInterval(p);
+    var gaps = p.recent_valid_gaps || [];
+
+    if (isWateredToday(p)) {
+      // Real watering today -> keep it, but make it a clean first anchor.
+      var changed = false;
+      if (gaps.length > 0)               { p.recent_valid_gaps = []; changed = true; }
+      if (p.current_interval !== baseline){ p.current_interval = baseline; changed = true; }
+      if ((p.watering_count || 0) !== 1) { p.watering_count = 1; changed = true; }
+      if ((p.last_fed_at_count || 0) !== 0){ p.last_fed_at_count = 0; changed = true; }
+      if (changed) await dbPut('plants', p);
+    } else if (p.last_watered && (p.watering_count || 0) <= 1 && gaps.length === 0) {
+      // Untouched synthetic anchor -> never watered.
+      p.last_watered = null;
+      p.watering_count = 0;
+      p.recent_valid_gaps = [];
+      p.current_interval = baseline;
+      p.last_fed_at_count = 0;
+      p.last_fertilized = null;
+      await dbPut('plants', p);
+    }
+    // else: real history on a prior day -> leave entirely alone.
+  }
+
+  try { await FB.setDoc(flagRef, { cleanSlateV1: true }, { merge: true }); }
+  catch (e) { console.warn('cleanSlate: could not set guard', e); }
+}
+
 async function bootstrapData() {
   await loadAllFromCloud();
-  if (_cache.plants.length > 0) return; // cloud already has data — done
-
-  var legacy = await readLegacyIndexedDB();
-  if (legacy.plants.length > 0) {
-    await importLegacyPlants(legacy);
-  } else {
-    await seedPlants();
+  if (_cache.plants.length === 0) {
+    var legacy = await readLegacyIndexedDB();
+    if (legacy.plants.length > 0) await importLegacyPlants(legacy);
+    else await seedPlants();
   }
+  await cleanSlateRepair();
 }
 
 // ============================================================
@@ -3236,7 +3274,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, getDocs, setDoc, deleteDoc
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 /* ============================================================================
@@ -3276,7 +3314,7 @@ if (configMissing) {
   const provider = new GoogleAuthProvider();
 
   // Bridge to the classic data-layer script.
-  window.FB = { app, auth, db, uid: null, collection, doc, getDocs, setDoc, deleteDoc };
+  window.FB = { app, auth, db, uid: null, collection, doc, getDoc, getDocs, setDoc, deleteDoc };
 
   async function doSignIn() {
     if (errEl()) errEl().style.display = 'none';
