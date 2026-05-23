@@ -79,6 +79,7 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 - Doc id = `String(id)` for plants/history (integer `id` field preserved in the doc); `cacheKey` for profileCache
 - `initializeFirestore` uses `ignoreUndefinedProperties: true` + `persistentLocalCache` (offline)
 - Legacy (pre-migration) IndexedDB `PlantarooDB` is still read once on first sign-in for the import, then no longer used
+- **`public/summary` (world-readable):** a tiny **names-free** doc the nightly "Plantaroo Watering" Notion routine reads. Written by `writeWateringSummary()` (in `index.html`, called from `render()`, only when contents change). Fields: `totalPlants`, `neverWateredCount`, `dueDates[]` (computed next-due `YYYY-MM-DD` per watered plant — anonymous, absolute), `newestWateringDaysAgo`, `updatedAt`. **Privacy: only counts + dates — never plant names/notes/rooms/photos.** Made readable by the `/public/{doc}` rule in `firestore.rules` (world read, owner write). Exists because cloud routines can't auth as Jamal to read `users/{uid}/**`. See `Claude Agent/agents/plantaroo-watering.md`.
 
 ### Plant fields
 name, room, light_type, soil_type, photo, species_baseline_days, moisture_pref, feed_every_n_waterings, fert_type, carnivore, water_source, current_interval, recent_valid_gaps[], last_watered, last_fertilized, last_fed_at_count, no_fert_until, watering_count, notes, created_at
