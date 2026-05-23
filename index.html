@@ -1179,6 +1179,104 @@ body{
   margin-top:4px;
   font-style:italic;
 }
+
+/* ===== SIGN-IN OVERLAY ===== */
+.signin-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  padding-top:max(24px,env(safe-area-inset-top));
+  padding-bottom:max(24px,env(safe-area-inset-bottom));
+}
+.signin-card{
+  max-width:340px;width:100%;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+}
+.signin-logo{
+  width:84px;height:84px;border-radius:24px;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#1a2e1a,var(--surface-elevated));
+  color:var(--green);
+  border:1.5px solid rgba(255,255,255,0.06);
+  margin-bottom:22px;
+}
+.signin-title{font-size:30px;font-weight:700;letter-spacing:-0.4px;color:var(--text-primary)}
+.signin-sub{font-size:14px;color:#888;margin-top:8px;line-height:1.5;max-width:280px}
+.signin-spinner{
+  width:26px;height:26px;margin-top:32px;
+  border:2.5px solid rgba(255,255,255,0.12);
+  border-top-color:var(--green);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.signin-google-btn{
+  margin-top:32px;
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;
+  padding:14px 20px;
+  background:#fff;color:#1f1f1f;
+  border:none;border-radius:14px;
+  font-size:15px;font-weight:600;
+  font-family:inherit;
+  cursor:pointer;
+  transition:transform 120ms ease,opacity 120ms ease;
+}
+.signin-google-btn:active{transform:scale(.97);opacity:.9}
+.signin-error{
+  margin-top:18px;font-size:13px;color:#ff8a80;line-height:1.5;
+  max-width:300px;
+}
+.signin-setup{
+  margin-top:18px;font-size:13px;color:var(--orange);line-height:1.6;
+  max-width:300px;
+}
+.signin-setup code{
+  background:rgba(255,255,255,.06);padding:1px 5px;border-radius:5px;
+  font-size:12px;color:var(--text-primary);
+}
+
+/* ===== ACCOUNT BUTTON + MENU ===== */
+.account-btn{
+  position:absolute;
+  top:50%;right:16px;transform:translateY(-50%);
+  width:34px;height:34px;border-radius:50%;
+  border:1px solid rgba(255,255,255,0.08);
+  background:var(--surface-elevated);
+  color:var(--text-primary);
+  font-size:14px;font-weight:600;font-family:inherit;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  z-index:5;
+}
+.account-btn:active{background:rgba(255,255,255,.08)}
+.account-menu{
+  display:none;
+  position:absolute;
+  top:54px;right:16px;
+  background:var(--surface-elevated);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:6px;
+  min-width:200px;
+  box-shadow:0 12px 40px rgba(0,0,0,.6);
+  z-index:200;
+}
+.account-email{
+  font-size:12px;color:#888;
+  padding:8px 12px 6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.account-menu button{
+  display:block;width:100%;
+  padding:11px 12px;
+  background:none;border:none;border-radius:9px;
+  color:var(--red);
+  font-size:14px;font-weight:500;font-family:inherit;
+  text-align:left;cursor:pointer;
+}
+.account-menu button:active{background:rgba(255,255,255,.05)}
 </style>
 </head>
 <body>
@@ -1187,6 +1285,11 @@ body{
   <div class="header">
     <h1>Plantaroo</h1>
     <div class="subtitle" id="header-subtitle"></div>
+    <button class="account-btn" id="account-btn" aria-label="Account" style="display:none"></button>
+    <div class="account-menu" id="account-menu">
+      <div class="account-email" id="account-email"></div>
+      <button id="account-signout">Sign out</button>
+    </div>
   </div>
   <div class="tab-content" id="tab-content"></div>
   <button class="fab" id="fab-add" aria-label="Add plant"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
@@ -1195,6 +1298,25 @@ body{
       <button class="nav-btn active" data-tab="today"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg></span>To Do</button>
       <button class="nav-btn" data-tab="all"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 21.34"/><path d="M12 2C6.5 2 3 7 3 12"/><path d="M21 12c0-3-2-6-5-8"/></svg></span>All Plants</button>
       <button class="nav-btn" data-tab="history"><span class="nav-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>History</button>
+    </div>
+  </div>
+</div>
+
+<div id="signin-overlay" class="signin-overlay">
+  <div class="signin-card">
+    <div class="signin-logo">
+      <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg>
+    </div>
+    <h1 class="signin-title">Plantaroo</h1>
+    <p class="signin-sub">Your plant care, synced and safe across all your devices.</p>
+    <div class="signin-spinner" id="signin-spinner"></div>
+    <button class="signin-google-btn" id="signin-google-btn" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.71-1.57 2.68-3.89 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+      Continue with Google
+    </button>
+    <div class="signin-error" id="signin-error" style="display:none"></div>
+    <div class="signin-setup" id="signin-setup" style="display:none">
+      Finish setup: paste your Firebase web config into <code>index.html</code> (see the <code>firebaseConfig</code> block near the bottom).
     </div>
   </div>
 </div>
@@ -1284,93 +1406,134 @@ var SVG_ICONS = {
 };
 
 // ============================================================
-// IndexedDB PROMISE HELPERS (raw API, no libraries)
+// DATA LAYER — Firestore source of truth + in-memory session cache.
+//
+// The public API (dbGetAll/dbGet/dbAdd/dbPut/dbDelete) is unchanged,
+// so the rest of the app stays storage-agnostic. Reads come from the
+// in-memory cache (instant, offline-friendly); writes go to Firestore
+// and update the cache. window.FB is wired up by the Firebase module
+// script at the bottom of this file once the user is signed in.
+//
+// Firestore layout: users/{uid}/plants, /history, /profileCache
+// Docs keep their integer `id` (string-cast for the Firestore doc id),
+// preserving the legacy auto-increment-id semantics the UI relies on.
 // ============================================================
 
-var DB_NAME    = 'PlantarooDB';
-var DB_VERSION = 1;
-var _dbInstance = null;
+var LEGACY_DB_NAME = 'PlantarooDB'; // old IndexedDB — read once to migrate
 
-function openDB() {
-  if (_dbInstance) return Promise.resolve(_dbInstance);
-  return new Promise(function(resolve, reject) {
-    var req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = function(e) {
-      var db = e.target.result;
-      if (!db.objectStoreNames.contains('plants')) {
-        db.createObjectStore('plants', { keyPath: 'id', autoIncrement: true });
+// In-memory mirror of the signed-in user's data for this session.
+var _cache = { plants: [], history: [], profileCache: {} };
+
+// Monotonic integer id generator (keeps integer-id semantics; safe for
+// many ids per ms so seeding/import loops never collide).
+var _idSeq = 0;
+function genId() {
+  return Date.now() * 1000 + (_idSeq++ % 1000);
+}
+
+function _fb() {
+  if (!window.FB || !window.FB.uid) throw new Error('Not signed in');
+  return window.FB;
+}
+function _col(store) {
+  var FB = _fb();
+  return FB.collection(FB.db, 'users', FB.uid, store);
+}
+function _docRef(store, docId) {
+  var FB = _fb();
+  // '/' is illegal in Firestore doc ids; integer ids are unaffected, only
+  // profileCache keys (derived from plant names) could contain one.
+  return FB.doc(FB.db, 'users', FB.uid, store, String(docId).replace(/\//g, '_'));
+}
+function _keyField(store) { return store === 'profileCache' ? 'cacheKey' : 'id'; }
+
+// Pull every store from Firestore into the in-memory cache. Called once
+// at sign-in. With persistent local cache enabled, this also works offline.
+function loadAllFromCloud() {
+  var FB = _fb();
+  return Promise.all(['plants', 'history', 'profileCache'].map(function(store) {
+    return FB.getDocs(_col(store)).then(function(snap) {
+      if (store === 'profileCache') {
+        _cache.profileCache = {};
+        snap.forEach(function(d) { _cache.profileCache[d.id] = d.data(); });
+      } else {
+        _cache[store] = [];
+        snap.forEach(function(d) { _cache[store].push(d.data()); });
       }
-      if (!db.objectStoreNames.contains('history')) {
-        var hs = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
-        hs.createIndex('plantId', 'plantId', { unique: false });
-        hs.createIndex('date', 'date', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('profileCache')) {
-        db.createObjectStore('profileCache', { keyPath: 'cacheKey' });
-      }
-    };
+    });
+  }));
+}
+
+function dbGetAll(store) {
+  if (store === 'profileCache') {
+    var out = [];
+    for (var k in _cache.profileCache) out.push(_cache.profileCache[k]);
+    return Promise.resolve(out);
+  }
+  return Promise.resolve(_cache[store].slice());
+}
+
+function dbGet(store, key) {
+  if (store === 'profileCache') return Promise.resolve(_cache.profileCache[key]);
+  var arr = _cache[store];
+  for (var i = 0; i < arr.length; i++) if (arr[i].id === key) return Promise.resolve(arr[i]);
+  return Promise.resolve(undefined);
+}
+
+function dbPut(store, item) {
+  var FB = _fb();
+  var key = item[_keyField(store)];
+  return FB.setDoc(_docRef(store, key), item).then(function() {
+    if (store === 'profileCache') { _cache.profileCache[key] = item; }
+    else {
+      var arr = _cache[store], found = false;
+      for (var i = 0; i < arr.length; i++) { if (arr[i].id === key) { arr[i] = item; found = true; break; } }
+      if (!found) arr.push(item);
+    }
+    return key;
+  });
+}
+
+function dbAdd(store, item) {
+  if (store !== 'profileCache' && (item.id === undefined || item.id === null)) item.id = genId();
+  var key = item[_keyField(store)];
+  return dbPut(store, item).then(function() { return key; });
+}
+
+function dbDelete(store, key) {
+  var FB = _fb();
+  return FB.deleteDoc(_docRef(store, key)).then(function() {
+    if (store === 'profileCache') { delete _cache.profileCache[key]; }
+    else {
+      var arr = _cache[store];
+      for (var i = 0; i < arr.length; i++) { if (arr[i].id === key) { arr.splice(i, 1); break; } }
+    }
+  });
+}
+
+// One-time read of the legacy IndexedDB so existing plants + photos are
+// preserved when a user first signs in (cloud empty). Best-effort; resolves
+// with empty arrays if the old DB is gone (e.g. browser evicted it).
+function readLegacyIndexedDB() {
+  return new Promise(function(resolve) {
+    var result = { plants: [], history: [] };
+    var req;
+    try { req = indexedDB.open(LEGACY_DB_NAME); } catch (e) { return resolve(result); }
+    req.onerror = function() { resolve(result); };
     req.onsuccess = function() {
-      _dbInstance = req.result;
-      _dbInstance.onclose = function() { _dbInstance = null; };
-      resolve(_dbInstance);
+      var db = req.result;
+      var names = Array.prototype.slice.call(db.objectStoreNames);
+      if (names.indexOf('plants') < 0) { db.close(); return resolve(result); }
+      var stores = ['plants'];
+      if (names.indexOf('history') >= 0) stores.push('history');
+      var tx = db.transaction(stores, 'readonly');
+      var pending = stores.length;
+      stores.forEach(function(s) {
+        var r = tx.objectStore(s).getAll();
+        r.onsuccess = function() { result[s] = r.result || []; if (--pending === 0) { db.close(); resolve(result); } };
+        r.onerror   = function() { if (--pending === 0) { db.close(); resolve(result); } };
+      });
     };
-    req.onerror = function() { reject(req.error); };
-  });
-}
-
-function dbTx(storeName, mode) {
-  return openDB().then(function(db) {
-    return db.transaction(storeName, mode).objectStore(storeName);
-  });
-}
-
-function dbGetAll(storeName) {
-  return dbTx(storeName, 'readonly').then(function(store) {
-    return new Promise(function(resolve, reject) {
-      var r = store.getAll();
-      r.onsuccess = function() { resolve(r.result); };
-      r.onerror   = function() { reject(r.error); };
-    });
-  });
-}
-
-function dbGet(storeName, key) {
-  return dbTx(storeName, 'readonly').then(function(store) {
-    return new Promise(function(resolve, reject) {
-      var r = store.get(key);
-      r.onsuccess = function() { resolve(r.result); };
-      r.onerror   = function() { reject(r.error); };
-    });
-  });
-}
-
-function dbPut(storeName, item) {
-  return dbTx(storeName, 'readwrite').then(function(store) {
-    return new Promise(function(resolve, reject) {
-      var r = store.put(item);
-      r.onsuccess = function() { resolve(r.result); };
-      r.onerror   = function() { reject(r.error); };
-    });
-  });
-}
-
-function dbAdd(storeName, item) {
-  return dbTx(storeName, 'readwrite').then(function(store) {
-    return new Promise(function(resolve, reject) {
-      var r = store.add(item);
-      r.onsuccess = function() { resolve(r.result); };
-      r.onerror   = function() { reject(r.error); };
-    });
-  });
-}
-
-function dbDelete(storeName, key) {
-  return dbTx(storeName, 'readwrite').then(function(store) {
-    return new Promise(function(resolve, reject) {
-      var r = store.delete(key);
-      r.onsuccess = function() { resolve(); };
-      r.onerror   = function() { reject(r.error); };
-    });
   });
 }
 
@@ -2919,61 +3082,210 @@ async function seedPlants() {
 }
 
 // ============================================================
-// ONE-TIME MIGRATION: set watering dates on existing plants
+// FIRST-RUN DATA BOOTSTRAP
+// Cloud is the source of truth. On first sign-in (empty cloud) we
+// preserve the user's existing local collection by importing the legacy
+// IndexedDB; if there's nothing local either, we seed the defaults.
 // ============================================================
 
-async function migrateWateringDates() {
-  var MIGRATION_KEY = 'plantaroo_migration_watering_dates_v1';
-  try {
-    if (localStorage.getItem(MIGRATION_KEY)) return;
-  } catch(e) {}
-
-  var plants = await dbGetAll('plants');
-  if (plants.length === 0) return;
-
-  var yesterday = new Date(Date.now() - 86400000).toISOString();
-  var sixDaysAgo = new Date(Date.now() - 6 * 86400000).toISOString();
-
-  for (var i = 0; i < plants.length; i++) {
-    var p = plants[i];
-    var isSixDay = SIX_DAY_PLANTS.indexOf(p.name) >= 0;
-    var soil = SOIL_TABLE[p.soil_type];
-    var effectiveStart = (soil && soil.mult !== null) ? p.species_baseline_days * soil.mult : 2;
-
-    p.last_watered = isSixDay ? sixDaysAgo : yesterday;
-    p.watering_count = Math.max(p.watering_count || 0, 1);
-    p.current_interval = effectiveStart;
-    p.recent_valid_gaps = [];
+async function importLegacyPlants(legacy) {
+  // Re-key onto fresh integer ids to avoid any collisions, fix missing fields.
+  for (var i = 0; i < legacy.plants.length; i++) {
+    var p = legacy.plants[i];
+    var oldId = p.id;
+    p.id = genId();
     if (typeof p.notes === 'undefined') p.notes = '';
-
+    if (typeof p.watering_count === 'undefined') p.watering_count = 0;
+    if (!p.recent_valid_gaps) p.recent_valid_gaps = [];
     await dbPut('plants', p);
+    // Carry over this plant's history under the new id.
+    for (var j = 0; j < legacy.history.length; j++) {
+      var h = legacy.history[j];
+      if (h.plantId === oldId) {
+        h.id = genId();
+        h.plantId = p.id;
+        await dbPut('history', h);
+      }
+    }
   }
+  console.log('Imported ' + legacy.plants.length + ' plants from local storage');
+}
 
-  try { localStorage.setItem(MIGRATION_KEY, Date.now()); } catch(e) {}
-  console.log('Migration: set watering dates on ' + plants.length + ' plants');
+async function bootstrapData() {
+  await loadAllFromCloud();
+  if (_cache.plants.length > 0) return; // cloud already has data — done
+
+  var legacy = await readLegacyIndexedDB();
+  if (legacy.plants.length > 0) {
+    await importLegacyPlants(legacy);
+  } else {
+    await seedPlants();
+  }
 }
 
 // ============================================================
-// INITIALIZATION
+// INITIALIZATION (auth-driven — see Firebase module script below)
+// startApp() is invoked by the auth layer once a user is signed in.
 // ============================================================
 
-openDB().then(function() {
-  return seedPlants();
-}).then(function() {
-  return migrateWateringDates();
-}).then(function() {
-  render();
-  try { localStorage.setItem('plantaroo_init', Date.now()); } catch(e) {}
-}).catch(function(err) {
-  console.error('Plantaroo DB init failed:', err);
-  tabContent.innerHTML =
-    '<div class="empty-state">' +
-      '<div class="icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>' +
-      '<p>Could not open database</p>' +
-      '<div class="sub">' + esc(String(err)) + '</div>' +
-    '</div>';
-});
+var _appStarted = false;
 
+async function startApp() {
+  if (_appStarted) { render(); return; }
+  try {
+    await bootstrapData();
+    _appStarted = true;
+    render();
+    var so = document.getElementById('signin-overlay');
+    if (so) so.style.display = 'none';
+  } catch (err) {
+    console.error('Plantaroo init failed:', err);
+    var msg = document.getElementById('signin-error');
+    if (msg) { msg.textContent = 'Could not load your data: ' + String(err); msg.style.display = 'block'; }
+  }
+}
+
+function resetAppState() {
+  // Called on sign-out: drop the session cache and force a fresh start.
+  _appStarted = false;
+  _cache = { plants: [], history: [], profileCache: {} };
+}
+
+// Expose for the Firebase module script (different script scope).
+window.startApp = startApp;
+window.resetAppState = resetAppState;
+
+// Watchdog: if nothing has progressed after a while (e.g. the Firebase SDK
+// failed to load on a flaky/offline first visit), replace the spinner with a
+// helpful message instead of spinning forever.
+setTimeout(function() {
+  if (_appStarted) return;
+  var sp    = document.getElementById('signin-spinner');
+  var setup = document.getElementById('signin-setup');
+  var btn   = document.getElementById('signin-google-btn');
+  var stillSpinning = sp && sp.style.display !== 'none';
+  var setupShown = setup && setup.style.display !== 'none';
+  var btnShown = btn && btn.style.display !== 'none';
+  if (stillSpinning && !setupShown && !btnShown) {
+    sp.style.display = 'none';
+    var err = document.getElementById('signin-error');
+    if (err) { err.textContent = 'Couldn’t reach the server. Check your connection and reload.'; err.style.display = 'block'; }
+  }
+}, 12000);
+
+</script>
+
+<!-- ===========================================================================
+     FIREBASE / FIRESTORE  — auth + cloud sync (ES module)
+     Runs after the classic script above (which defines startApp, the data
+     layer, etc). Exposes window.FB so that script can read/write Firestore.
+     =========================================================================== -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {
+  getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut,
+  setPersistence, browserLocalPersistence
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc, getDocs, setDoc, deleteDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+/* ============================================================================
+   PASTE YOUR FIREBASE WEB CONFIG HERE
+   Firebase console -> Project settings -> General -> "Your apps" -> Web app -> Config
+   ============================================================================ */
+const firebaseConfig = {
+  apiKey:            "PASTE_API_KEY",
+  authDomain:        "PASTE_PROJECT.firebaseapp.com",
+  projectId:         "PASTE_PROJECT_ID",
+  storageBucket:     "PASTE_PROJECT.appspot.com",
+  messagingSenderId: "PASTE_SENDER_ID",
+  appId:             "PASTE_APP_ID"
+};
+
+const $ = (id) => document.getElementById(id);
+const overlay  = () => $('signin-overlay');
+const spinner  = () => $('signin-spinner');
+const signinBtn = () => $('signin-google-btn');
+const errEl    = () => $('signin-error');
+const setupEl  = () => $('signin-setup');
+
+const configMissing = !firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('PASTE') === 0;
+
+if (configMissing) {
+  // Not set up yet — show guidance instead of crashing.
+  if (spinner())  spinner().style.display = 'none';
+  if (signinBtn()) signinBtn().style.display = 'none';
+  if (setupEl())  setupEl().style.display = 'block';
+} else {
+  const app  = initializeApp(firebaseConfig);
+  const db   = initializeFirestore(app, {
+    ignoreUndefinedProperties: true,
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // Bridge to the classic data-layer script.
+  window.FB = { app, auth, db, uid: null, collection, doc, getDocs, setDoc, deleteDoc };
+
+  async function doSignIn() {
+    if (errEl()) errEl().style.display = 'none';
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      console.error('Sign-in failed', e);
+      if (errEl()) { errEl().textContent = 'Sign-in failed: ' + ((e && e.message) || e); errEl().style.display = 'block'; }
+    }
+  }
+  async function doSignOut() { try { await signOut(auth); } catch (e) { console.error(e); } }
+  window.FB.signIn = doSignIn;
+  window.FB.signOut = doSignOut;
+
+  if (signinBtn()) signinBtn().addEventListener('click', doSignIn);
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.FB.uid = user.uid;
+      // Show the loading spinner (not the leftover button) while data loads.
+      if (errEl())   errEl().style.display = 'none';
+      if (signinBtn()) signinBtn().style.display = 'none';
+      if (spinner()) spinner().style.display = '';
+      const ab = $('account-btn');
+      if (ab) {
+        ab.style.display = '';
+        ab.textContent = ((user.displayName || user.email || '?').trim()[0] || '?').toUpperCase();
+      }
+      if ($('account-email')) $('account-email').textContent = user.email || user.displayName || '';
+      if (window.startApp) window.startApp();
+    } else {
+      window.FB.uid = null;
+      if (window.resetAppState) window.resetAppState();
+      if (spinner())  spinner().style.display = 'none';
+      if (signinBtn()) signinBtn().style.display = '';
+      if (overlay())  overlay().style.display = 'flex';
+      const ab = $('account-btn'); if (ab) ab.style.display = 'none';
+      const am = $('account-menu'); if (am) am.style.display = 'none';
+    }
+  });
+}
+
+// Account button: toggle menu / sign out (works regardless of config state).
+document.addEventListener('click', (e) => {
+  const menu = $('account-menu');
+  if (e.target.closest && e.target.closest('#account-btn')) {
+    if (menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block');
+    return;
+  }
+  if (e.target.closest && e.target.closest('#account-signout')) {
+    if (menu) menu.style.display = 'none';
+    if (window.FB && window.FB.signOut) window.FB.signOut();
+    return;
+  }
+  if (menu && menu.style.display === 'block') menu.style.display = 'none';
+});
 </script>
 </body>
 </html>

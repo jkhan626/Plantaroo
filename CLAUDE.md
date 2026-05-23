@@ -6,7 +6,9 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 
 - **Frontend:** Single `index.html` file — all HTML/CSS/JS inline, no build tools, no npm for the UI (same pattern as the CSCS study hub)
 - **Backend:** Express server (`server/index.js`) proxying Claude API calls — keeps API key server-side
-- **Storage:** IndexedDB (raw API, no libraries) — client-side, works offline, stores plants + photos + history
+- **Storage:** **Firebase Firestore** is the source of truth (durable + syncs across devices). Firestore's `persistentLocalCache` keeps the app offline-first. Data lives under `users/{uid}/...`. The classic script keeps the legacy `db*` API (`dbGetAll/dbGet/dbAdd/dbPut/dbDelete`) but it now reads from an in-memory session cache and writes through to Firestore — see the "DATA LAYER" comment block in `index.html`. The Firebase SDK + auth are wired in a `<script type="module">` at the bottom of `index.html` (exposes `window.FB`).
+  - **Why the move from IndexedDB:** client-only IndexedDB got evicted by iOS Safari (~7-day cap for non-installed sites), wiping data; a now-deleted `migrateWateringDates()` also reset watering dates if its localStorage guard was lost. Firestore + Google sign-in fixes both.
+- **Auth:** Google sign-in (Firebase Auth, `signInWithPopup`) gates the app. A returning user's session persists (offline too) via `browserLocalPersistence`. Account/sign-out button is in the header.
 - **Hosting:**
   - Frontend: GitHub Pages at https://jkhan626.github.io/Plantaroo/
   - API: Render.com at https://plantaroo-api.onrender.com (needs user to deploy — see Deployment section)
@@ -15,9 +17,11 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 ## Project structure
 
 ```
-├── index.html               # THE APP — single file, all CSS/JS inline (~2800 lines)
+├── index.html               # THE APP — single file, all CSS/JS inline (~3000 lines)
 ├── server/index.js           # Express API proxy (POST /api/plant-profile, GET /health)
 ├── render.yaml               # Render.com deployment blueprint
+├── firebase.json             # Firebase config (points at firestore.rules)
+├── firestore.rules           # Firestore security rules (per-user isolation)
 ├── .env                      # ANTHROPIC_API_KEY (gitignored, never in client code)
 ├── .gitignore
 ├── package.json              # Server deps (express, @anthropic-ai/sdk, dotenv, cors)
@@ -40,8 +44,10 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 - **Fertilizing:** Rides on watering count (every Nth watering), never a separate schedule
 - **Distilled water reminders:** Inline text on carnivorous plant cards
 - **Dynamic stats header:** Plant count, due count, current season
-- **Photos:** Camera capture, stored as base64 in IndexedDB
-- **28 pre-seeded plants** (Jamal's collection from Planta, organized by room)
+- **Photos:** Camera capture, resized to 200px / JPEG q0.7 (~10–30 KB), stored as base64 inside the plant doc (well under Firestore's 1 MB/doc limit)
+- **28 pre-seeded plants** (Jamal's collection from Planta, organized by room) — only seeded if the user's cloud is empty AND no local data to import
+- **First-sign-in import:** if the cloud is empty, existing legacy IndexedDB plants + history + photos are migrated up so nothing is lost
+- **Cross-device sync:** sign in with the same Google account on phone + desktop; data loads from the cloud (refreshes on app open)
 - **API fallback:** If API unreachable, user can manually set profile values; failed lookups are never cached
 
 ## Design principles
@@ -56,17 +62,23 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 
 - **API key is server-side only.** Never expose in client code.
 - `.env` is in `.gitignore` — never commit it.
+- **Firebase web config is NOT a secret** (it's public by design); per-user isolation is enforced by `firestore.rules`. Keep the config in `index.html`.
+- **IDs stay integers**, client-generated via `genId()` (the UI relies on `parseInt`/`data-*`); the Firestore doc id is `String(id)`.
+- Reads come from the in-memory `_cache`; **all writes go through `dbPut/dbAdd/dbDelete`** so the cache and Firestore stay in sync. Don't read Firestore directly in feature code — use the `db*` API.
 - `learned_interval` and `seasonal_multiplier` are always separate. Multiplier applied at display time, never stored.
 - Late "too busy" gaps discarded from learning. "Still wet" gaps are valid evidence.
 - `next_due`, feed flags, seasonal adjustments are **computed, never stored**.
-- Single `index.html` pattern — no React, no build tools.
+- Single `index.html` pattern — no React, no build tools. Firebase loads via CDN ESM imports in the module script.
 - Failed API profile lookups are NOT cached — only successful responses.
+- **Never re-add a migration that overwrites `last_watered`/`current_interval` unconditionally** — that bug wiped real data.
 
 ## Data model
 
-### IndexedDB schema
-- Database: `PlantarooDB`, version 1
-- Stores: `plants` (keyPath: id, autoIncrement), `history` (keyPath: id, indexes: plantId, date), `profileCache` (keyPath: cacheKey)
+### Firestore schema
+- Per-user subtree: `users/{uid}/plants/{idStr}`, `users/{uid}/history/{idStr}`, `users/{uid}/profileCache/{cacheKey}`
+- Doc id = `String(id)` for plants/history (integer `id` field preserved in the doc); `cacheKey` for profileCache
+- `initializeFirestore` uses `ignoreUndefinedProperties: true` + `persistentLocalCache` (offline)
+- Legacy (pre-migration) IndexedDB `PlantarooDB` is still read once on first sign-in for the import, then no longer used
 
 ### Plant fields
 name, room, light_type, soil_type, photo, species_baseline_days, moisture_pref, feed_every_n_waterings, fert_type, carnivore, water_source, current_interval, recent_valid_gaps[], last_watered, last_fertilized, last_fed_at_count, no_fert_until, watering_count, notes, created_at
@@ -88,8 +100,17 @@ The app itself is just `index.html` — open in browser or access via GitHub Pag
 
 ## Deployment
 
+### Firebase / Firestore (one-time setup)
+1. https://console.firebase.google.com → **Add project** (e.g. `plantaroo`). Google Analytics optional.
+2. **Build → Firestore Database → Create database** → Production mode → pick a region.
+3. **Build → Authentication → Get started → Sign-in method → Google → Enable** (set a support email) → Save.
+4. **Authentication → Settings → Authorized domains → Add domain:** `jkhan626.github.io` (localhost is already allowed for local testing).
+5. **Project settings (gear) → General → Your apps → Web (`</>`)** → register app → copy the `firebaseConfig` object.
+6. Paste those values into the `firebaseConfig` block in `index.html` (bottom module script, marked `PASTE_...`).
+7. Deploy security rules: `firebase login` then `firebase deploy --only firestore:rules` (uses `firebase.json` + `firestore.rules`). Or paste `firestore.rules` into Firestore → Rules → Publish.
+
 ### Frontend (already live)
-GitHub Pages: https://jkhan626.github.io/Plantaroo/
+GitHub Pages: https://jkhan626.github.io/Plantaroo/ (auto-deploys on push to `main`)
 
 ### API server (Render.com)
 1. Go to https://render.com → sign up with GitHub
