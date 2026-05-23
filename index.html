@@ -467,65 +467,84 @@ body{
   pointer-events:none;
 }
 
-/* ===== SORT BAR ===== */
-.sort-bar{
+/* ===== ALL PLANTS CONTROLS (sort + filter dropdowns, watered toggle) ===== */
+.ap-controls{
   display:flex;
-  gap:6px;
-  margin-bottom:12px;
+  gap:8px;
+  margin-bottom:10px;
 }
-.sort-btn{
-  padding:7px 14px;
-  border-radius:100px;
+.ap-select{
+  flex:1 1 0;
+  min-width:0;
+  background:var(--surface);
+  color:var(--text-primary);
   border:1px solid var(--border);
-  background:transparent;
-  color:#555;
-  font-size:12px;
+  border-radius:12px;
+  padding:10px 30px 10px 12px;
+  font-size:13px;
   font-weight:500;
+  font-family:inherit;
   cursor:pointer;
-  transition:all 150ms ease;
+  -webkit-appearance:none;
+  appearance:none;
   white-space:nowrap;
+  text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%23999'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 10px center;
+  transition:border-color 150ms ease,color 150ms ease,background-color 150ms ease;
 }
-.sort-btn:active{transform:scale(0.98)}
-.sort-btn.active{
+.ap-select:focus{outline:none;border-color:var(--green)}
+.ap-select.filtering{
   border-color:var(--green);
   color:var(--green);
-  background:var(--green-bg);
+  background-color:var(--green-bg);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2330d158'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
 }
 
-/* ===== FILTER BAR ===== */
-.filter-bar{
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  margin-bottom:14px;
-  padding-bottom:2px;
-}
-.filter-chip{
-  padding:7px 14px;
+.ap-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:12px;
+  padding:9px 15px 9px 11px;
   border-radius:100px;
   border:1px solid var(--border);
-  background:transparent;
-  color:#666;
-  font-size:12px;
-  font-weight:500;
+  background:var(--surface);
+  color:#999;
+  font-size:13px;
+  font-weight:600;
+  font-family:inherit;
   cursor:pointer;
   transition:all 150ms ease;
-  white-space:nowrap;
   -webkit-user-select:none;
   user-select:none;
 }
-.filter-chip:active{transform:scale(.95)}
-.filter-chip.active{
+.ap-toggle:active{transform:scale(.97)}
+.ap-toggle .tick{
+  width:17px;height:17px;border-radius:50%;
+  border:1.5px solid #555;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+  transition:all 150ms ease;
+}
+.ap-toggle .tick svg{display:none;width:10px;height:10px}
+.ap-toggle.active{
   border-color:var(--green);
   color:var(--green);
   background:var(--green-bg);
 }
-.filter-divider{
-  width:1px;
-  background:var(--border);
-  margin:0 2px;
-  align-self:stretch;
+.ap-toggle.active .tick{background:var(--green);border-color:var(--green);color:#06210f}
+.ap-toggle.active .tick svg{display:block}
+
+/* Watered-today highlight on All Plants cards */
+.plant-card.watered-today{
+  background:rgba(48,209,88,0.07);
+  border-color:rgba(48,209,88,0.24);
 }
+.plant-card.watered-today:hover{background:rgba(48,209,88,0.10)}
+.watered-today-text{color:var(--green);font-weight:600}
+.watered-today-text svg{width:11px;height:11px;vertical-align:-1px;margin-left:3px}
 
 .plant-count{
   font-size:13px;
@@ -1688,6 +1707,13 @@ function formatLastWatered(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function isWateredToday(plant) {
+  if (!plant.last_watered) return false;
+  var d = new Date(plant.last_watered); d.setHours(0,0,0,0);
+  var n = new Date(); n.setHours(0,0,0,0);
+  return d.getTime() === n.getTime();
+}
+
 function showToast(msg, undoFn, isInfo) {
   var existing = document.querySelector('.toast');
   if (existing) existing.remove();
@@ -1733,9 +1759,10 @@ function getHistoryGroupLabel(dateStr) {
 
 var currentTab          = 'today';
 var openMenuId          = null;
-var allPlantsFilters    = { rooms: [], light: null };
+var allPlantsFilters    = { room: '', light: '' }; // single-select dropdowns
 var allPlantsSort       = 'due'; // 'due', 'name', 'room'
 var allPlantsSearch     = '';
+var allPlantsHideWateredToday = false;
 var historyFilterPlantId = null;
 
 var tabContent = document.getElementById('tab-content');
@@ -1844,24 +1871,35 @@ async function renderAll() {
     '<input type="text" id="all-search" placeholder="Search plants..." value="' + esc(allPlantsSearch) + '"/>' +
     '</div>';
 
-  // Build filter bar
-  html += '<div class="filter-bar">';
+  // Controls row: sort + room + light dropdowns
+  html += '<div class="ap-controls">';
+
+  html += '<select class="ap-select" id="ap-sort" aria-label="Sort by">';
+  html += '<option value="due"'  + (allPlantsSort === 'due'  ? ' selected' : '') + '>Due date</option>';
+  html += '<option value="name"' + (allPlantsSort === 'name' ? ' selected' : '') + '>Name</option>';
+  html += '<option value="room"' + (allPlantsSort === 'room' ? ' selected' : '') + '>Room</option>';
+  html += '</select>';
+
+  html += '<select class="ap-select' + (allPlantsFilters.room ? ' filtering' : '') + '" id="ap-room" aria-label="Filter by room">';
+  html += '<option value="">All rooms</option>';
   for (var r = 0; r < plantRooms.length; r++) {
     var rm = plantRooms[r];
-    var active = allPlantsFilters.rooms.indexOf(rm) >= 0;
-    html += '<button class="filter-chip' + (active ? ' active' : '') + '" data-room="' + esc(rm) + '">' + esc(rm) + '</button>';
+    html += '<option value="' + esc(rm) + '"' + (allPlantsFilters.room === rm ? ' selected' : '') + '>' + esc(rm) + '</option>';
   }
-  if (plantRooms.length > 0) html += '<div class="filter-divider"></div>';
-  html += '<button class="filter-chip' + (allPlantsFilters.light === 'grow'    ? ' active' : '') + '" data-light="grow">Grow Light</button>';
-  html += '<button class="filter-chip' + (allPlantsFilters.light === 'natural' ? ' active' : '') + '" data-light="natural">Natural</button>';
+  html += '</select>';
+
+  html += '<select class="ap-select' + (allPlantsFilters.light ? ' filtering' : '') + '" id="ap-light" aria-label="Filter by light">';
+  html += '<option value="">All light</option>';
+  html += '<option value="grow"'    + (allPlantsFilters.light === 'grow'    ? ' selected' : '') + '>Grow light</option>';
+  html += '<option value="natural"' + (allPlantsFilters.light === 'natural' ? ' selected' : '') + '>Natural</option>';
+  html += '</select>';
+
   html += '</div>';
 
-  // Sort bar
-  html += '<div class="sort-bar">';
-  html += '<button class="sort-btn' + (allPlantsSort === 'due' ? ' active' : '') + '" data-sort="due">Due date</button>';
-  html += '<button class="sort-btn' + (allPlantsSort === 'name' ? ' active' : '') + '" data-sort="name">Name</button>';
-  html += '<button class="sort-btn' + (allPlantsSort === 'room' ? ' active' : '') + '" data-sort="room">Room</button>';
-  html += '</div>';
+  // Hide-watered-today toggle
+  html += '<button class="ap-toggle' + (allPlantsHideWateredToday ? ' active' : '') + '" id="ap-hide-watered">' +
+    '<span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>' +
+    'Hide watered today</button>';
 
   // Apply search
   var filtered = plants.slice();
@@ -1873,15 +1911,18 @@ async function renderAll() {
   }
 
   // Apply filters
-  if (allPlantsFilters.rooms.length > 0) {
+  if (allPlantsFilters.room) {
     filtered = filtered.filter(function(p) {
-      return allPlantsFilters.rooms.indexOf(p.room) >= 0;
+      return p.room === allPlantsFilters.room;
     });
   }
   if (allPlantsFilters.light) {
     filtered = filtered.filter(function(p) {
       return p.light_type === allPlantsFilters.light;
     });
+  }
+  if (allPlantsHideWateredToday) {
+    filtered = filtered.filter(function(p) { return !isWateredToday(p); });
   }
 
   // Sort
@@ -1898,7 +1939,7 @@ async function renderAll() {
   }
 
   // Check if any filters are active
-  var hasActiveFilters = allPlantsFilters.rooms.length > 0 || allPlantsFilters.light !== null || allPlantsSearch.length > 0;
+  var hasActiveFilters = !!allPlantsFilters.room || !!allPlantsFilters.light || allPlantsSearch.length > 0 || allPlantsHideWateredToday;
 
   html += '<div class="plant-count">' + filtered.length + ' plant' + (filtered.length !== 1 ? 's' : '') + '</div>';
 
@@ -1937,8 +1978,9 @@ async function renderAll() {
   var clearFiltersBtn = document.getElementById('clear-filters-btn');
   if (clearFiltersBtn) {
     clearFiltersBtn.addEventListener('click', function() {
-      allPlantsFilters = { rooms: [], light: null };
+      allPlantsFilters = { room: '', light: '' };
       allPlantsSearch = '';
+      allPlantsHideWateredToday = false;
       renderAll();
     });
   }
@@ -1957,34 +1999,22 @@ async function renderAll() {
     }
   }
 
-  // Sort handlers
-  var sortBtns = tabContent.querySelectorAll('.sort-btn');
-  for (var sb = 0; sb < sortBtns.length; sb++) {
-    sortBtns[sb].addEventListener('click', function() {
-      allPlantsSort = this.dataset.sort;
-      renderAll();
-    });
-  }
+  // Sort / filter dropdown handlers
+  var sortSel = document.getElementById('ap-sort');
+  if (sortSel) sortSel.addEventListener('change', function() { allPlantsSort = this.value; renderAll(); });
 
-  // Filter chip event handlers
-  var roomChips = tabContent.querySelectorAll('.filter-chip[data-room]');
-  for (var rc = 0; rc < roomChips.length; rc++) {
-    roomChips[rc].addEventListener('click', function() {
-      var rm = this.dataset.room;
-      var idx = allPlantsFilters.rooms.indexOf(rm);
-      if (idx >= 0) allPlantsFilters.rooms.splice(idx, 1);
-      else allPlantsFilters.rooms.push(rm);
-      renderAll();
-    });
-  }
-  var lightChips = tabContent.querySelectorAll('.filter-chip[data-light]');
-  for (var lc = 0; lc < lightChips.length; lc++) {
-    lightChips[lc].addEventListener('click', function() {
-      var lt = this.dataset.light;
-      allPlantsFilters.light = (allPlantsFilters.light === lt) ? null : lt;
-      renderAll();
-    });
-  }
+  var roomSel = document.getElementById('ap-room');
+  if (roomSel) roomSel.addEventListener('change', function() { allPlantsFilters.room = this.value; renderAll(); });
+
+  var lightSel = document.getElementById('ap-light');
+  if (lightSel) lightSel.addEventListener('change', function() { allPlantsFilters.light = this.value; renderAll(); });
+
+  // Hide-watered-today toggle
+  var hideBtn = document.getElementById('ap-hide-watered');
+  if (hideBtn) hideBtn.addEventListener('click', function() {
+    allPlantsHideWateredToday = !allPlantsHideWateredToday;
+    renderAll();
+  });
 }
 
 // ============================================================
@@ -2060,6 +2090,7 @@ function plantCardHTML(plant, isTodoTab) {
   var daysUntil    = getDaysUntilDue(plant);
   var feedDue      = isFeedDue(plant);
   var isDueOrOverdue = neverWatered || daysUntil <= 0;
+  var wateredToday = isWateredToday(plant);
 
   // Photo
   var photoHTML;
@@ -2069,7 +2100,7 @@ function plantCardHTML(plant, isTodoTab) {
     photoHTML = '<div class="plant-photo-placeholder"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 22V10"/><path d="M7 10c0-3 2-5.5 5-7 3 1.5 5 4 5 7"/><path d="M4 14c0-2.5 3.5-4 8-4s8 1.5 8 4"/></svg></div>';
   }
 
-  var html = '<div class="plant-card" data-plant-id="' + plant.id + '">';
+  var html = '<div class="plant-card' + (wateredToday ? ' watered-today' : '') + '" data-plant-id="' + plant.id + '">';
   html += photoHTML;
   html += '<div class="plant-info">';
   html += '<div class="plant-name">' + esc(plant.name) + '</div>';
@@ -2095,7 +2126,9 @@ function plantCardHTML(plant, isTodoTab) {
     html += '<div class="plant-meta-line">' + metaParts.join(' \u00B7 ') + '</div>';
 
     // Line 3: Last + Next
-    var lastText = 'Last: ' + formatLastWatered(plant.last_watered);
+    var lastText = wateredToday
+      ? 'Last: <span class="watered-today-text">Today<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>'
+      : 'Last: ' + formatLastWatered(plant.last_watered);
     var nextInfo = getNextDueTextAndClass(daysUntil, neverWatered);
     var nextPart = 'Next: <span class="next-text ' + nextInfo.cls + '">' + nextInfo.text + '</span>';
 
