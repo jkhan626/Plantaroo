@@ -1587,9 +1587,25 @@ function getEffectiveStartingInterval(plant) {
   return plant.species_baseline_days * soil.mult;
 }
 
+// Interval the schedule actually uses. We blend the species baseline in as a
+// prior so a single watering gap — or the synthetic "last watered yesterday"
+// anchor from seeding/import — can't hijack the schedule. The interval only
+// drifts toward observed behavior as real gaps accumulate. Computed fresh from
+// recent_valid_gaps each time, so it also self-corrects any interval an earlier
+// version mislearned (e.g. one short gap that had collapsed it to ~1 day).
+function getLearnedInterval(plant) {
+  var baseline = getEffectiveStartingInterval(plant);
+  var gaps = plant.recent_valid_gaps || [];
+  if (gaps.length === 0) return baseline;
+  var PRIOR = 2; // baseline weighted as 2 pseudo-observations
+  var sum = baseline * PRIOR;
+  for (var i = 0; i < gaps.length; i++) sum += gaps[i];
+  return sum / (PRIOR + gaps.length);
+}
+
 function getClampedInterval(plant) {
   var starting = getEffectiveStartingInterval(plant);
-  var ci = plant.current_interval || starting;
+  var ci = getLearnedInterval(plant);
   var lo = starting * 0.5;
   var hi = starting * 2.0;
   return Math.max(lo, Math.min(hi, ci));
@@ -1617,9 +1633,7 @@ function updateIntervalFromGap(plant, gap) {
   gaps.push(gap);
   if (gaps.length > 5) gaps.shift(); // rolling window of 5
   plant.recent_valid_gaps = gaps;
-  var sum = 0;
-  for (var i = 0; i < gaps.length; i++) sum += gaps[i];
-  plant.current_interval = sum / gaps.length;
+  plant.current_interval = getLearnedInterval(plant); // cached for display
 }
 
 // ============================================================
