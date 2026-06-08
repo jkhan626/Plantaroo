@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -28,6 +29,9 @@ import {
   getNotifyEnabled,
   rescheduleWateringReminders,
 } from './src/logic/notify';
+
+import { UpdateRequiredScreen } from './src/screens/UpdateRequiredScreen';
+import { isForcedUpdateRequired, fetchOtaUpdateSilently } from './src/lib/updates';
 
 import { SignInScreen } from './src/screens/SignInScreen';
 import { ToDoScreen } from './src/screens/ToDoScreen';
@@ -99,6 +103,23 @@ function Tabs() {
 
 function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [gateChecked, setGateChecked] = useState(false);
+  const [forcedUpdate, setForcedUpdate] = useState(false);
+
+  // Forced-update gate + foreground OTA fetch.
+  useEffect(() => {
+    isForcedUpdateRequired().then((r) => {
+      setForcedUpdate(r);
+      setGateChecked(true);
+    });
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') {
+        isForcedUpdateRequired().then(setForcedUpdate);
+        fetchOtaUpdateSilently();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthChange(async (u) => {
@@ -118,49 +139,58 @@ function App() {
     return unsub;
   }, []);
 
-  if (user === undefined) {
-    return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  let content: React.ReactNode;
+  if (!gateChecked || user === undefined) {
+    content = <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+  } else if (forcedUpdate) {
+    content = <UpdateRequiredScreen />;
+  } else {
+    content = (
+      <ToastProvider>
+        <QuickActionsBridge enabled={!!user} />
+        <NavigationContainer ref={navigationRef} theme={navTheme}>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.bg },
+            }}
+          >
+            {user ? (
+              <>
+                <Stack.Screen name="Tabs" component={Tabs} />
+                <Stack.Screen
+                  name="PlantDetail"
+                  component={PlantDetailScreen}
+                  options={{ animation: 'slide_from_right' }}
+                />
+                <Stack.Screen
+                  name="AddPlant"
+                  component={AddPlantScreen}
+                  options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                />
+                <Stack.Screen
+                  name="Settings"
+                  component={SettingsScreen}
+                  options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                />
+              </>
+            ) : (
+              <Stack.Screen name="SignIn" component={SignInScreen} />
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </ToastProvider>
+    );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <ToastProvider>
-          <QuickActionsBridge enabled={!!user} />
-          <NavigationContainer ref={navigationRef} theme={navTheme}>
-            <Stack.Navigator
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.bg },
-              }}
-            >
-              {user ? (
-                <>
-                  <Stack.Screen name="Tabs" component={Tabs} />
-                  <Stack.Screen
-                    name="PlantDetail"
-                    component={PlantDetailScreen}
-                    options={{ animation: 'slide_from_right' }}
-                  />
-                  <Stack.Screen
-                    name="AddPlant"
-                    component={AddPlantScreen}
-                    options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-                  />
-                  <Stack.Screen
-                    name="Settings"
-                    component={SettingsScreen}
-                    options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
-                  />
-                </>
-              ) : (
-                <Stack.Screen name="SignIn" component={SignInScreen} />
-              )}
-            </Stack.Navigator>
-          </NavigationContainer>
-        </ToastProvider>
-      </SafeAreaProvider>
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <StatusBar style="light" />
+          {content}
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

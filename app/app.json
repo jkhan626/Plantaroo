@@ -95,7 +95,9 @@
           "url": "https://sentry.io/"
         }
       ],
-      "expo-quick-actions"
+      "expo-quick-actions",
+      "expo-secure-store",
+      "expo-localization"
     ],
     "extra": {
       "googleIosClientId": "PASTE_IOS_CLIENT_ID.apps.googleusercontent.com",
@@ -109,7 +111,9 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/5cd86768-cf71-4e06-8179-96dd03769dd2"
+      "url": "https://u.expo.dev/5cd86768-cf71-4e06-8179-96dd03769dd2",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 10000
     }
   }
 }
