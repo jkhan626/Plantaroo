@@ -23,16 +23,20 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EAS_BUILD_NPM_INSTALL_COMMAND": "npm install --legacy-peer-deps"
+        "EAS_BUILD_NPM_INSTALL_COMMAND": "npm install --legacy-peer-deps",
+        "SENTRY_ORG": "liftaroo",
+        "SENTRY_PROJECT": "react-native"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "jkhan626@gmail.com",
         "appleTeamId": "AK6GDSF62K",
-        "ascAppId": "PASTE_APP_STORE_CONNECT_APP_ID"
+        "ascAppId": "6778036982",
+        "ascApiKeyPath": "./.secrets/asc.p8",
+        "ascApiKeyId": "8ASZ7HGUY9",
+        "ascApiKeyIssuerId": "7a4a3187-a6ce-47a8-9410-46b93308f9d0"
       }
     }
   }

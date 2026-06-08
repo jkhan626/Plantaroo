@@ -24,3 +24,4 @@ npm-debug.*
 
 # local env
 .env*.local
+.secrets/

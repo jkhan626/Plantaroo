@@ -96,7 +96,16 @@
       ],
       "expo-apple-authentication",
       "expo-web-browser",
-      "expo-updates"
+      "expo-updates",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "liftaroo",
+          "project": "react-native",
+          "url": "https://sentry.io/"
+        }
+      ],
+      "expo-quick-actions"
     ],
     "extra": {
       "googleIosClientId": "PASTE_IOS_CLIENT_ID.apps.googleusercontent.com",

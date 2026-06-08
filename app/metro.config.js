@@ -1,6 +1,6 @@
-// Default Expo Metro config. Kept explicit so we have a home for future tweaks.
-const { getDefaultConfig } = require('expo/metro-config');
+// Metro config wrapped by Sentry so source maps upload during EAS builds.
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 module.exports = config;

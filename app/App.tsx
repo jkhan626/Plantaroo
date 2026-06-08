@@ -9,15 +9,19 @@ import {
   DarkTheme,
   type Theme,
 } from '@react-navigation/native';
+import * as QuickActions from 'expo-quick-actions';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { colors } from './src/theme';
 import type { RootStackParamList, TabParamList } from './src/navigation/types';
 import { TabBar } from './src/navigation/TabBar';
+import { navigationRef } from './src/navigation/ref';
+import { setQuickActionItems, clearQuickActionItems } from './src/lib/quickActions';
 import { ToastProvider } from './src/ui/Toast';
 
 import { onAuthChange, type User } from './src/lib/auth';
+import { initSentry, setSentryUser, wrapWithSentry } from './src/lib/sentry';
 import { startSession, endSession, getPlants } from './src/data/db';
 import {
   configureNotificationHandler,
@@ -33,6 +37,7 @@ import { PlantDetailScreen } from './src/screens/PlantDetailScreen';
 import { AddPlantScreen } from './src/screens/AddPlantScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 
+initSentry();
 configureNotificationHandler();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -51,6 +56,33 @@ const navTheme: Theme = {
   },
 };
 
+/** Sets quick-action items when signed in and routes taps to the right screen. */
+function QuickActionsBridge({ enabled }: { enabled: boolean }) {
+  useEffect(() => {
+    if (enabled) setQuickActionItems();
+    else clearQuickActionItems();
+  }, [enabled]);
+  useEffect(() => {
+    if (!enabled) return;
+    const handle = (action: QuickActions.Action) => {
+      let tries = 0;
+      const go = () => {
+        if (navigationRef.isReady()) {
+          if (action.id === 'add') navigationRef.navigate('AddPlant');
+          else if (action.id === 'todo') (navigationRef as any).navigate('Tabs', { screen: 'ToDo' });
+        } else if (tries++ < 20) {
+          setTimeout(go, 100);
+        }
+      };
+      go();
+    };
+    if (QuickActions.initial) handle(QuickActions.initial);
+    const sub = QuickActions.addListener(handle);
+    return () => sub.remove();
+  }, [enabled]);
+  return null;
+}
+
 function Tabs() {
   return (
     <Tab.Navigator
@@ -65,11 +97,12 @@ function Tabs() {
   );
 }
 
-export default function App() {
+function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
   useEffect(() => {
     const unsub = onAuthChange(async (u) => {
+      setSentryUser(u?.uid ?? null);
       if (u) {
         await startSession(u.uid);
         // Keep reminders fresh on launch (no-op if permission not yet granted).
@@ -94,7 +127,8 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar style="light" />
         <ToastProvider>
-          <NavigationContainer theme={navTheme}>
+          <QuickActionsBridge enabled={!!user} />
+          <NavigationContainer ref={navigationRef} theme={navTheme}>
             <Stack.Navigator
               screenOptions={{
                 headerShown: false,
@@ -130,3 +164,5 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
+export default wrapWithSentry(App);

@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import { colors, font, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import { ChevronLeft } from '../ui/icons';
@@ -108,7 +108,7 @@ export function SettingsScreen() {
     );
   }
 
-  const version = Constants.expoConfig?.version ?? '1.0.0';
+  const version = `${Application.nativeApplicationVersion ?? '1.0.0'} (${Application.nativeBuildVersion ?? '1'})`;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
