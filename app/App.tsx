@@ -22,7 +22,6 @@ import { startSession, endSession, getPlants } from './src/data/db';
 import {
   configureNotificationHandler,
   getNotifyEnabled,
-  requestNotificationPermission,
   rescheduleWateringReminders,
 } from './src/logic/notify';
 
@@ -73,12 +72,10 @@ export default function App() {
     const unsub = onAuthChange(async (u) => {
       if (u) {
         await startSession(u.uid);
-        // Best-effort: keep reminders fresh on launch.
-        if (await getNotifyEnabled()) {
-          requestNotificationPermission().then((granted) => {
-            if (granted) rescheduleWateringReminders(getPlants());
-          });
-        }
+        // Keep reminders fresh on launch (no-op if permission not yet granted).
+        // We DON'T prompt here — permission is requested after the first plant
+        // is added (high-intent moment) or from Settings.
+        if (await getNotifyEnabled()) rescheduleWateringReminders(getPlants());
       } else {
         endSession();
       }

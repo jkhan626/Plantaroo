@@ -184,13 +184,18 @@ export async function dbGet(store: Store, key: string | number): Promise<any> {
 export async function dbPut(store: Store, item: any): Promise<string | number> {
   const key = item[keyField(store)];
   await setDoc(docRef(store, key), item);
+  // Replace the array/object reference (immutable) so React's useMemo/identity
+  // checks see the change and recompute.
   if (store === 'profileCache') {
-    _cache.profileCache[key] = item;
-  } else {
-    const arr = _cache[store] as Array<{ id: number }>;
+    _cache.profileCache = { ..._cache.profileCache, [key]: item };
+  } else if (store === 'plants') {
+    const arr = _cache.plants;
     const i = arr.findIndex((x) => x.id === key);
-    if (i >= 0) arr[i] = item;
-    else arr.push(item);
+    _cache.plants = i >= 0 ? arr.map((x) => (x.id === key ? item : x)) : [...arr, item];
+  } else {
+    const arr = _cache.history;
+    const i = arr.findIndex((x) => x.id === key);
+    _cache.history = i >= 0 ? arr.map((x) => (x.id === key ? item : x)) : [...arr, item];
   }
   persistToDisk();
   emit();
@@ -207,11 +212,13 @@ export async function dbAdd(store: Store, item: any): Promise<string | number> {
 export async function dbDelete(store: Store, key: string | number): Promise<void> {
   await deleteDoc(docRef(store, key));
   if (store === 'profileCache') {
-    delete _cache.profileCache[key as string];
+    const next = { ..._cache.profileCache };
+    delete next[key as string];
+    _cache.profileCache = next;
+  } else if (store === 'plants') {
+    _cache.plants = _cache.plants.filter((x) => x.id !== key);
   } else {
-    const arr = _cache[store] as Array<{ id: number }>;
-    const i = arr.findIndex((x) => x.id === key);
-    if (i >= 0) arr.splice(i, 1);
+    _cache.history = _cache.history.filter((x) => x.id !== key);
   }
   persistToDisk();
   emit();

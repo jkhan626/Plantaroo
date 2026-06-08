@@ -45,7 +45,11 @@ import {
 } from '../logic/constants';
 import { localProfileLookup, defaultProfile } from '../logic/profiles';
 import { dbAdd, genId, getPlants } from '../data/db';
-import { rescheduleWateringReminders } from '../logic/notify';
+import {
+  rescheduleWateringReminders,
+  getNotifyEnabled,
+  requestNotificationPermission,
+} from '../logic/notify';
 import { choosePhoto } from '../lib/photo';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -89,6 +93,7 @@ export function AddPlantScreen() {
   async function save() {
     const trimmed = name.trim();
     if (!trimmed) return;
+    const firstPlant = getPlants().length === 0;
     const soilMult = SOIL_TABLE[soil]?.mult;
     const effectiveStart = soilMult === null ? 2 : profile.species_baseline_days * (soilMult ?? 1);
     const plant: Plant = {
@@ -113,6 +118,12 @@ export function AddPlantScreen() {
     rescheduleWateringReminders(getPlants());
     toast.show({ message: `${trimmed} added` });
     nav.goBack();
+    // Ask for notification permission at the first high-intent moment.
+    if (firstPlant && (await getNotifyEnabled())) {
+      requestNotificationPermission().then((granted) => {
+        if (granted) rescheduleWateringReminders(getPlants());
+      });
+    }
   }
 
   return (
