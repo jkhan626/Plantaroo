@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<style>
+  :root{
+    --bg:#000;--surface:#111116;--elev:#1C1C24;--border:rgba(255,255,255,0.06);
+    --tp:#F5F5F7;--ts:#8A8A92;--tt:#666;--tm:#555;
+    --green:#30D158;--greenbg:rgba(48,209,88,0.10);--orange:#FF9F0A;--red:#FF453A;
+    --purple:#BF5AF2;--blue:#0A84FF;--lblue:#5AC8FA;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,'SF Pro Display','Segoe UI',Roboto,Arial,sans-serif}
+  body{background:#15151a;padding:40px;display:flex;gap:34px;align-items:flex-start}
+  .phone{width:390px;height:844px;background:var(--bg);border-radius:46px;overflow:hidden;
+    position:relative;border:10px solid #1f1f24;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{position:absolute;inset:0;padding:54px 20px 0;overflow:hidden}
+  .cap{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#000;border-radius:18px;z-index:5}
+  h1{color:var(--tp);font-size:30px;font-weight:700;letter-spacing:-.5px}
+  .sub{color:var(--tt);font-size:13px;font-weight:500;margin-top:3px}
+  .seclabel{color:var(--tm);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin:18px 0 8px 2px}
+  .row{display:flex;align-items:center;justify-content:space-between}
+  .gear{width:24px;height:24px;opacity:.7}
+  /* card */
+  .card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:13px 14px;margin-bottom:8px}
+  .av{width:48px;height:48px;border-radius:50%;background:#10231a;border:1.5px solid var(--border);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .name{color:var(--tp);font-size:15px;font-weight:600}
+  .meta{color:var(--tt);font-size:12px;margin-top:2px}
+  .sched{font-size:12px;margin-top:3px}
+  .action{color:var(--green);font-size:12px;font-weight:600;margin-top:3px}
+  .feed{color:var(--purple);font-weight:600}
+  .dist{color:var(--lblue)}
+  .wbtn{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .wbtn.due{background:var(--greenbg)}
+  .info{flex:1;min-width:0}
+  .watered{background:rgba(48,209,88,0.06);border-color:rgba(48,209,88,0.22)}
+  .setdate{background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:7px 13px;color:var(--green);font-size:12px;font-weight:600}
+  /* tab bar */
+  .tabbar{position:absolute;left:16px;right:16px;bottom:24px;height:62px;border-radius:30px;
+    background:rgba(20,20,26,.86);border:1px solid var(--border);display:flex;align-items:center;
+    backdrop-filter:blur(20px);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  .tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .tab .lbl{font-size:11px;font-weight:500;color:var(--tt)}
+  .tab.on .lbl{color:var(--green)}
+  .fab{position:absolute;right:22px;bottom:102px;width:56px;height:56px;border-radius:28px;background:var(--green);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(48,209,88,.4)}
+  /* search + pills */
+  .search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:0 13px;height:44px;margin:12px 0 10px}
+  .search span{color:var(--tm);font-size:15px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);
+    border-radius:100px;padding:8px 13px;color:var(--ts);font-size:13px;font-weight:600}
+  .pill.on{background:var(--greenbg);border-color:var(--green);color:var(--green)}
+  /* detail */
+  .back{color:var(--ts);font-size:16px;font-weight:500;margin-bottom:8px}
+  .hero{display:flex;flex-direction:column;align-items:center;padding:6px 0 18px}
+  .bigav{width:104px;height:104px;border-radius:50%;background:#10231a;border:1.5px solid var(--border);
+    display:flex;align-items:center;justify-content:center;position:relative}
+  .cam{position:absolute;right:-2px;bottom:2px;width:30px;height:30px;border-radius:50%;background:var(--green);
+    border:3px solid var(--bg);display:flex;align-items:center;justify-content:center}
+  .dname{color:var(--tp);font-size:24px;font-weight:700;margin-top:14px;letter-spacing:-.3px}
+  .acts{display:flex;gap:10px;margin-bottom:14px}
+  .act{flex:1;height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;font-weight:600}
+  .a-w{background:var(--greenbg);color:var(--green)}
+  .a-s{background:rgba(142,142,147,.1);color:var(--ts)}
+  .a-r{background:rgba(255,159,10,.12);color:var(--orange)}
+  .dcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0 16px;margin-bottom:14px}
+  .drow{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border)}
+  .drow:last-child{border-bottom:none}
+  .dl{color:var(--ts);font-size:14px}
+  .dv{color:var(--tp);font-size:14px;font-weight:500}
+  .dv.g{color:var(--green)}.dv.r{color:var(--red)}.dv.o{color:var(--orange)}
+  svg{display:block}
+</style></head>
+<body>
+
+<!-- ===== TO DO ===== -->
+<div class="phone"><div class="cap"></div><div class="screen">
+  <div class="row">
+    <div><h1>To Do</h1><div class="sub">3 need water · Summer</div></div>
+    <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="#8A8A92" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </div>
+
+  <div class="seclabel" style="color:var(--red)">Overdue</div>
+  <div class="card">
+    <div class="av">${''}<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg></div>
+    <div class="info"><div class="name">Monstera Deliciosa</div><div class="meta">Living Room · Chunky Aroid</div><div class="action">Water <span class="feed">· Feed</span></div></div>
+    <div class="wbtn due"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
+  </div>
+  <div class="card">
+    <div class="av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg></div>
+    <div class="info"><div class="name">Basil</div><div class="meta">Kitchen · Potting + Perlite</div><div class="action">Water</div></div>
+    <div class="wbtn due"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
+  </div>
+
+  <div class="row" style="margin:18px 0 8px"><div class="seclabel" style="color:var(--blue);margin:0">New plants</div><div class="setdate">Set last watered</div></div>
+  <div class="card">
+    <div class="av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg></div>
+    <div class="info"><div class="name">Cape Sundew</div><div class="meta">Front Window · Carnivore Peat</div><div class="action">Water <span class="dist">· Distilled</span></div></div>
+    <div class="wbtn due"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
+  </div>
+
+  <div class="fab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+  <div class="tabbar">
+    <div class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg><div class="lbl">To Do</div></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg><div class="lbl">Plants</div></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div class="lbl">History</div></div>
+  </div>
+</div></div>
+
+<!-- ===== PLANTS ===== -->
+<div class="phone"><div class="cap"></div><div class="screen">
+  <div class="row"><div><h1>Plants</h1><div class="sub">8 plants</div></div>
+    <svg class="gear" viewBox="0 0 24 24" fill="none" stroke="#8A8A92" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </div>
+  <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span>Search plants</span></div>
+  <div class="pills"><div class="pill on">Due date ▾</div><div class="pill">All rooms ▾</div><div class="pill">Any light</div><div class="pill">Hide watered</div></div>
+
+  <div style="margin-top:12px">
+  <div class="card watered">
+    <div class="av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg></div>
+    <div class="info"><div class="name">Snake Plant Laurentii</div><div class="meta">Bedroom · Cactus / Gritty</div><div class="sched"><span style="color:var(--green);font-weight:600">Watered today</span> ✓</div></div>
+    <div class="wbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2.4" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+  </div>
+  <div class="card">
+    <div class="av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg></div>
+    <div class="info"><div class="name">Rosemary</div><div class="meta">Kitchen · Cactus / Gritty</div><div class="sched"><span style="color:var(--orange)">In 2 days</span> <span style="color:#555">   3d ago</span></div></div>
+    <div class="wbtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
+  </div>
+  <div class="card">
+    <div class="av"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg></div>
+    <div class="info"><div class="name">Phalaenopsis Orchid</div><div class="meta">Office · Orchid Bark</div><div class="sched"><span style="color:#666">In 6 days</span> <span class="feed">· Feed due</span></div></div>
+    <div class="wbtn"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
+  </div>
+  </div>
+
+  <div class="fab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+  <div class="tabbar">
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg><div class="lbl">To Do</div></div>
+    <div class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg><div class="lbl">Plants</div></div>
+    <div class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div class="lbl">History</div></div>
+  </div>
+</div></div>
+
+<!-- ===== DETAIL ===== -->
+<div class="phone"><div class="cap"></div><div class="screen">
+  <div class="back">‹ Plants</div>
+  <div class="hero">
+    <div class="bigav">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(48,209,88,.55)" stroke-width="2" stroke-linecap="round"><path d="M12 22V11"/><path d="M12 11C12 7 9 4 5 4c0 4 3 7 7 7z"/><path d="M12 13c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6z"/></svg>
+      <div class="cam"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+    </div>
+    <div class="dname">Monstera Deliciosa</div>
+  </div>
+  <div class="acts">
+    <div class="act a-w"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="2" stroke-linecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>Water</div>
+    <div class="act a-s"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A8A92" stroke-width="2" stroke-linecap="round"><polyline points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>Skip</div>
+    <div class="act a-r"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF9F0A" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Repot</div>
+  </div>
+  <div class="seclabel">Schedule</div>
+  <div class="dcard">
+    <div class="drow"><span class="dl">Last watered</span><span class="dv g">3d ago</span></div>
+    <div class="drow"><span class="dl">Next due</span><span class="dv r">1 day overdue</span></div>
+    <div class="drow"><span class="dl">Learned interval</span><span class="dv">8.4 days</span></div>
+    <div class="drow"><span class="dl">Seasonal</span><span class="dv">1.00× · Summer</span></div>
+    <div class="drow"><span class="dl">Waterings logged</span><span class="dv">12</span></div>
+  </div>
+  <div class="seclabel">Care profile</div>
+  <div class="dcard">
+    <div class="drow"><span class="dl">Moisture</span><span class="dv g">Light dry</span></div>
+    <div class="drow"><span class="dl">Baseline interval</span><span class="dv g">9 days</span></div>
+    <div class="drow"><span class="dl">Fertilizer</span><span class="dv g">Balanced</span></div>
+    <div class="drow"><span class="dl">Feed every</span><span class="dv g">3 waterings</span></div>
+  </div>
+</div></div>
+
+</body></html>
