@@ -3,3 +3,8 @@ dist/
 .env
 .DS_Store
 *.log
+
+# Apple / EAS private keys — NEVER commit
+*.p8
+secret auth key/
+AuthKey_*
