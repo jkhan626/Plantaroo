@@ -92,13 +92,14 @@ async function png(svg, file, size, { flatten } = {}) {
 
 (async () => {
   console.log('Rendering Plantaroo brand assets →', OUT);
-  await png(iconSVG(), 'icon.png', 1024);                          // iOS app icon (opaque gradient)
+  // iOS app icons MUST be opaque (no alpha) or they render as a blank square.
+  await png(iconSVG(), 'icon.png', 1024, { flatten: '#159B46' });
   await png(adaptiveForegroundSVG(), 'adaptive-icon.png', 1024);   // Android foreground
   await png(splashSVG(), 'splash-icon.png', 1024);                 // splash mark
   await png(markSVG('#ffffff', null), 'notification-icon.png', 256); // Android status-bar silhouette
   await png(markSVG('#30D158', 'rgba(0,0,0,0.10)'), 'mark-green.png', 512);   // green glyph (dark bg)
   await png(markSVG('#ffffff', null), 'mark-white.png', 512);                  // white glyph
   // Favicon-ish / store-preview opaque versions
-  await png(iconSVG(), 'icon-512.png', 512);
+  await png(iconSVG(), 'icon-512.png', 512, { flatten: '#159B46' });
   console.log('Done.');
 })().catch(e => { console.error(e); process.exit(1); });
