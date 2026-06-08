@@ -4,7 +4,6 @@
  * App-Store-required in-app account deletion.
  */
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Crypto from 'expo-crypto';
 import {
   OAuthProvider,
   GoogleAuthProvider,
@@ -26,19 +25,7 @@ export function currentUser(): User | null {
   return auth.currentUser;
 }
 
-// ---- Apple ----
-async function makeNonce(): Promise<{ raw: string; hashed: string }> {
-  const bytes = await Crypto.getRandomBytesAsync(16);
-  const raw = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  const hashed = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    raw,
-  );
-  return { raw, hashed };
-}
-
+// ---- Apple ---- (no nonce — identical to the working Liftaroo implementation)
 export async function isAppleAuthAvailable(): Promise<boolean> {
   try {
     return await AppleAuthentication.isAvailableAsync();
@@ -48,22 +35,17 @@ export async function isAppleAuthAvailable(): Promise<boolean> {
 }
 
 export async function signInWithApple(): Promise<User> {
-  const { raw, hashed } = await makeNonce();
   const credential = await AppleAuthentication.signInAsync({
     requestedScopes: [
       AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
       AppleAuthentication.AppleAuthenticationScope.EMAIL,
     ],
-    nonce: hashed,
   });
   if (!credential.identityToken) {
     throw new Error('Apple Sign-In failed — no identity token.');
   }
   const provider = new OAuthProvider('apple.com');
-  const fbCredential = provider.credential({
-    idToken: credential.identityToken,
-    rawNonce: raw,
-  });
+  const fbCredential = provider.credential({ idToken: credential.identityToken });
   const result = await signInWithCredential(auth, fbCredential);
   return result.user;
 }

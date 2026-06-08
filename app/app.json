@@ -104,6 +104,12 @@
         "projectId": "5cd86768-cf71-4e06-8179-96dd03769dd2"
       }
     },
-    "owner": "jkhan626"
+    "owner": "jkhan626",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/5cd86768-cf71-4e06-8179-96dd03769dd2"
+    }
   }
 }
