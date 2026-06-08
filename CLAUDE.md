@@ -2,6 +2,13 @@
 
 Adaptive plant care app — an event-anchored watering/fertilizing tracker that learns from real behavior. Competes with Planta but fixes the core flaw: schedules are anchored to actual watering events and learn from real behavior.
 
+## Two front-ends, one backend
+
+- **`index.html`** — the original single-file web app (GitHub Pages). Jamal's personal instance.
+- **`app/`** — the **native iOS app** (Expo + React Native + TypeScript), a **multi-user public product** (anyone signs in, starts empty, adds their own plants). App-Store-bound. See `app/README.md` and `app/SETUP.md`.
+
+Both talk to the **same Firebase project `plantaroo-204ca`** (per-user isolation via `firestore.rules`), so a signed-in account syncs across web + mobile. The native app ports the web app's data model, learning algorithm, and seasonal/soil/fertilize logic **verbatim** (`app/src/logic/`). It is **local-first for plant profiles** — a bundled ~350-entry plant+herb DB (`app/src/logic/profiles.ts`) replaces the Claude API entirely ($0, offline); unknown plants fall back to editable manual defaults. Watering reminders are on-device local notifications (no server). Auth = Sign in with Apple (required by App Store 4.8) + Google. In-app account deletion is implemented (required by 5.1.1). Built on the Liftaroo Expo stack; **always `npm install --legacy-peer-deps`**. The native app does NOT seed Jamal's 28 plants and does NOT use the Render Claude API.
+
 ## Architecture
 
 - **Frontend:** Single `index.html` file — all HTML/CSS/JS inline, no build tools, no npm for the UI (same pattern as the CSCS study hub)
