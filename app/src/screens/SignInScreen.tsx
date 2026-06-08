@@ -21,6 +21,7 @@ import { SproutMark } from '../ui/SproutMark';
 import {
   signInWithApple,
   signInWithGoogleIdToken,
+  signInAsGuest,
   isAppleAuthAvailable,
 } from '../lib/auth';
 
@@ -37,7 +38,7 @@ const googleConfigured =
 
 export function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const [busy, setBusy] = useState<null | 'apple' | 'google'>(null);
+  const [busy, setBusy] = useState<null | 'apple' | 'google' | 'guest'>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
@@ -90,6 +91,22 @@ export function SignInScreen() {
     googlePrompt();
   }
 
+  async function onGuest() {
+    setBusy('guest');
+    try {
+      await signInAsGuest();
+    } catch (e: any) {
+      Alert.alert(
+        'Guest sign-in unavailable',
+        String(e?.code).includes('operation-not-allowed')
+          ? 'Enable Anonymous sign-in in Firebase → Authentication → Sign-in method.'
+          : String(e?.message ?? e),
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -134,6 +151,14 @@ export function SignInScreen() {
         {busy === 'apple' && !appleAvailable && (
           <ActivityIndicator color={colors.textPrimary} style={{ marginTop: 8 }} />
         )}
+
+        <Pressable style={styles.guestBtn} onPress={onGuest} disabled={!!busy}>
+          {busy === 'guest' ? (
+            <ActivityIndicator color={colors.textSecondary} />
+          ) : (
+            <Text style={styles.guestText}>Continue as guest</Text>
+          )}
+        </Pressable>
 
         <Text style={styles.legal}>
           By continuing you agree to our{' '}
@@ -215,6 +240,17 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: font.size.xl,
     fontWeight: font.weight.semibold,
+  },
+  guestBtn: {
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  guestText: {
+    color: colors.textSecondary,
+    fontSize: font.size.lg,
+    fontWeight: font.weight.medium,
   },
   legal: {
     color: colors.textMuted,

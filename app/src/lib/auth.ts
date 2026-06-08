@@ -8,6 +8,7 @@ import {
   OAuthProvider,
   GoogleAuthProvider,
   signInWithCredential,
+  signInAnonymously,
   signOut as fbSignOut,
   onAuthStateChanged,
   type User,
@@ -47,6 +48,12 @@ export async function signInWithApple(): Promise<User> {
   const provider = new OAuthProvider('apple.com');
   const fbCredential = provider.credential({ idToken: credential.identityToken });
   const result = await signInWithCredential(auth, fbCredential);
+  return result.user;
+}
+
+// ---- Guest (anonymous) ----
+export async function signInAsGuest(): Promise<User> {
+  const result = await signInAnonymously(auth);
   return result.user;
 }
 
