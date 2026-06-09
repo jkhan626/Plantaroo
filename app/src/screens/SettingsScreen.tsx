@@ -29,6 +29,8 @@ import { getPlants } from '../data/db';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 const PRIVACY_URL = 'https://jkhan626.github.io/Plantaroo/privacy.html';
+const TERMS_URL = 'https://jkhan626.github.io/Plantaroo/terms.html';
+const SUPPORT_URL = 'https://jkhan626.github.io/Plantaroo/support.html';
 
 export function SettingsScreen() {
   const nav = useNavigation<Nav>();
@@ -150,8 +152,18 @@ export function SettingsScreen() {
 
         <Text style={styles.sectionLabel}>About</Text>
         <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => Linking.openURL(SUPPORT_URL)}>
+            <Text style={styles.rowLabel}>Support</Text>
+            <Text style={styles.rowLink}>Get help</Text>
+          </Pressable>
+          <View style={styles.divider} />
           <Pressable style={styles.row} onPress={() => Linking.openURL(PRIVACY_URL)}>
             <Text style={styles.rowLabel}>Privacy Policy</Text>
+            <Text style={styles.rowLink}>View</Text>
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable style={styles.row} onPress={() => Linking.openURL(TERMS_URL)}>
+            <Text style={styles.rowLabel}>Terms of Service</Text>
             <Text style={styles.rowLink}>View</Text>
           </Pressable>
           <View style={styles.divider} />

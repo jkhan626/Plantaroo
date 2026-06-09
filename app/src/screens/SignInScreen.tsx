@@ -28,6 +28,7 @@ import {
 WebBrowser.maybeCompleteAuthSession();
 
 const PRIVACY_URL = 'https://jkhan626.github.io/Plantaroo/privacy.html';
+const TERMS_URL = 'https://jkhan626.github.io/Plantaroo/terms.html';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as {
   googleIosClientId?: string;
@@ -162,6 +163,10 @@ export function SignInScreen() {
 
         <Text style={styles.legal}>
           By continuing you agree to our{' '}
+          <Text style={styles.link} onPress={() => Linking.openURL(TERMS_URL)}>
+            Terms
+          </Text>{' '}
+          and{' '}
           <Text style={styles.link} onPress={() => Linking.openURL(PRIVACY_URL)}>
             Privacy Policy
           </Text>
