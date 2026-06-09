@@ -93,7 +93,7 @@ eas init                 # creates/links the EAS project
       calls Apple's `/auth/revoke`. **One manual step remains:** create a Sign in
       with Apple key (Apple Developer portal → Certificates, Identifiers & Profiles →
       Keys → "+" → enable Sign in with Apple) and set on Render:
-      `APPLE_TEAM_ID=AK6GDSF62K`, `APPLE_KEY_ID=<key id>`,
+      `APPLE_TEAM_ID=AK6GDSF62K`, `APPLE_KEY_ID=L4M8V8A7LJ` (created 2026-06-09),
       `APPLE_PRIVATE_KEY=<.p8 file contents>`. Until then the endpoint returns 501
       and the app treats revocation as best-effort (deletion still completes).
 
