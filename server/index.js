@@ -25,7 +25,13 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'))
 })
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Lazy — the iOS app never calls this endpoint, so the server must boot
+// without ANTHROPIC_API_KEY (it's only needed for the legacy web app path).
+let anthropic = null
+function getAnthropic() {
+  if (!anthropic) anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  return anthropic
+}
 
 app.post('/api/plant-profile', async (req, res) => {
   const { name, soilType } = req.body
@@ -33,9 +39,12 @@ app.post('/api/plant-profile', async (req, res) => {
   if (!name) {
     return res.status(400).json({ error: 'Plant name is required' })
   }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(501).json({ error: 'Profile lookup not configured' })
+  }
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-6-20250514',
       max_tokens: 256,
       messages: [

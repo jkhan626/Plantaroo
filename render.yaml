@@ -2,9 +2,19 @@ services:
   - type: web
     name: plantaroo-api
     runtime: node
+    plan: free
+    branch: ios-app
     buildCommand: npm install
     startCommand: node server/index.js
     envVars:
+      # Sign in with Apple token revocation (account deletion, App Store 5.1.1(v)).
+      - key: APPLE_TEAM_ID
+        value: AK6GDSF62K
+      - key: APPLE_KEY_ID
+        value: L4M8V8A7LJ
+      - key: APPLE_PRIVATE_KEY
+        sync: false # paste the .p8 file contents in the Render dashboard
+      # Legacy web-app Claude proxy — optional; endpoint returns 501 without it.
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: NODE_ENV
