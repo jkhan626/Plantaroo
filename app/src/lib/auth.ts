@@ -11,6 +11,7 @@ import {
   signInAnonymously,
   signOut as fbSignOut,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   type User,
 } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -69,17 +70,56 @@ export async function signOutUser(): Promise<void> {
   await fbSignOut(auth);
 }
 
+// Existing Render service (free tier) — only used for Apple token revocation.
+const REVOKE_ENDPOINT = 'https://plantaroo-api.onrender.com/api/apple-revoke';
+
+/**
+ * Revoke the Sign in with Apple tokens (App Store guideline 5.1.1(v)).
+ * Best-effort: the server returns 501 until the Apple key is configured on
+ * Render, and a failed revocation must never block account deletion.
+ */
+async function revokeAppleTokens(authorizationCode: string): Promise<void> {
+  try {
+    await fetch(REVOKE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authorizationCode }),
+    });
+  } catch {
+    // Offline or server cold-start — deletion proceeds regardless.
+  }
+}
+
 /**
  * Delete the account and ALL associated data (App Store guideline 5.1.1).
- * Wipes the Firestore subtree first, then the Firebase Auth user.
- * May throw 'auth/requires-recent-login' — caller should re-auth and retry.
  *
- * NOTE: full Apple token revocation (recommended for SiwA) requires a small
- * backend endpoint with the authorization code; tracked in SETUP.md.
+ * Apple accounts re-authenticate inline first — one Face ID prompt that both
+ * satisfies Firebase's recent-login requirement and yields the authorization
+ * code Apple requires for token revocation. Cancelling the prompt aborts the
+ * deletion (throws ERR_REQUEST_CANCELED).
+ *
+ * Other providers may still throw 'auth/requires-recent-login' — caller
+ * handles that with a sign-out-and-back-in message.
  */
 export async function deleteAccount(): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error('Not signed in');
+
+  const isApple = user.providerData.some((p) => p.providerId === 'apple.com');
+  if (isApple) {
+    const credential = await AppleAuthentication.signInAsync({ requestedScopes: [] });
+    if (credential.identityToken) {
+      const provider = new OAuthProvider('apple.com');
+      await reauthenticateWithCredential(
+        user,
+        provider.credential({ idToken: credential.identityToken }),
+      );
+    }
+    if (credential.authorizationCode) {
+      await revokeAppleTokens(credential.authorizationCode);
+    }
+  }
+
   await deleteAllUserData();
   await user.delete();
 }

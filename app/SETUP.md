@@ -86,12 +86,16 @@ eas init                 # creates/links the EAS project
       so no iPad screenshots are required.
 
 ## 6. Known follow-up (not blocking first submission)
-- [ ] **Apple token revocation on account deletion** — Apple *recommends* revoking
-      the Sign-in-with-Apple token (`/auth/revoke`) when a user deletes their
-      account. That needs a tiny backend endpoint with the authorization code; the
-      existing Render API (`server/`) is a natural home. `deleteAccount()` in
-      `src/lib/auth.ts` already deletes data + the Auth user; add the revoke call
-      there once the endpoint exists.
+- [x] **Apple token revocation on account deletion** — implemented. `deleteAccount()`
+      in `src/lib/auth.ts` re-authenticates with Apple inline (one Face ID prompt,
+      which also satisfies Firebase's recent-login rule) and POSTs the authorization
+      code to `POST /api/apple-revoke` on the Render server, which exchanges it and
+      calls Apple's `/auth/revoke`. **One manual step remains:** create a Sign in
+      with Apple key (Apple Developer portal → Certificates, Identifiers & Profiles →
+      Keys → "+" → enable Sign in with Apple) and set on Render:
+      `APPLE_TEAM_ID=AK6GDSF62K`, `APPLE_KEY_ID=<key id>`,
+      `APPLE_PRIVATE_KEY=<.p8 file contents>`. Until then the endpoint returns 501
+      and the app treats revocation as best-effort (deletion still completes).
 
 ---
 

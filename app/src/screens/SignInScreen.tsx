@@ -81,13 +81,6 @@ export function SignInScreen() {
   }
 
   function onGoogle() {
-    if (!googleConfigured) {
-      Alert.alert(
-        'Almost there',
-        'Google Sign-In needs its OAuth client IDs added in app.json (see SETUP.md). Apple Sign-In works now.',
-      );
-      return;
-    }
     setBusy('google');
     googlePrompt();
   }
@@ -138,16 +131,18 @@ export function SignInScreen() {
           />
         )}
 
-        <Pressable style={styles.googleBtn} onPress={onGoogle} disabled={!!busy}>
-          {busy === 'google' ? (
-            <ActivityIndicator color={colors.textPrimary} />
-          ) : (
-            <>
-              <GoogleG />
-              <Text style={styles.googleText}>Continue with Google</Text>
-            </>
-          )}
-        </Pressable>
+        {googleConfigured && (
+          <Pressable style={styles.googleBtn} onPress={onGoogle} disabled={!!busy}>
+            {busy === 'google' ? (
+              <ActivityIndicator color={colors.textPrimary} />
+            ) : (
+              <>
+                <GoogleG />
+                <Text style={styles.googleText}>Continue with Google</Text>
+              </>
+            )}
+          </Pressable>
+        )}
 
         {busy === 'apple' && !appleAvailable && (
           <ActivityIndicator color={colors.textPrimary} style={{ marginTop: 8 }} />

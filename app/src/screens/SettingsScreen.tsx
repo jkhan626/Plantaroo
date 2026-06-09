@@ -95,7 +95,9 @@ export function SettingsScreen() {
               // auth state change routes back to sign-in.
             } catch (e: any) {
               setDeleting(false);
-              if (String(e?.code).includes('requires-recent-login')) {
+              if (e?.code === 'ERR_REQUEST_CANCELED') {
+                // User backed out of the Apple re-auth prompt — no-op.
+              } else if (String(e?.code).includes('requires-recent-login')) {
                 Alert.alert(
                   'Please sign in again',
                   'For your security, sign out and back in, then delete your account.',
