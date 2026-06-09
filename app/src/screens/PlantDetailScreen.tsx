@@ -60,6 +60,7 @@ import {
   skipPlant,
   repotPlant,
   undoAction,
+  removeHistoryEntry,
 } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants, getHistory, dbDelete } from '../data/db';
@@ -112,6 +113,27 @@ export function PlantDetailScreen() {
 
   async function reschedule() {
     rescheduleWateringReminders(getPlants());
+  }
+
+  function confirmRemoveActivity(h: (typeof myHistory)[number]) {
+    const isWater = h.type === 'Watered' || h.type === 'Watered + Fed';
+    Alert.alert(
+      isWater ? 'Unwater this plant?' : 'Remove this event?',
+      isWater
+        ? `This removes the "${h.type}" event and recalculates the schedule.`
+        : `This removes the "${h.type}" event.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await removeHistoryEntry(h);
+            reschedule();
+          },
+        },
+      ],
+    );
   }
 
   function commitName() {
@@ -342,7 +364,12 @@ export function PlantDetailScreen() {
         {myHistory.length > 0 && (
           <Section title="Recent activity">
             {myHistory.map((h) => (
-              <View key={h.id} style={styles.histRow}>
+              <Pressable
+                key={h.id}
+                style={styles.histRow}
+                onLongPress={() => confirmRemoveActivity(h)}
+                delayLongPress={350}
+              >
                 <Text style={styles.histType}>
                   {h.type}
                   {h.lateReason ? <Text style={styles.histReason}>{`  ·  ${h.lateReason}`}</Text> : ''}
@@ -350,7 +377,7 @@ export function PlantDetailScreen() {
                 <Text style={styles.histDate}>
                   {new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </Section>
         )}

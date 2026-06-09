@@ -28,7 +28,7 @@ import {
 import { getPlants } from '../data/db';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-const PRIVACY_URL = 'https://jamasha.com/plantaroo/privacy';
+const PRIVACY_URL = 'https://jkhan626.github.io/Plantaroo/privacy.html';
 
 export function SettingsScreen() {
   const nav = useNavigation<Nav>();

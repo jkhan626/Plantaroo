@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,7 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -67,6 +68,33 @@ export function AddPlantScreen() {
   const [matched, setMatched] = useState<null | boolean>(null);
 
   const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'moisture' | 'fert' | 'water'>(null);
+
+  // Preset rooms + any rooms already used by the user's plants + the current pick.
+  const roomOptions = useMemo(() => {
+    const used = getPlants().map((p) => p.room).filter(Boolean);
+    return Array.from(new Set<string>([...ROOMS, ...used, room]));
+  }, [room]);
+
+  function promptCustomRoom() {
+    if (Platform.OS === 'ios') {
+      Alert.prompt('New room', 'Name this room (e.g. Sunroom, Desk)', (text) => {
+        const t = (text || '').trim();
+        if (t) setRoom(t);
+      });
+    }
+  }
+
+  function onRoomSelect(v: string) {
+    if (v === '__custom__') setTimeout(promptCustomRoom, 350);
+    else setRoom(v);
+  }
+
+  // Soil-adjusted starting interval — visibly reflects the plant + soil choice.
+  const startInterval = useMemo(() => {
+    const mult = SOIL_TABLE[soil]?.mult;
+    if (mult === null) return 2;
+    return Math.round(profile.species_baseline_days * (mult ?? 1) * 10) / 10;
+  }, [soil, profile.species_baseline_days]);
 
   function resolveProfile() {
     const found = localProfileLookup(name);
@@ -184,18 +212,25 @@ export function AddPlantScreen() {
             />
           </Field>
 
-          {/* Care profile */}
+          {/* Care profile — derived from the plant + your soil/light */}
           <View style={styles.profileHeaderRow}>
             <Text style={styles.sectionLabel}>Care profile</Text>
             {matched !== null && (
               <View style={styles.matchTag}>
                 {matched && <Check size={12} color={colors.green} />}
                 <Text style={[styles.matchText, { color: matched ? colors.green : colors.textTertiary }]}>
-                  {matched ? 'From plant library' : 'Set manually'}
+                  {matched ? 'Updated based on plant & settings' : 'Set it manually below'}
                 </Text>
               </View>
             )}
           </View>
+
+          {matched !== null && (
+            <Text style={styles.deriveHint}>
+              With your soil, waters about every {startInterval} day{startInterval === 1 ? '' : 's'}
+              {light === 'natural' ? ' (slower in winter)' : ''} — then adjusts as it learns from you.
+            </Text>
+          )}
 
           <View style={styles.card}>
             <SelectRow
@@ -259,8 +294,11 @@ export function AddPlantScreen() {
         visible={sheet === 'room'}
         title="Room"
         selected={room}
-        options={ROOMS.map((r) => ({ label: r, value: r }))}
-        onSelect={(v) => setRoom(v)}
+        options={[
+          ...roomOptions.map((r) => ({ label: r, value: r })),
+          ...(Platform.OS === 'ios' ? [{ label: '＋  Add a custom room…', value: '__custom__' }] : []),
+        ]}
+        onSelect={onRoomSelect}
         onClose={() => setSheet(null)}
       />
       <OptionSheet
@@ -403,6 +441,14 @@ const styles = StyleSheet.create({
   },
   matchTag: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   matchText: { fontSize: font.size.sm, fontWeight: font.weight.semibold },
+  deriveHint: {
+    color: colors.textTertiary,
+    fontSize: font.size.sm,
+    lineHeight: 18,
+    marginTop: -2,
+    marginBottom: 10,
+    paddingLeft: 2,
+  },
 
   rowLabel: { color: colors.textSecondary, fontSize: font.size.md },
   stepperRow: {

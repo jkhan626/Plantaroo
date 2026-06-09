@@ -3,9 +3,10 @@
  * the db* API and appends a history entry. Returns an undo token where the web
  * app offered undo. Ported faithfully from the web app's handlers.
  */
-import { dbPut, dbAdd, dbDelete, genId } from '../data/db';
+import { dbPut, dbAdd, dbDelete, genId, getPlants, getHistory } from '../data/db';
 import {
   getEffectiveStartingInterval,
+  getLearnedInterval,
   updateIntervalFromGap,
 } from './schedule';
 import { isFeedDue } from './fertilize';
@@ -164,4 +165,66 @@ export async function saveNotes(input: Plant, notes: string): Promise<void> {
 export async function patchPlant(input: Plant, patch: Partial<Plant>): Promise<void> {
   const plant = { ...clone(input), ...patch };
   await dbPut('plants', plant);
+}
+
+/**
+ * Rebuild a plant's watering-derived state purely from its remaining history.
+ * Used after an event is removed ("unwater") so the schedule self-corrects
+ * regardless of which event was deleted.
+ */
+export function recomputeWateringState(input: Plant, hist: HistoryEntry[]): Plant {
+  const plant = clone(input);
+  const events = hist
+    .filter((h) => h.type === 'Watered' || h.type === 'Watered + Fed' || h.type === 'Skipped')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  if (events.length === 0) {
+    plant.last_watered = null;
+    plant.watering_count = 0;
+    plant.recent_valid_gaps = [];
+    plant.last_fertilized = null;
+    plant.last_fed_at_count = 0;
+    plant.current_interval = getEffectiveStartingInterval(plant);
+    return plant;
+  }
+
+  // Anchor = most recent event (water or skip both move it).
+  plant.last_watered = events[events.length - 1].date;
+
+  const waterings = events.filter((e) => e.type !== 'Skipped');
+  plant.watering_count = waterings.length;
+
+  // Rebuild the rolling gap window from consecutive events; skips push no gap,
+  // and "Too busy" gaps were discarded from learning.
+  const gaps: number[] = [];
+  for (let i = 1; i < events.length; i++) {
+    const cur = events[i];
+    if (cur.type === 'Skipped' || cur.lateReason === 'Too busy') continue;
+    const g = (new Date(cur.date).getTime() - new Date(events[i - 1].date).getTime()) / MS_PER_DAY;
+    if (g > 0) gaps.push(g);
+  }
+  plant.recent_valid_gaps = gaps.slice(-5);
+
+  const fed = waterings.filter((e) => e.type === 'Watered + Fed');
+  if (fed.length) {
+    const lastFed = fed[fed.length - 1];
+    plant.last_fertilized = lastFed.date;
+    const idx = waterings.findIndex((e) => e.id === lastFed.id);
+    plant.last_fed_at_count = idx >= 0 ? idx + 1 : plant.watering_count;
+  } else {
+    plant.last_fertilized = null;
+    plant.last_fed_at_count = 0;
+  }
+
+  plant.current_interval = getLearnedInterval(plant);
+  return plant;
+}
+
+/** Remove a history event and recompute the plant's schedule from what's left. */
+export async function removeHistoryEntry(entry: HistoryEntry): Promise<void> {
+  await dbDelete('history', entry.id);
+  const plant = getPlants().find((p) => p.id === entry.plantId);
+  if (!plant) return;
+  const remaining = getHistory().filter((h) => h.plantId === plant.id);
+  await dbPut('plants', recomputeWateringState(plant, remaining));
 }

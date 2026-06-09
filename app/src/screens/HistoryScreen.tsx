@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { colors, font, radius, spacing } from '../theme';
 import type { HistoryEntry } from '../types';
 import { useHistory, usePlants } from '../ui/hooks';
@@ -8,6 +9,31 @@ import { ScreenHeader } from '../ui/Header';
 import { EmptyState } from '../ui/EmptyState';
 import { OptionSheet } from '../ui/components';
 import { Clock, ChevronDown } from '../ui/icons';
+import { removeHistoryEntry } from '../logic/actions';
+import { rescheduleWateringReminders } from '../logic/notify';
+import { getPlants } from '../data/db';
+
+function confirmRemoveEvent(h: HistoryEntry) {
+  const isWater = h.type === 'Watered' || h.type === 'Watered + Fed';
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  Alert.alert(
+    isWater ? 'Unwater this plant?' : 'Remove this event?',
+    isWater
+      ? `This removes the "${h.type}" event and recalculates ${h.plantName}'s schedule.`
+      : `This removes the "${h.type}" event for ${h.plantName}.`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          await removeHistoryEntry(h);
+          rescheduleWateringReminders(getPlants());
+        },
+      },
+    ],
+  );
+}
 
 const TYPE_COLOR: Record<string, string> = {
   Watered: colors.green,
@@ -90,7 +116,12 @@ export function HistoryScreen() {
             <View key={label} style={styles.group}>
               <Text style={styles.groupLabel}>{label}</Text>
               {items.map((h) => (
-                <View key={h.id} style={styles.entry}>
+                <Pressable
+                  key={h.id}
+                  style={styles.entry}
+                  onLongPress={() => confirmRemoveEvent(h)}
+                  delayLongPress={350}
+                >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.entryName}>{h.plantName}</Text>
                     <Text style={[styles.entryType, { color: TYPE_COLOR[h.type] ?? colors.green }]}>
@@ -99,7 +130,7 @@ export function HistoryScreen() {
                     </Text>
                   </View>
                   <Text style={styles.entryTime}>{timeLabel(h.date)}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           ))

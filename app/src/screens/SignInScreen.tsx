@@ -27,7 +27,7 @@ import {
 
 WebBrowser.maybeCompleteAuthSession();
 
-const PRIVACY_URL = 'https://jamasha.com/plantaroo/privacy';
+const PRIVACY_URL = 'https://jkhan626.github.io/Plantaroo/privacy.html';
 
 const extra = (Constants.expoConfig?.extra ?? {}) as {
   googleIosClientId?: string;
