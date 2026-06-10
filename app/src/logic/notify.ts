@@ -9,7 +9,7 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Plant } from '../types';
-import { getNextDueDate } from './schedule';
+import { getNextDueDate, getDaysUntilDue } from './schedule';
 import { getNextTaskDueDate } from './tasks';
 
 const ENABLED_KEY = 'plantaroo:notifyEnabled';
@@ -98,6 +98,10 @@ export async function rescheduleWateringReminders(plants: Plant[]): Promise<void
   let enabled = await getNotifyEnabled();
   if (enabled && !(await hasPermission())) enabled = false;
 
+  // App-icon badge = plants due now (Phase 5, OTA-able). Cleared when off.
+  const dueNow = plants.filter((p) => getDaysUntilDue(p) <= 0).length;
+  Notifications.setBadgeCountAsync(enabled ? dueNow : 0).catch(() => {});
+
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch {
@@ -167,6 +171,7 @@ export async function rescheduleWateringReminders(plants: Plant[]): Promise<void
 
 /** Cancel everything (e.g. on sign-out or when reminders are turned off). */
 export async function cancelAllReminders(): Promise<void> {
+  Notifications.setBadgeCountAsync(0).catch(() => {});
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch {

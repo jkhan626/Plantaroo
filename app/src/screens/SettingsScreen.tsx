@@ -26,6 +26,7 @@ import {
   cancelAllReminders,
 } from '../logic/notify';
 import { getPlants } from '../data/db';
+import { exportDataAsJson } from '../lib/export';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 const PRIVACY_URL = 'https://jkhan626.github.io/Plantaroo/privacy.html';
@@ -150,6 +151,20 @@ export function SettingsScreen() {
               thumbColor={colors.white}
             />
           </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Data</Text>
+        <View style={styles.card}>
+          <Pressable
+            style={styles.row}
+            onPress={() => exportDataAsJson().catch(() => {})}
+          >
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.rowLabel}>Export my data</Text>
+              <Text style={styles.rowHint}>Plants, history and journal as JSON.</Text>
+            </View>
+            <Text style={styles.rowLink}>Share</Text>
+          </Pressable>
         </View>
 
         <Text style={styles.sectionLabel}>About</Text>
