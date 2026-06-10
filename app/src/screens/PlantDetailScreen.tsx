@@ -78,6 +78,7 @@ import {
   DIFFICULTY_LABELS,
   TOXIC_LABELS,
 } from '../logic/careInfo';
+import { soilWarning } from '../logic/soilFit';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants, getHistory, getJournal, dbDelete, dbAdd, genId } from '../data/db';
 import { choosePhoto } from '../lib/photo';
@@ -297,6 +298,24 @@ export function PlantDetailScreen() {
 
   function applyEditor(value: string) {
     if (!editor || !plant) return;
+    if (editor.field === 'soil_type' && value !== plant.soil_type) {
+      const warn = soilWarning(plant.name, plant.carnivore, value as SoilType);
+      if (warn) {
+        const target = plant;
+        // Let the option sheet finish closing before presenting the alert.
+        setTimeout(() => {
+          Alert.alert(warn.title, warn.message, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Use anyway',
+              style: 'destructive',
+              onPress: () => patchPlant(target, { soil_type: value as SoilType }),
+            },
+          ]);
+        }, 400);
+        return;
+      }
+    }
     patchPlant(plant, { [editor.field]: value } as Partial<Plant>);
   }
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -51,6 +51,7 @@ import {
   HUMIDITY_LABELS,
   type CareInfo,
 } from '../logic/careInfo';
+import { soilWarning } from '../logic/soilFit';
 import { dbAdd, genId, getPlants } from '../data/db';
 import {
   rescheduleWateringReminders,
@@ -75,6 +76,8 @@ export function AddPlantScreen() {
   const [care, setCare] = useState<CareInfo | null>(null);
 
   const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'moisture' | 'fert' | 'water'>(null);
+  // Soil the user explicitly chose to keep after a warning — don't re-nag at save.
+  const soilWarnedRef = useRef<SoilType | null>(null);
 
   // Preset rooms + any rooms already used by the user's plants + the current pick.
   const roomOptions = useMemo(() => {
@@ -127,6 +130,30 @@ export function AddPlantScreen() {
     setCare(careInfoLookup(trimmed));
   }
 
+  function onSoilSelect(v: SoilType) {
+    setSoil(v);
+    soilWarnedRef.current = null;
+    if (!name.trim()) return; // nothing to judge against yet — save() re-checks
+    const warn = soilWarning(name, profile.carnivore, v);
+    if (!warn) return;
+    // Let the option sheet finish closing before presenting the alert.
+    setTimeout(() => {
+      Alert.alert(warn.title, warn.message, [
+        {
+          text: `Use ${SOIL_TABLE[warn.recommended].short}`,
+          onPress: () => setSoil(warn.recommended),
+        },
+        {
+          text: 'Keep my choice',
+          style: 'cancel',
+          onPress: () => {
+            soilWarnedRef.current = v;
+          },
+        },
+      ]);
+    }, 400);
+  }
+
   function bump(field: 'species_baseline_days' | 'feed_every_n_waterings', delta: number) {
     setProfile((p) => {
       const min = field === 'feed_every_n_waterings' ? 0 : 1;
@@ -136,18 +163,39 @@ export function AddPlantScreen() {
     });
   }
 
-  async function save() {
+  function save() {
     const trimmed = name.trim();
     if (!trimmed) return;
+    // Final soil sanity check — the name may have been typed after the soil
+    // was picked. Skip if the user already chose to keep this exact soil.
+    const warn = soilWarning(trimmed, profile.carnivore, soil);
+    if (warn && soilWarnedRef.current !== soil) {
+      Alert.alert(warn.title, warn.message, [
+        {
+          text: `Use ${SOIL_TABLE[warn.recommended].short}`,
+          onPress: () => {
+            setSoil(warn.recommended);
+            doSave(trimmed, warn.recommended);
+          },
+        },
+        { text: 'Add anyway', onPress: () => doSave(trimmed, soil) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+      return;
+    }
+    doSave(trimmed, soil);
+  }
+
+  async function doSave(trimmed: string, soilChoice: SoilType) {
     const firstPlant = getPlants().length === 0;
-    const soilMult = SOIL_TABLE[soil]?.mult;
+    const soilMult = SOIL_TABLE[soilChoice]?.mult;
     const effectiveStart = soilMult === null ? 2 : profile.species_baseline_days * (soilMult ?? 1);
     const plant: Plant = {
       id: genId(),
       name: trimmed,
       room,
       light_type: light,
-      soil_type: soil,
+      soil_type: soilChoice,
       photo,
       ...profile,
       current_interval: effectiveStart,
@@ -343,7 +391,7 @@ export function AddPlantScreen() {
         title="Soil mix"
         selected={soil}
         options={SOIL_OPTIONS.map((v) => ({ label: SOIL_TABLE[v].label, value: v }))}
-        onSelect={(v) => setSoil(v as SoilType)}
+        onSelect={(v) => onSoilSelect(v as SoilType)}
         onClose={() => setSheet(null)}
       />
       <OptionSheet
