@@ -531,6 +531,101 @@ export const LOCAL_PROFILE_PATTERNS: { match: string; p: PlantProfile }[] = [
   { match: 'ivy', p: prof(7, 'light_dry', 3, 'balanced', false, 'tap_ok') },
 ];
 
+/**
+ * CARE-TASK DEFAULTS (Phase 2) — misting + leaf-cleaning cadences layered
+ * onto every profile match (exact or pattern) by name. FIRST MATCH WINS per
+ * task. Humidity lovers (prayer-plant family, ferns, carnivores, aroids with
+ * thin leaves) get misting; big smooth-leaf plants (ficus, monstera,
+ * dracaena…) get monthly leaf cleaning. Plants matching neither get nothing —
+ * zero noise.
+ */
+const TASK_DEFAULT_PATTERNS: { match: string; mist?: number; clean?: number }[] = [
+  // prayer-plant family + thin-leaf humidity lovers — frequent misting
+  { match: 'calathea', mist: 2 },
+  { match: 'goeppertia', mist: 2 },
+  { match: 'maranta', mist: 2 },
+  { match: 'ctenanthe', mist: 2 },
+  { match: 'stromanthe', mist: 2 },
+  { match: 'prayer plant', mist: 2 },
+  { match: 'fern', mist: 2 },
+  { match: 'fittonia', mist: 2 },
+  { match: 'nerve plant', mist: 2 },
+  { match: 'air plant', mist: 3 },
+  { match: 'tillandsia', mist: 3 },
+  { match: 'spanish moss', mist: 2 },
+  // carnivores that appreciate humidity
+  { match: 'sundew', mist: 2 },
+  { match: 'drosera', mist: 2 },
+  { match: 'nepenthes', mist: 2 },
+  { match: 'pitcher', mist: 2 },
+  { match: 'flytrap', mist: 3 },
+  { match: 'venus', mist: 3 },
+  // other humidity lovers
+  { match: 'episcia', mist: 3 },
+  { match: 'caladium', mist: 3 },
+  { match: 'polka dot', mist: 3 },
+  { match: 'hypoestes', mist: 3 },
+  { match: 'banana', mist: 3 },
+  { match: 'orchid', mist: 3 },
+  { match: 'phalaenopsis', mist: 3 },
+  { match: 'anthurium', mist: 3, clean: 30 },
+  { match: 'alocasia', mist: 3, clean: 30 },
+  { match: 'elephant ear', mist: 3, clean: 30 },
+  { match: 'peace lily', mist: 3, clean: 30 },
+  { match: 'spathiphyllum', mist: 3, clean: 30 },
+
+  // big smooth leaves — monthly cleaning keeps photosynthesis humming
+  { match: 'fiddle leaf', clean: 30 },
+  { match: 'rubber', clean: 30 },
+  { match: 'ficus', clean: 30 },
+  { match: 'fig', clean: 30 },
+  { match: 'monstera', clean: 30 },
+  { match: 'swiss cheese', clean: 30 },
+  { match: 'thai constellation', clean: 30 },
+  { match: 'monkey mask', clean: 30 },
+  { match: 'philodendron', clean: 30 },
+  { match: 'pothos', clean: 45 },
+  { match: 'epipremnum', clean: 45 },
+  { match: 'scindapsus', clean: 45 },
+  { match: 'dracaena', clean: 30 },
+  { match: 'corn plant', clean: 30 },
+  { match: 'dieffenbachia', clean: 30 },
+  { match: 'aglaonema', clean: 30 },
+  { match: 'chinese evergreen', clean: 30 },
+  { match: 'schefflera', clean: 30 },
+  { match: 'umbrella', clean: 30 },
+  { match: 'bird of paradise', clean: 30 },
+  { match: 'money tree', clean: 45 },
+  { match: 'pachira', clean: 45 },
+  { match: 'croton', clean: 30 },
+  { match: 'snake plant', clean: 45 },
+  { match: 'sansevieria', clean: 45 },
+  { match: 'zz', clean: 45 },
+  { match: 'hoya', clean: 45 },
+  { match: 'wax plant', clean: 45 },
+];
+
+/** Mist/clean defaults for a plant name (empty object when none apply). */
+export function taskDefaultsFor(name: string): {
+  mist_every_days?: number;
+  clean_every_days?: number;
+} {
+  const n = normalizePlantName(name);
+  if (!n) return {};
+  let mist: number | undefined;
+  let clean: number | undefined;
+  for (const t of TASK_DEFAULT_PATTERNS) {
+    if (n.indexOf(t.match) === -1) continue;
+    if (mist === undefined && t.mist !== undefined) mist = t.mist;
+    if (clean === undefined && t.clean !== undefined) clean = t.clean;
+    if (mist !== undefined && clean !== undefined) break;
+  }
+  const out: { mist_every_days?: number; clean_every_days?: number } = {};
+  if (mist !== undefined) out.mist_every_days = mist;
+  if (clean !== undefined) out.clean_every_days = clean;
+  return out;
+}
+
 export function normalizePlantName(s: string): string {
   return String(s || '')
     .toLowerCase()
@@ -540,13 +635,13 @@ export function normalizePlantName(s: string): string {
     .trim();
 }
 
-/** Fresh profile from the bundled DB, or null if unknown. */
+/** Fresh profile from the bundled DB (with task defaults), or null if unknown. */
 export function localProfileLookup(name: string): PlantProfile | null {
   const n = normalizePlantName(name);
   if (!n) return null;
-  if (LOCAL_PROFILES[n]) return { ...LOCAL_PROFILES[n] };
+  if (LOCAL_PROFILES[n]) return { ...LOCAL_PROFILES[n], ...taskDefaultsFor(name) };
   for (const { match, p } of LOCAL_PROFILE_PATTERNS) {
-    if (n.indexOf(match) !== -1) return { ...p };
+    if (n.indexOf(match) !== -1) return { ...p, ...taskDefaultsFor(name) };
   }
   return null;
 }

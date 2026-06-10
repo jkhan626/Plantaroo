@@ -176,6 +176,36 @@ export const ListIcon = ({ size, color = colors.textTertiary, strokeWidth }: Ico
   </Svg>
 );
 
+export const Mist = ({ size, color = colors.lightBlue, strokeWidth }: IconProps) => (
+  <Svg {...base(size, strokeWidth)} stroke={color}>
+    <Path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25" />
+    <Line x1="8" y1="19" x2="8" y2="21" />
+    <Line x1="8" y1="13" x2="8" y2="15" />
+    <Line x1="16" y1="19" x2="16" y2="21" />
+    <Line x1="16" y1="13" x2="16" y2="15" />
+    <Line x1="12" y1="21" x2="12" y2="23" />
+    <Line x1="12" y1="15" x2="12" y2="17" />
+  </Svg>
+);
+
+export const Sparkle = ({ size, color = colors.textSecondary, strokeWidth }: IconProps) => (
+  <Svg {...base(size, strokeWidth)} stroke={color}>
+    <Path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+    <Line x1="19" y1="17" x2="19" y2="21" />
+    <Line x1="17" y1="19" x2="21" y2="19" />
+  </Svg>
+);
+
+export const Scissors = ({ size, color = colors.orange, strokeWidth }: IconProps) => (
+  <Svg {...base(size, strokeWidth)} stroke={color}>
+    <Circle cx="6" cy="6" r="3" />
+    <Circle cx="6" cy="18" r="3" />
+    <Line x1="20" y1="4" x2="8.12" y2="15.88" />
+    <Line x1="14.47" y1="14.48" x2="20" y2="20" />
+    <Line x1="8.12" y1="9.88" x2="12" y2="12" />
+  </Svg>
+);
+
 export const PlantPot = ({ size, color = colors.textTertiary, strokeWidth }: IconProps) => (
   <Svg {...base(size, strokeWidth)} stroke={color}>
     <Path d="M12 22V11" />

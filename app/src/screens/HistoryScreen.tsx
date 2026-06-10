@@ -40,7 +40,22 @@ const TYPE_COLOR: Record<string, string> = {
   'Watered + Fed': colors.purple,
   Skipped: colors.textSecondary,
   Repotted: colors.orange,
+  Misted: colors.lightBlue,
+  Cleaned: colors.textSecondary,
+  Pruned: colors.orange,
 };
+
+/** Action-type filter chips — 'Watered' includes 'Watered + Fed'. */
+const TYPE_FILTERS: { label: string; types: string[] | null }[] = [
+  { label: 'All', types: null },
+  { label: 'Watered', types: ['Watered', 'Watered + Fed'] },
+  { label: 'Fed', types: ['Watered + Fed'] },
+  { label: 'Skipped', types: ['Skipped'] },
+  { label: 'Misted', types: ['Misted'] },
+  { label: 'Cleaned', types: ['Cleaned'] },
+  { label: 'Pruned', types: ['Pruned'] },
+  { label: 'Repotted', types: ['Repotted'] },
+];
 
 function groupLabel(iso: string): string {
   const then = new Date(iso);
@@ -64,13 +79,16 @@ export function HistoryScreen() {
   const plants = usePlants();
   const [filterPlant, setFilterPlant] = useState<number | 'all'>('all');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState(0); // index into TYPE_FILTERS
 
+  const allowedTypes = TYPE_FILTERS[typeFilter].types;
   const sorted = useMemo(
     () =>
       [...history]
         .filter((h) => filterPlant === 'all' || h.plantId === filterPlant)
+        .filter((h) => !allowedTypes || allowedTypes.indexOf(h.type) !== -1)
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [history, filterPlant],
+    [history, filterPlant, allowedTypes],
   );
 
   const groups = useMemo(() => {
@@ -101,6 +119,25 @@ export function HistoryScreen() {
             </Text>
             <ChevronDown size={14} color={colors.textTertiary} />
           </Pressable>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipRow}
+            style={{ marginTop: 8 }}
+          >
+            {TYPE_FILTERS.map((f, i) => {
+              const active = i === typeFilter;
+              return (
+                <Pressable
+                  key={f.label}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setTypeFilter(i)}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
       )}
 
@@ -109,7 +146,7 @@ export function HistoryScreen() {
           <EmptyState
             icon={<Clock size={32} color={colors.textMuted} />}
             title="No history yet"
-            subtitle="Watering, feeding, skips and repots will appear here."
+            subtitle="Watering, feeding, misting, cleaning and repots will appear here."
           />
         ) : (
           groups.map(([label, items]) => (
@@ -173,6 +210,18 @@ const styles = StyleSheet.create({
     maxWidth: 260,
   },
   filterText: { color: colors.textPrimary, fontSize: font.size.md, fontWeight: font.weight.medium },
+  chipRow: { gap: 8, paddingRight: spacing.lg },
+  chip: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+  },
+  chipActive: { backgroundColor: colors.greenBg, borderColor: colors.green },
+  chipText: { color: colors.textSecondary, fontSize: font.size.base, fontWeight: font.weight.semibold },
+  chipTextActive: { color: colors.green },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: 130 },
   group: { marginBottom: 14 },
   groupLabel: {

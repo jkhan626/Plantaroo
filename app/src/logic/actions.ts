@@ -92,12 +92,13 @@ export async function skipPlant(input: Plant): Promise<{ undo: UndoToken }> {
   return { undo: { snapshot, historyId } };
 }
 
-/** Repot: suppress fertilizer for 2 weeks. */
+/** Repot: suppress fertilizer for 2 weeks and reset the repot-check anchor. */
 export async function repotPlant(input: Plant): Promise<{ undo: UndoToken }> {
   const snapshot = clone(input);
   const plant = clone(input);
   const now = new Date();
   plant.no_fert_until = new Date(now.getTime() + 14 * MS_PER_DAY).toISOString();
+  plant.last_repotted = now.toISOString();
   await dbPut('plants', plant);
 
   const entry: HistoryEntry = {
@@ -110,6 +111,45 @@ export async function repotPlant(input: Plant): Promise<{ undo: UndoToken }> {
   };
   const historyId = (await dbAdd('history', entry)) as number;
   return { undo: { snapshot, historyId } };
+}
+
+/** Shared shape for the simple care-task actions: stamp anchor + log history. */
+async function logCareTask(
+  input: Plant,
+  field: 'last_misted' | 'last_cleaned' | 'last_pruned',
+  type: HistoryType,
+): Promise<{ undo: UndoToken }> {
+  const snapshot = clone(input);
+  const plant = clone(input);
+  const now = new Date().toISOString();
+  plant[field] = now;
+  await dbPut('plants', plant);
+
+  const entry: HistoryEntry = {
+    id: genId(),
+    plantId: plant.id,
+    plantName: plant.name,
+    date: now,
+    type,
+    lateReason: null,
+  };
+  const historyId = (await dbAdd('history', entry)) as number;
+  return { undo: { snapshot, historyId } };
+}
+
+/** Mist: reset the misting anchor (no effect on the watering model). */
+export function mistPlant(input: Plant) {
+  return logCareTask(input, 'last_misted', 'Misted');
+}
+
+/** Clean leaves: reset the cleaning anchor. */
+export function cleanPlant(input: Plant) {
+  return logCareTask(input, 'last_cleaned', 'Cleaned');
+}
+
+/** Prune: reset the pruning anchor (also opts the plant into spring checks). */
+export function prunePlant(input: Plant) {
+  return logCareTask(input, 'last_pruned', 'Pruned');
 }
 
 /** Restore a plant snapshot and remove the action's history entry. */

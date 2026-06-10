@@ -20,6 +20,9 @@ export interface PlantProfile {
   fert_type: FertType;
   carnivore: boolean;
   water_source: WaterSource;
+  /** Optional task defaults (Phase 2) — 0/undefined means the task is off. */
+  mist_every_days?: number;
+  clean_every_days?: number;
 }
 
 export interface Plant extends PlantProfile {
@@ -38,13 +41,21 @@ export interface Plant extends PlantProfile {
   watering_count: number;
   notes: string;
   created_at: string;
+  /** Care-task anchors (Phase 2) — all optional; due dates are computed, never stored. */
+  last_misted?: string | null;
+  last_cleaned?: string | null;
+  last_pruned?: string | null;
+  last_repotted?: string | null;
 }
 
 export type HistoryType =
   | 'Watered'
   | 'Watered + Fed'
   | 'Skipped'
-  | 'Repotted';
+  | 'Repotted'
+  | 'Misted'
+  | 'Cleaned'
+  | 'Pruned';
 
 export type LateReason = 'Still wet' | 'Too busy' | null;
 

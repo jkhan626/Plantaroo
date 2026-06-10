@@ -19,6 +19,7 @@ import { colors, radius, font } from '../theme';
 import type { Plant } from '../types';
 import { getDueText, isWateredToday, relativeDayLabel } from '../logic/schedule';
 import { isFeedDue, needsDistilled } from '../logic/fertilize';
+import { getDueTasks } from '../logic/tasks';
 import { SOIL_TABLE } from '../logic/constants';
 import { PlantAvatar } from './components';
 import { Droplet, Check } from './icons';
@@ -50,6 +51,8 @@ export function PlantCard({
   const feed = isFeedDue(plant);
   const wateredToday = isWateredToday(plant);
   const distilled = needsDistilled(plant);
+  const dueTasks = getDueTasks(plant);
+  const taskText = dueTasks.map((t) => t.label).join('  ·  ');
 
   // Pulse the water button when the plant needs water.
   const pulse = useSharedValue(0);
@@ -160,6 +163,7 @@ export function PlantCard({
                   <Text style={styles.action} numberOfLines={1}>
                     Water{feed ? <Text style={styles.feed}>{'  ·  Feed'}</Text> : ''}
                     {distilled ? <Text style={styles.distilled}>{'  ·  Distilled'}</Text> : ''}
+                    {taskText ? <Text style={styles.task}>{`  ·  ${taskText}`}</Text> : ''}
                   </Text>
                 ) : wateredToday ? (
                   <View style={styles.scheduleRow}>
@@ -170,6 +174,7 @@ export function PlantCard({
                   <Text style={styles.schedule} numberOfLines={1}>
                     <Text style={{ color: STATUS_COLOR[due.status] }}>{due.text}</Text>
                     {feed ? <Text style={styles.feed}>{'  ·  Feed due'}</Text> : ''}
+                    {taskText ? <Text style={styles.task}>{`  ·  ${taskText}`}</Text> : ''}
                     {plant.last_watered ? (
                       <Text style={styles.scheduleMuted}>
                         {'   '}
@@ -256,6 +261,7 @@ const styles = StyleSheet.create({
   },
   feed: { color: colors.purple, fontWeight: font.weight.semibold },
   distilled: { color: colors.lightBlue },
+  task: { color: colors.lightBlue, fontWeight: font.weight.medium },
   waterBtn: {
     width: 40,
     height: 40,

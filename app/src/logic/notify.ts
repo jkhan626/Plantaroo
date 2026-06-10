@@ -10,6 +10,7 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Plant } from '../types';
 import { getNextDueDate } from './schedule';
+import { getNextTaskDueDate } from './tasks';
 
 const ENABLED_KEY = 'plantaroo:notifyEnabled';
 const REMINDER_HOUR = 9;
@@ -107,28 +108,49 @@ export async function rescheduleWateringReminders(plants: Plant[]): Promise<void
   const now = new Date();
   const horizon = new Date(now.getTime() + MAX_DAYS * 86_400_000);
 
-  // Bucket plants by the reminder slot they belong to.
-  const buckets = new Map<string, { when: Date; names: string[] }>();
+  // Bucket plants by the reminder slot they belong to. Water names and
+  // non-water care tasks (mist/clean) share a slot so each day gets ONE digest.
+  const buckets = new Map<string, { when: Date; names: string[]; taskCount: number }>();
+  function bucketFor(when: Date) {
+    const key = dayKey(when);
+    let b = buckets.get(key);
+    if (!b) {
+      b = { when, names: [], taskCount: 0 };
+      buckets.set(key, b);
+    }
+    return b;
+  }
   for (const p of plants) {
     const due = getNextDueDate(p) ?? now; // never-watered => now
     const when = nextReminderSlot(due, now);
-    if (when.getTime() > horizon.getTime()) continue;
-    const key = dayKey(when);
-    const b = buckets.get(key);
-    if (b) b.names.push(p.name);
-    else buckets.set(key, { when, names: [p.name] });
+    if (when.getTime() <= horizon.getTime()) bucketFor(when).names.push(p.name);
+
+    // Recurring care tasks ride the same digest (Phase 2).
+    for (const type of ['mist', 'clean'] as const) {
+      const taskDue = getNextTaskDueDate(p, type, now);
+      if (!taskDue) continue;
+      const taskWhen = nextReminderSlot(taskDue, now);
+      if (taskWhen.getTime() <= horizon.getTime()) bucketFor(taskWhen).taskCount++;
+    }
   }
 
   const slots = Array.from(buckets.values()).sort(
     (a, b) => a.when.getTime() - b.when.getTime(),
   );
 
-  for (const { when, names } of slots) {
+  for (const { when, names, taskCount } of slots) {
     const count = names.length;
-    const body =
+    let body =
       count === 1
         ? `${names[0]} needs water today.`
-        : `${count} plants need water today.`;
+        : count > 1
+          ? `${count} plants need water today.`
+          : '';
+    if (taskCount > 0) {
+      const tasks = `${taskCount} care task${taskCount === 1 ? '' : 's'}`;
+      body = body ? `${body} Plus ${tasks}.` : `${tasks} due today.`;
+    }
+    if (!body) continue;
     try {
       await Notifications.scheduleNotificationAsync({
         content: { title: 'Plantaroo', body, sound: true },
