@@ -23,7 +23,7 @@ Task list (also in the session task tracker):
 | 4 — Growth journal | **DONE, committed** |
 | 5 — iOS platform presence | **OTA slice DONE & SHIPPED** (badge count, JSON export). Widget **descoped** (Jamal 2026-06-09: "don't need it now"). Remaining if ever wanted: notification actions, file-based export — need an EAS build, ask first |
 
-**SHIPPED OTA 2026-06-09:** everything through commit `7cb49e9` published via `eas update --branch production` (runtime 1.0.0, update group `2668e881-fab3-46aa-8f92-b4240f96ff6f`). On-device visual verification still pending — first thing to confirm with Jamal next session.
+**SHIPPED OTA 2026-06-09:** everything through commit `7cb49e9` published via `eas update --branch production` (runtime 1.0.0, update group `2668e881-fab3-46aa-8f92-b4240f96ff6f`). **Gotcha found & fixed:** the `production` channel had NO branch linked, so no OTA update had ever reached devices (including the earlier "Terms + Support links" one). Fixed with `eas channel:edit production --branch production` — the link persists, future `eas update` pushes flow automatically. On-device visual verification still pending — first thing to confirm with Jamal next session.
 
 Phase 0 delivered: Apple token revocation end-to-end (`app/src/lib/auth.ts` re-auths with Apple inline during deletion → POSTs authorizationCode to new `POST /api/apple-revoke` in `server/index.js`; returns 501 until Jamal sets `APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY` on Render — best-effort, never blocks deletion); Google button hidden while client IDs are `PASTE_` placeholders in `app/app.json → extra`; Android `RECORD_AUDIO` removed; `jsonwebtoken` added to root `package.json` (not yet `npm install`ed — Render installs on deploy; nothing local needs it).
 
