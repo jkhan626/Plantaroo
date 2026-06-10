@@ -1,15 +1,25 @@
-import React, { useMemo, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Alert,
+  Modal,
+  RefreshControl,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { colors, font, radius, spacing } from '../theme';
-import type { HistoryEntry } from '../types';
+import type { HistoryEntry, Plant } from '../types';
 import { useHistory, usePlants, useJournal } from '../ui/hooks';
-import { dbDelete } from '../data/db';
+import { dbDelete, isHydrated, refreshFromCloud } from '../data/db';
 import { ScreenHeader } from '../ui/Header';
 import { EmptyState } from '../ui/EmptyState';
-import { OptionSheet } from '../ui/components';
-import { Clock, ChevronDown } from '../ui/icons';
+import { SkeletonRows } from '../ui/Skeleton';
+import { PressableScale } from '../ui/components';
+import { Clock, Sliders, Check, X } from '../ui/icons';
 import { removeHistoryEntry } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants } from '../data/db';
@@ -58,9 +68,9 @@ interface FeedRow {
   isJournal: boolean;
 }
 
-/** Action-type filter chips — 'Watered' includes 'Watered + Fed'. */
+/** Event-type filter options — 'Watered' includes 'Watered + Fed'. */
 const TYPE_FILTERS: { label: string; types: string[] | null }[] = [
-  { label: 'All', types: null },
+  { label: 'All events', types: null },
   { label: 'Watered', types: ['Watered', 'Watered + Fed'] },
   { label: 'Fed', types: ['Watered + Fed'] },
   { label: 'Skipped', types: ['Skipped'] },
@@ -68,7 +78,7 @@ const TYPE_FILTERS: { label: string; types: string[] | null }[] = [
   { label: 'Cleaned', types: ['Cleaned'] },
   { label: 'Pruned', types: ['Pruned'] },
   { label: 'Repotted', types: ['Repotted'] },
-  { label: 'Photos', types: ['Growth photo'] },
+  { label: 'Growth photos', types: ['Growth photo'] },
 ];
 
 function groupLabel(iso: string): string {
@@ -93,8 +103,18 @@ export function HistoryScreen() {
   const journal = useJournal();
   const plants = usePlants();
   const [filterPlant, setFilterPlant] = useState<number | 'all'>('all');
-  const [filterOpen, setFilterOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState(0); // index into TYPE_FILTERS
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshFromCloud();
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const allowedTypes = TYPE_FILTERS[typeFilter].types;
   const sorted = useMemo(() => {
@@ -150,51 +170,71 @@ export function HistoryScreen() {
     ]);
   }
 
-  const plantName = filterPlant === 'all' ? 'All plants' : plants.find((p) => p.id === filterPlant)?.name ?? 'All plants';
+  const filtersActive = filterPlant !== 'all' || typeFilter !== 0;
+  const plantName =
+    filterPlant === 'all' ? '' : plants.find((p) => p.id === filterPlant)?.name ?? '';
+  const summaryParts = [plantName, typeFilter !== 0 ? TYPE_FILTERS[typeFilter].label : ''].filter(
+    Boolean,
+  );
+  const total = history.length + journal.length;
+
+  function clearFilters() {
+    setFilterPlant('all');
+    setTypeFilter(0);
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
       <ScreenHeader
         title="History"
-        subtitle={`${history.length + journal.length} event${history.length + journal.length === 1 ? '' : 's'}`}
+        subtitle={`${total} event${total === 1 ? '' : 's'}`}
+        right={
+          total > 0 ? (
+            <Pressable
+              style={[styles.filterBtn, filtersActive && styles.filterBtnActive]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                setFilterOpen(true);
+              }}
+              hitSlop={6}
+            >
+              <Sliders size={18} color={filtersActive ? colors.green : colors.textSecondary} />
+            </Pressable>
+          ) : undefined
+        }
       />
 
-      {history.length + journal.length > 0 && (
-        <View style={styles.filterWrap}>
-          <Pressable style={styles.filterPill} onPress={() => setFilterOpen(true)}>
-            <Text style={styles.filterText} numberOfLines={1}>
-              {plantName}
-            </Text>
-            <ChevronDown size={14} color={colors.textTertiary} />
+      {summaryParts.length > 0 && (
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryText} numberOfLines={1}>
+            {summaryParts.join('  ·  ')}
+          </Text>
+          <Pressable onPress={clearFilters} hitSlop={8}>
+            <Text style={styles.summaryClear}>Clear</Text>
           </Pressable>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-            style={{ marginTop: 8 }}
-          >
-            {TYPE_FILTERS.map((f, i) => {
-              const active = i === typeFilter;
-              return (
-                <Pressable
-                  key={f.label}
-                  style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => setTypeFilter(i)}
-                >
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {sorted.length === 0 ? (
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textTertiary} />
+        }
+      >
+        {total === 0 && !isHydrated() ? (
+          <SkeletonRows />
+        ) : sorted.length === 0 ? (
           <EmptyState
             icon={<Clock size={32} color={colors.textMuted} />}
-            title="No history yet"
-            subtitle="Watering, feeding, misting, cleaning and repots will appear here."
+            title={filtersActive ? 'No matching events' : 'No history yet'}
+            subtitle={
+              filtersActive
+                ? 'Try a different filter.'
+                : 'Watering, feeding, misting, cleaning and repots will appear here.'
+            }
+            actionLabel={filtersActive ? 'Clear filters' : undefined}
+            onAction={filtersActive ? clearFilters : undefined}
           />
         ) : (
           groups.map(([label, items]) => (
@@ -222,54 +262,150 @@ export function HistoryScreen() {
         )}
       </ScrollView>
 
-      <OptionSheet
+      <HistoryFilterSheet
         visible={filterOpen}
-        title="Filter by plant"
-        selected={String(filterPlant)}
-        options={[
-          { label: 'All plants', value: 'all' },
-          ...plants
-            .slice()
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((p) => ({ label: p.name, value: String(p.id) })),
-        ]}
-        onSelect={(v) => setFilterPlant(v === 'all' ? 'all' : parseInt(v, 10))}
         onClose={() => setFilterOpen(false)}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
+        filterPlant={filterPlant}
+        setFilterPlant={setFilterPlant}
+        plants={plants}
+        onReset={clearFilters}
       />
     </SafeAreaView>
   );
 }
 
+/** Sort & filter bottom sheet — same pattern as the Plants tab. */
+function HistoryFilterSheet({
+  visible,
+  onClose,
+  typeFilter,
+  setTypeFilter,
+  filterPlant,
+  setFilterPlant,
+  plants,
+  onReset,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  typeFilter: number;
+  setTypeFilter: (i: number) => void;
+  filterPlant: number | 'all';
+  setFilterPlant: (v: number | 'all') => void;
+  plants: Plant[];
+  onReset: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const sortedPlants = useMemo(
+    () => plants.slice().sort((a, b) => a.name.localeCompare(b.name)),
+    [plants],
+  );
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.sheetScrim} onPress={onClose}>
+        <Pressable
+          style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.sheetHandle} />
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Filter history</Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <X size={20} />
+            </Pressable>
+          </View>
+
+          <Text style={styles.sheetLabel}>Event type</Text>
+          <ScrollView style={{ maxHeight: 196 }} bounces={false}>
+            {TYPE_FILTERS.map((f, i) => {
+              const active = i === typeFilter;
+              return (
+                <Pressable
+                  key={f.label}
+                  style={styles.sheetOpt}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => {});
+                    setTypeFilter(i);
+                  }}
+                >
+                  <Text style={[styles.sheetOptText, active && { color: colors.green }]}>
+                    {f.label}
+                  </Text>
+                  {active && <Check size={18} />}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={styles.sheetLabel}>Plant</Text>
+          <ScrollView style={{ maxHeight: 196 }} bounces={false}>
+            {[null, ...sortedPlants].map((p) => {
+              const value: number | 'all' = p ? p.id : 'all';
+              const active = filterPlant === value;
+              return (
+                <Pressable
+                  key={p ? p.id : '__all__'}
+                  style={styles.sheetOpt}
+                  onPress={() => {
+                    Haptics.selectionAsync().catch(() => {});
+                    setFilterPlant(value);
+                  }}
+                >
+                  <Text
+                    style={[styles.sheetOptText, active && { color: colors.green }]}
+                    numberOfLines={1}
+                  >
+                    {p ? p.name : 'All plants'}
+                  </Text>
+                  {active && <Check size={18} />}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+
+          <View style={styles.sheetFooter}>
+            <Pressable onPress={onReset} hitSlop={8} style={styles.sheetReset}>
+              <Text style={styles.sheetResetText}>Reset</Text>
+            </Pressable>
+            <PressableScale style={styles.sheetDone} onPress={onClose}>
+              <Text style={styles.sheetDoneText}>Done</Text>
+            </PressableScale>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  filterWrap: { paddingHorizontal: spacing.lg, paddingBottom: 8 },
-  filterPill: {
+  filterBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBtnActive: { backgroundColor: colors.greenBg, borderColor: 'rgba(48,209,88,0.35)' },
+  summaryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingVertical: 9,
-    paddingHorizontal: 15,
-    maxWidth: 260,
+    gap: 12,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: 8,
   },
-  filterText: { color: colors.textPrimary, fontSize: font.size.md, fontWeight: font.weight.medium },
-  chipRow: { gap: 8, paddingRight: spacing.lg },
-  chip: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
+  summaryText: {
+    flex: 1,
+    color: colors.textTertiary,
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
   },
-  chipActive: { backgroundColor: colors.greenBg, borderColor: colors.green },
-  chipText: { color: colors.textSecondary, fontSize: font.size.base, fontWeight: font.weight.semibold },
-  chipTextActive: { color: colors.green },
+  summaryClear: { color: colors.green, fontSize: font.size.sm, fontWeight: font.weight.semibold },
   scroll: { paddingHorizontal: spacing.lg, paddingBottom: 130 },
   group: { marginBottom: 14 },
   groupLabel: {
@@ -297,4 +433,60 @@ const styles = StyleSheet.create({
   entryType: { fontSize: font.size.sm, marginTop: 3, fontWeight: font.weight.medium },
   reason: { color: colors.orange },
   entryTime: { color: colors.textMuted, fontSize: font.size.sm },
+
+  sheetScrim: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderColor: colors.hairline,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textMuted,
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sheetTitle: { color: colors.textPrimary, fontSize: font.size.xl, fontWeight: font.weight.bold },
+  sheetLabel: {
+    color: colors.textMuted,
+    fontSize: font.size.xs,
+    fontWeight: font.weight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  sheetOpt: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  sheetOptText: { color: colors.textPrimary, fontSize: font.size.lg, flex: 1, paddingRight: 10 },
+  sheetFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 },
+  sheetReset: { paddingVertical: 14, paddingHorizontal: 10 },
+  sheetResetText: { color: colors.textTertiary, fontSize: font.size.lg, fontWeight: font.weight.medium },
+  sheetDone: {
+    flex: 1,
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetDoneText: { color: colors.black, fontSize: font.size.xl, fontWeight: font.weight.semibold },
 });

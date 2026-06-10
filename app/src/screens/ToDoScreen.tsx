@@ -228,14 +228,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingLeft: 2,
   },
-  setDateBtn: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingVertical: 7,
-    paddingHorizontal: 13,
-  },
+  setDateBtn: { paddingVertical: 4, paddingHorizontal: 2 },
   setDateText: { color: colors.green, fontSize: font.size.sm, fontWeight: font.weight.semibold },
   queueBtn: {
     flexDirection: 'row',
