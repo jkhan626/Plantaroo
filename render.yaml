@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: plantaroo-api
+    name: plantaroo # live at https://plantaroo.onrender.com
     runtime: node
     plan: free
     branch: ios-app

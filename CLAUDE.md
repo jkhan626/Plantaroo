@@ -18,7 +18,7 @@ Both talk to the **same Firebase project `plantaroo-204ca`** (per-user isolation
 - **Auth:** Google sign-in (Firebase Auth, `signInWithPopup`) gates the app. A returning user's session persists (offline too) via `browserLocalPersistence`. Account/sign-out button is in the header.
 - **Hosting:**
   - Frontend: GitHub Pages at https://jkhan626.github.io/Plantaroo/
-  - API: Render.com at https://plantaroo-api.onrender.com (needs user to deploy — see Deployment section)
+  - API: Render.com at https://plantaroo.onrender.com (live since 2026-06-09; free tier, deploys from the `ios-app` branch; serves the Apple sign-in revocation endpoint for the iOS app — the Claude proxy is dormant without `ANTHROPIC_API_KEY`)
 - **AI / plant profiles:** When adding a plant, the 6-field profile (watering days, moisture, feed-every-N, fert type, carnivore, water source) is resolved **local-first**:
   1. **Bundled local DB** in `index.html` (`LOCAL_PROFILES` exact map + `LOCAL_PROFILE_PATTERNS` genus/type fallbacks, between the `<<LOCAL_DB_START/END>>` markers) — **free, instant, offline, zero API cost.** Covers Jamal's whole collection + common houseplants. This is the default path now.
   2. **Claude API fallback** (Claude Sonnet 4.6, `POST /api/plant-profile`) only when the local DB has no match for a genuinely unknown plant.
@@ -129,5 +129,5 @@ GitHub Pages: https://jkhan626.github.io/Plantaroo/ (auto-deploys on push to `ma
 2. New + → Web Service → connect Plantaroo repo
 3. Name: `plantaroo-api`, Build: `npm install`, Start: `node server/index.js`
 4. Add env var: `ANTHROPIC_API_KEY` = your key
-5. Create — URL will be https://plantaroo-api.onrender.com
+5. Create — URL is https://plantaroo.onrender.com (DONE 2026-06-09: service name `plantaroo`, branch `ios-app`, Apple revocation env vars set)
 6. Frontend already points to this URL (var API_BASE in index.html)

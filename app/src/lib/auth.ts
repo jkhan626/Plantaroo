@@ -70,8 +70,8 @@ export async function signOutUser(): Promise<void> {
   await fbSignOut(auth);
 }
 
-// Existing Render service (free tier) — only used for Apple token revocation.
-const REVOKE_ENDPOINT = 'https://plantaroo-api.onrender.com/api/apple-revoke';
+// Render service (free tier) — only used for Apple token revocation.
+const REVOKE_ENDPOINT = 'https://plantaroo.onrender.com/api/apple-revoke';
 
 /**
  * Revoke the Sign in with Apple tokens (App Store guideline 5.1.1(v)).

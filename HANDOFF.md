@@ -44,18 +44,14 @@ Done in a parallel session with Jamal driving the consoles:
   `npm install`, start `node server/index.js`, with env vars `APPLE_TEAM_ID=AK6GDSF62K`,
   `APPLE_KEY_ID=L4M8V8A7LJ`, `APPLE_PRIVATE_KEY=<.p8 contents>`. `render.yaml`
   mirrors this config. Build reported successful.
-- **OPEN ITEM — service URL:** the app's `REVOKE_ENDPOINT` in `app/src/lib/auth.ts`
-  is hardcoded to `https://plantaroo-api.onrender.com`, but that subdomain answers
-  404 `x-render-routing: no-server` — new Render accounts suffix service URLs
-  (e.g. `plantaroo-api-xxxx.onrender.com`). **Get the real URL from Jamal's Render
-  dashboard (top of the service page), update `REVOKE_ENDPOINT` in
-  `app/src/lib/auth.ts` + the URL in `app/SETUP.md` + CLAUDE.md references, then
-  verify:** `GET <url>/health` → `{"status":"ok"}` and
-  `POST <url>/api/apple-revoke` with `{"authorizationCode":"bogus"}` →
-  `{"error":"Apple token exchange failed"}` (502) proves the Apple env vars are
-  loaded; `{"error":"Apple revocation not configured"}` (501) means they aren't.
-  Free tier sleeps ~15 min idle, cold start ~30–50 s — first curl may be slow;
-  revocation is best-effort so this never blocks account deletion.
+- **RESOLVED — service URL is `https://plantaroo.onrender.com`** (Jamal named the
+  service `plantaroo`). `REVOKE_ENDPOINT` in `app/src/lib/auth.ts`, `render.yaml`,
+  and CLAUDE.md all updated. Verified live: `GET /health` → ok, and
+  `POST /api/apple-revoke` with a bogus code → 502 `"Apple token exchange failed"`,
+  which proves the Apple env vars + .p8 signing work end-to-end. **Apple revocation
+  is fully operational — nothing left to do on this.** Free tier sleeps ~15 min
+  idle (cold start ~30–50 s); revocation is best-effort so that never blocks
+  account deletion.
 
 ## Phase 1 — DELIVERED (design below kept for reference)
 
