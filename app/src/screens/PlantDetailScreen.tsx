@@ -70,6 +70,13 @@ import {
   removeHistoryEntry,
 } from '../logic/actions';
 import { isWinterFeedPause } from '../logic/fertilize';
+import {
+  careInfoLookup,
+  LIGHT_LABELS,
+  HUMIDITY_LABELS,
+  DIFFICULTY_LABELS,
+  TOXIC_LABELS,
+} from '../logic/careInfo';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants, getHistory, dbDelete } from '../data/db';
 import { choosePhoto } from '../lib/photo';
@@ -131,6 +138,7 @@ export function PlantDetailScreen() {
     ? Math.max(0.02, Math.min(elapsedDays / effectiveInterval, 1))
     : 0;
   const ringColor = dueColorFor(plant.last_watered ? dueDays : 0, !plant.last_watered);
+  const care = careInfoLookup(plant.name);
   const myHistory = allHistory
     .filter((h) => h.plantId === plant.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -427,6 +435,10 @@ export function PlantDetailScreen() {
           </View>
         )}
 
+        {care?.pet_toxic === 'toxic' && (
+          <Text style={styles.toxicNote}>Toxic to cats &amp; dogs — keep out of reach.</Text>
+        )}
+
         {/* Schedule */}
         <Section title="Schedule">
           <Row label="Last watered" value={relativeDayLabel(plant.last_watered)} onPress={() => setDateOpen(true)} />
@@ -473,6 +485,41 @@ export function PlantDetailScreen() {
           <Row label="Last cleaned" value={relativeDayLabel(plant.last_cleaned ?? null)} />
           <Row label="Last pruned" value={relativeDayLabel(plant.last_pruned ?? null)} last />
         </Section>
+
+        {/* Bundled plant knowledge (Phase 3) */}
+        {care && (
+          <Section title="Plant care guide">
+            <Row label="Light" value={LIGHT_LABELS[care.light_needs]} />
+            <Row label="Humidity" value={HUMIDITY_LABELS[care.humidity_pref]} />
+            <Row label="Temperature" value={care.temp_range} />
+            <Row label="Difficulty" value={DIFFICULTY_LABELS[care.difficulty]} />
+            <Row
+              label="Pets"
+              value={TOXIC_LABELS[care.pet_toxic]}
+              valueColor={
+                care.pet_toxic === 'toxic'
+                  ? colors.redSoft
+                  : care.pet_toxic === 'mild'
+                    ? colors.orange
+                    : colors.green
+              }
+            />
+            <Text style={styles.careNotes}>{care.care_notes}</Text>
+          </Section>
+        )}
+
+        {/* Symptom troubleshooter entry */}
+        <View style={styles.section}>
+          <Pressable
+            style={styles.troubleshootBtn}
+            onPress={() => nav.navigate('Troubleshoot', { id: plant.id })}
+          >
+            <Text style={styles.troubleshootText}>What’s wrong with my plant?</Text>
+            <Text style={styles.troubleshootSub}>
+              Pick a symptom and get a diagnosis based on this plant’s real watering data.
+            </Text>
+          </Pressable>
+        </View>
 
         {/* Setup */}
         <Section title="Setup">
@@ -705,6 +752,30 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   warningText: { color: colors.redSoft, fontSize: font.size.base, fontWeight: font.weight.medium, textAlign: 'center' },
+  toxicNote: {
+    color: colors.redSoft,
+    fontSize: font.size.base,
+    fontWeight: font.weight.medium,
+    textAlign: 'center',
+    marginTop: 10,
+    marginHorizontal: spacing.lg,
+  },
+  careNotes: {
+    color: colors.textSecondary,
+    fontSize: font.size.md,
+    lineHeight: 20,
+    paddingVertical: 13,
+  },
+  troubleshootBtn: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  troubleshootText: { color: colors.green, fontSize: font.size.lg, fontWeight: font.weight.semibold },
+  troubleshootSub: { color: colors.textTertiary, fontSize: font.size.sm, marginTop: 3, lineHeight: 17 },
 
   section: { marginTop: 22, paddingHorizontal: spacing.lg },
   sectionTitle: {

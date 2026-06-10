@@ -42,6 +42,7 @@ import { PlantDetailScreen } from './src/screens/PlantDetailScreen';
 import { AddPlantScreen } from './src/screens/AddPlantScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { CareQueueScreen } from './src/screens/CareQueueScreen';
+import { TroubleshootScreen } from './src/screens/TroubleshootScreen';
 
 initSentry();
 configureNotificationHandler();
@@ -179,6 +180,11 @@ function App() {
                   name="CareQueue"
                   component={CareQueueScreen}
                   options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
+                <Stack.Screen
+                  name="Troubleshoot"
+                  component={TroubleshootScreen}
+                  options={{ animation: 'slide_from_right' }}
                 />
               </>
             ) : (

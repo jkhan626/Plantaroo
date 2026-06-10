@@ -5,6 +5,7 @@ export type RootStackParamList = {
   AddPlant: undefined;
   Settings: undefined;
   CareQueue: undefined;
+  Troubleshoot: { id: number };
 };
 
 export type TabParamList = {

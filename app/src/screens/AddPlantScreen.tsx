@@ -45,6 +45,12 @@ import {
   DROPDOWN_LABELS,
 } from '../logic/constants';
 import { localProfileLookup, defaultProfile } from '../logic/profiles';
+import {
+  careInfoLookup,
+  DIFFICULTY_LABELS,
+  HUMIDITY_LABELS,
+  type CareInfo,
+} from '../logic/careInfo';
 import { dbAdd, genId, getPlants } from '../data/db';
 import {
   rescheduleWateringReminders,
@@ -66,6 +72,7 @@ export function AddPlantScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [profile, setProfile] = useState<PlantProfile>(defaultProfile());
   const [matched, setMatched] = useState<null | boolean>(null);
+  const [care, setCare] = useState<CareInfo | null>(null);
 
   const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'moisture' | 'fert' | 'water'>(null);
 
@@ -107,6 +114,7 @@ export function AddPlantScreen() {
       setProfile(defaultProfile());
       setMatched(false);
     }
+    setCare(careInfoLookup(name));
   }
 
   function bump(field: 'species_baseline_days' | 'feed_every_n_waterings', delta: number) {
@@ -229,6 +237,22 @@ export function AddPlantScreen() {
             <Text style={styles.deriveHint}>
               With your soil, waters about every {startInterval} day{startInterval === 1 ? '' : 's'}
               {light === 'natural' ? ' (slower in winter)' : ''} — then adjusts as it learns from you.
+            </Text>
+          )}
+
+          {matched && care && (
+            <Text style={styles.careHint}>
+              <Text style={care.difficulty === 'fussy' ? { color: colors.orange } : undefined}>
+                {DIFFICULTY_LABELS[care.difficulty]}
+              </Text>
+              {` · ${HUMIDITY_LABELS[care.humidity_pref].toLowerCase()}`}
+              {care.pet_toxic === 'toxic' ? (
+                <Text style={{ color: colors.redSoft }}>{' · toxic to pets'}</Text>
+              ) : care.pet_toxic === 'safe' ? (
+                <Text style={{ color: colors.green }}>{' · pet safe'}</Text>
+              ) : (
+                ''
+              )}
             </Text>
           )}
 
@@ -446,6 +470,15 @@ const styles = StyleSheet.create({
     fontSize: font.size.sm,
     lineHeight: 18,
     marginTop: -2,
+    marginBottom: 10,
+    paddingLeft: 2,
+  },
+  careHint: {
+    color: colors.textTertiary,
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
+    lineHeight: 18,
+    marginTop: -4,
     marginBottom: 10,
     paddingLeft: 2,
   },
