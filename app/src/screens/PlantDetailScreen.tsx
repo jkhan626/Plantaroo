@@ -23,7 +23,8 @@ import type {
   SoilType,
   LightType,
 } from '../types';
-import { usePlant, useHistory } from '../ui/hooks';
+import { Image } from 'expo-image';
+import { usePlant, useHistory, useJournal } from '../ui/hooks';
 import { useWaterAction } from '../ui/useWater';
 import { useToast } from '../ui/Toast';
 import { PlantAvatar, OptionSheet } from '../ui/components';
@@ -78,7 +79,7 @@ import {
   TOXIC_LABELS,
 } from '../logic/careInfo';
 import { rescheduleWateringReminders } from '../logic/notify';
-import { getPlants, getHistory, dbDelete } from '../data/db';
+import { getPlants, getHistory, getJournal, dbDelete, dbAdd, genId } from '../data/db';
 import { choosePhoto } from '../lib/photo';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -103,6 +104,7 @@ export function PlantDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'PlantDetail'>>();
   const plant = usePlant(route.params.id);
   const allHistory = useHistory();
+  const allJournal = useJournal();
   const { water } = useWaterAction();
   const toast = useToast();
 
@@ -143,6 +145,19 @@ export function PlantDetailScreen() {
     .filter((h) => h.plantId === plant.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 8);
+
+  // Growth journal — oldest first for the timeline strip.
+  const myJournal = allJournal
+    .filter((j) => j.plant_id === plant.id && j.photo)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const lastJournalAt = myJournal.length
+    ? new Date(myJournal[myJournal.length - 1].date).getTime()
+    : null;
+  const repottedRecently =
+    plant.last_repotted &&
+    Date.now() - new Date(plant.last_repotted).getTime() < 7 * 86_400_000;
+  const journalNudge =
+    repottedRecently || (lastJournalAt !== null && Date.now() - lastJournalAt > 30 * 86_400_000);
 
   async function reschedule() {
     rescheduleWateringReminders(getPlants());
@@ -285,6 +300,33 @@ export function PlantDetailScreen() {
     patchPlant(plant, { [editor.field]: value } as Partial<Plant>);
   }
 
+  function addJournalPhoto() {
+    if (!plant) return;
+    choosePhoto(
+      async (uri) => {
+        await dbAdd('journal', {
+          id: genId(),
+          plant_id: plant.id,
+          date: new Date().toISOString(),
+          photo: uri,
+          note: '',
+        });
+      },
+      { width: 800, square: false },
+    );
+  }
+
+  function confirmRemoveJournal(entryId: number) {
+    Alert.alert('Remove this photo?', 'The journal entry will be deleted.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => dbDelete('journal', entryId),
+      },
+    ]);
+  }
+
   function confirmDelete() {
     Alert.alert('Delete plant?', `${plant!.name} and its history will be removed.`, [
       { text: 'Cancel', style: 'cancel' },
@@ -295,6 +337,9 @@ export function PlantDetailScreen() {
           const id = plant!.id;
           for (const h of getHistory().filter((h) => h.plantId === id)) {
             await dbDelete('history', h.id);
+          }
+          for (const j of getJournal().filter((j) => j.plant_id === id)) {
+            await dbDelete('journal', j.id);
           }
           await dbDelete('plants', id);
           reschedule();
@@ -541,6 +586,71 @@ export function PlantDetailScreen() {
           />
         </Section>
 
+        {/* Growth journal (Phase 4) */}
+        <Section title="Growth journal">
+          {myJournal.length >= 2 && (
+            <View style={styles.thenNowRow}>
+              <View style={styles.thenNowCol}>
+                <Image
+                  source={{ uri: myJournal[0].photo! }}
+                  style={styles.thenNowImg}
+                  contentFit="cover"
+                  transition={120}
+                />
+                <Text style={styles.thenNowLabel}>{monthYear(myJournal[0].date)}</Text>
+              </View>
+              <View style={styles.thenNowCol}>
+                <Image
+                  source={{ uri: myJournal[myJournal.length - 1].photo! }}
+                  style={styles.thenNowImg}
+                  contentFit="cover"
+                  transition={120}
+                />
+                <Text style={styles.thenNowLabel}>
+                  {monthYear(myJournal[myJournal.length - 1].date)}
+                </Text>
+              </View>
+            </View>
+          )}
+          {myJournal.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.stripRow}
+            >
+              {myJournal.map((j) => (
+                <Pressable
+                  key={j.id}
+                  onLongPress={() => confirmRemoveJournal(j.id)}
+                  delayLongPress={350}
+                >
+                  <Image
+                    source={{ uri: j.photo! }}
+                    style={styles.stripImg}
+                    contentFit="cover"
+                    transition={120}
+                  />
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.journalEmpty}>
+              Watch it grow — photos you add build a timeline here.
+            </Text>
+          )}
+          {journalNudge && myJournal.length > 0 && (
+            <Text style={styles.journalNudge}>
+              {repottedRecently
+                ? 'Freshly repotted — a good moment for a photo.'
+                : 'It’s been a while — add a growth photo?'}
+            </Text>
+          )}
+          <Pressable style={styles.journalAddBtn} onPress={addJournalPhoto}>
+            <Camera size={15} color={colors.green} />
+            <Text style={styles.journalAddText}>Add a growth photo</Text>
+          </Pressable>
+        </Section>
+
         {/* History */}
         {myHistory.length > 0 && (
           <Section title="Recent activity">
@@ -588,6 +698,10 @@ export function PlantDetailScreen() {
       />
     </SafeAreaView>
   );
+}
+
+function monthYear(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
 function Stat({ value, label }: { value: string; label: string }) {
@@ -776,6 +890,48 @@ const styles = StyleSheet.create({
   },
   troubleshootText: { color: colors.green, fontSize: font.size.lg, fontWeight: font.weight.semibold },
   troubleshootSub: { color: colors.textTertiary, fontSize: font.size.sm, marginTop: 3, lineHeight: 17 },
+
+  thenNowRow: { flexDirection: 'row', gap: 10, paddingTop: 14 },
+  thenNowCol: { flex: 1 },
+  thenNowImg: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceElevated,
+  },
+  thenNowLabel: {
+    color: colors.textMuted,
+    fontSize: font.size.xs,
+    fontWeight: font.weight.medium,
+    textAlign: 'center',
+    marginTop: 5,
+  },
+  stripRow: { gap: 8, paddingVertical: 14 },
+  stripImg: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceElevated,
+  },
+  journalEmpty: {
+    color: colors.textMuted,
+    fontSize: font.size.md,
+    lineHeight: 20,
+    paddingTop: 14,
+  },
+  journalNudge: {
+    color: colors.green,
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
+  },
+  journalAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingVertical: 13,
+  },
+  journalAddText: { color: colors.green, fontSize: font.size.md, fontWeight: font.weight.semibold },
 
   section: { marginTop: 22, paddingHorizontal: spacing.lg },
   sectionTitle: {

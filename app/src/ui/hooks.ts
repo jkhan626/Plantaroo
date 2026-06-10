@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { subscribe, getPlants, getHistory } from '../data/db';
-import type { Plant, HistoryEntry } from '../types';
+import { subscribe, getPlants, getHistory, getJournal } from '../data/db';
+import type { Plant, HistoryEntry, JournalEntry } from '../types';
 
 /** Re-render whenever the data layer emits a change. */
 export function useStore(): number {
@@ -17,6 +17,11 @@ export function usePlants(): Plant[] {
 export function useHistory(): HistoryEntry[] {
   useStore();
   return getHistory();
+}
+
+export function useJournal(): JournalEntry[] {
+  useStore();
+  return getJournal();
 }
 
 export function usePlant(id: number | undefined): Plant | undefined {

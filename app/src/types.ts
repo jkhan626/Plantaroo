@@ -68,4 +68,13 @@ export interface HistoryEntry {
   lateReason: LateReason;
 }
 
-export type Store = 'plants' | 'history' | 'profileCache';
+/** Growth journal entry (Phase 4) — own doc so plant docs stay small. */
+export interface JournalEntry {
+  id: number;
+  plant_id: number;
+  date: string; // ISO timestamp
+  photo: string | null; // data URI (~800px JPEG) or null for note-only
+  note: string;
+}
+
+export type Store = 'plants' | 'history' | 'profileCache' | 'journal';

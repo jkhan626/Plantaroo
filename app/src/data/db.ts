@@ -20,16 +20,19 @@ import {
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../firebase';
-import type { Plant, HistoryEntry, Store } from '../types';
+import type { Plant, HistoryEntry, JournalEntry, Store } from '../types';
 
 type Cache = {
   plants: Plant[];
   history: HistoryEntry[];
+  journal: JournalEntry[];
   profileCache: Record<string, any>;
 };
 
+const EMPTY_CACHE = (): Cache => ({ plants: [], history: [], journal: [], profileCache: {} });
+
 let _uid: string | null = null;
-let _cache: Cache = { plants: [], history: [], profileCache: {} };
+let _cache: Cache = EMPTY_CACHE();
 let _hydrated = false;
 
 // ---- change notification (screens subscribe) ---------------------------
@@ -71,6 +74,9 @@ export function getPlants(): Plant[] {
 export function getHistory(): HistoryEntry[] {
   return _cache.history;
 }
+export function getJournal(): JournalEntry[] {
+  return _cache.journal;
+}
 
 /**
  * True once the first load has settled — either the disk mirror had data, or
@@ -107,7 +113,7 @@ export async function startSession(uid: string): Promise<void> {
 
 export function endSession() {
   _uid = null;
-  _cache = { plants: [], history: [], profileCache: {} };
+  _cache = EMPTY_CACHE();
   _hydrated = false;
   emit();
 }
@@ -135,6 +141,7 @@ async function hydrateFromDisk(): Promise<void> {
       _cache = {
         plants: parsed.plants ?? [],
         history: parsed.history ?? [],
+        journal: parsed.journal ?? [],
         profileCache: parsed.profileCache ?? {},
       };
     }
@@ -171,7 +178,7 @@ function keyField(store: Store): 'cacheKey' | 'id' {
 
 /** Pull every store from Firestore into the in-memory cache (called on refresh). */
 export async function loadAllFromCloud(): Promise<void> {
-  const stores: Store[] = ['plants', 'history', 'profileCache'];
+  const stores: Store[] = ['plants', 'history', 'journal', 'profileCache'];
   await Promise.all(
     stores.map(async (store) => {
       const snap = await getDocs(colRef(store));
@@ -181,14 +188,10 @@ export async function loadAllFromCloud(): Promise<void> {
           next[d.id] = d.data();
         });
         _cache.profileCache = next;
-      } else if (store === 'plants') {
-        const next: Plant[] = [];
-        snap.forEach((d) => next.push(d.data() as Plant));
-        _cache.plants = next;
       } else {
-        const next: HistoryEntry[] = [];
-        snap.forEach((d) => next.push(d.data() as HistoryEntry));
-        _cache.history = next;
+        const next: any[] = [];
+        snap.forEach((d) => next.push(d.data()));
+        _cache[store] = next;
       }
     }),
   );
@@ -197,6 +200,7 @@ export async function loadAllFromCloud(): Promise<void> {
 // ---- public db* API ----------------------------------------------------
 export async function dbGetAll(store: 'plants'): Promise<Plant[]>;
 export async function dbGetAll(store: 'history'): Promise<HistoryEntry[]>;
+export async function dbGetAll(store: 'journal'): Promise<JournalEntry[]>;
 export async function dbGetAll(store: 'profileCache'): Promise<any[]>;
 export async function dbGetAll(store: Store): Promise<any[]> {
   if (store === 'profileCache') return Object.values(_cache.profileCache);
@@ -204,7 +208,7 @@ export async function dbGetAll(store: Store): Promise<any[]> {
 }
 
 export async function dbGet(store: 'profileCache', key: string): Promise<any>;
-export async function dbGet(store: 'plants' | 'history', key: number): Promise<any>;
+export async function dbGet(store: 'plants' | 'history' | 'journal', key: number): Promise<any>;
 export async function dbGet(store: Store, key: string | number): Promise<any> {
   if (store === 'profileCache') return _cache.profileCache[key as string];
   const arr = _cache[store] as Array<{ id: number }>;
@@ -218,14 +222,10 @@ export async function dbPut(store: Store, item: any): Promise<string | number> {
   // checks see the change and recompute.
   if (store === 'profileCache') {
     _cache.profileCache = { ..._cache.profileCache, [key]: item };
-  } else if (store === 'plants') {
-    const arr = _cache.plants;
-    const i = arr.findIndex((x) => x.id === key);
-    _cache.plants = i >= 0 ? arr.map((x) => (x.id === key ? item : x)) : [...arr, item];
   } else {
-    const arr = _cache.history;
+    const arr = _cache[store] as any[];
     const i = arr.findIndex((x) => x.id === key);
-    _cache.history = i >= 0 ? arr.map((x) => (x.id === key ? item : x)) : [...arr, item];
+    _cache[store] = (i >= 0 ? arr.map((x) => (x.id === key ? item : x)) : [...arr, item]) as any;
   }
   persistToDisk();
   emit();
@@ -245,10 +245,8 @@ export async function dbDelete(store: Store, key: string | number): Promise<void
     const next = { ..._cache.profileCache };
     delete next[key as string];
     _cache.profileCache = next;
-  } else if (store === 'plants') {
-    _cache.plants = _cache.plants.filter((x) => x.id !== key);
   } else {
-    _cache.history = _cache.history.filter((x) => x.id !== key);
+    _cache[store] = (_cache[store] as any[]).filter((x) => x.id !== key) as any;
   }
   persistToDisk();
   emit();
@@ -256,7 +254,7 @@ export async function dbDelete(store: Store, key: string | number): Promise<void
 
 /** Permanently delete every doc in the user's subtree (account deletion). */
 export async function deleteAllUserData(): Promise<void> {
-  const stores: Store[] = ['plants', 'history', 'profileCache'];
+  const stores: Store[] = ['plants', 'history', 'journal', 'profileCache'];
   for (const store of stores) {
     const snap = await getDocs(colRef(store));
     await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
@@ -264,6 +262,6 @@ export async function deleteAllUserData(): Promise<void> {
   if (_uid) {
     await AsyncStorage.removeItem(diskKey(_uid)).catch(() => {});
   }
-  _cache = { plants: [], history: [], profileCache: {} };
+  _cache = EMPTY_CACHE();
   emit();
 }

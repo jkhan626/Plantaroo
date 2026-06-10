@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { colors, font, radius, spacing } from '../theme';
 import type { HistoryEntry } from '../types';
-import { useHistory, usePlants } from '../ui/hooks';
+import { useHistory, usePlants, useJournal } from '../ui/hooks';
+import { dbDelete } from '../data/db';
 import { ScreenHeader } from '../ui/Header';
 import { EmptyState } from '../ui/EmptyState';
 import { OptionSheet } from '../ui/components';
@@ -43,7 +44,19 @@ const TYPE_COLOR: Record<string, string> = {
   Misted: colors.lightBlue,
   Cleaned: colors.textSecondary,
   Pruned: colors.orange,
+  'Growth photo': colors.lightBlue,
 };
+
+/** Unified row: a real history event, or a journal entry shown alongside. */
+interface FeedRow {
+  id: number;
+  plantId: number;
+  plantName: string;
+  date: string;
+  type: string;
+  lateReason: string | null;
+  isJournal: boolean;
+}
 
 /** Action-type filter chips — 'Watered' includes 'Watered + Fed'. */
 const TYPE_FILTERS: { label: string; types: string[] | null }[] = [
@@ -55,6 +68,7 @@ const TYPE_FILTERS: { label: string; types: string[] | null }[] = [
   { label: 'Cleaned', types: ['Cleaned'] },
   { label: 'Pruned', types: ['Pruned'] },
   { label: 'Repotted', types: ['Repotted'] },
+  { label: 'Photos', types: ['Growth photo'] },
 ];
 
 function groupLabel(iso: string): string {
@@ -76,23 +90,42 @@ function timeLabel(iso: string): string {
 
 export function HistoryScreen() {
   const history = useHistory();
+  const journal = useJournal();
   const plants = usePlants();
   const [filterPlant, setFilterPlant] = useState<number | 'all'>('all');
   const [filterOpen, setFilterOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState(0); // index into TYPE_FILTERS
 
   const allowedTypes = TYPE_FILTERS[typeFilter].types;
-  const sorted = useMemo(
-    () =>
-      [...history]
-        .filter((h) => filterPlant === 'all' || h.plantId === filterPlant)
-        .filter((h) => !allowedTypes || allowedTypes.indexOf(h.type) !== -1)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-    [history, filterPlant, allowedTypes],
-  );
+  const sorted = useMemo(() => {
+    const rows: FeedRow[] = [
+      ...history.map((h) => ({
+        id: h.id,
+        plantId: h.plantId,
+        plantName: h.plantName,
+        date: h.date,
+        type: h.type as string,
+        lateReason: h.lateReason,
+        isJournal: false,
+      })),
+      ...journal.map((j) => ({
+        id: j.id,
+        plantId: j.plant_id,
+        plantName: plants.find((p) => p.id === j.plant_id)?.name ?? 'Plant',
+        date: j.date,
+        type: 'Growth photo',
+        lateReason: null,
+        isJournal: true,
+      })),
+    ];
+    return rows
+      .filter((h) => filterPlant === 'all' || h.plantId === filterPlant)
+      .filter((h) => !allowedTypes || allowedTypes.indexOf(h.type) !== -1)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [history, journal, plants, filterPlant, allowedTypes]);
 
   const groups = useMemo(() => {
-    const out: [string, HistoryEntry[]][] = [];
+    const out: [string, FeedRow[]][] = [];
     let current = '';
     for (const h of sorted) {
       const label = groupLabel(h.date);
@@ -105,13 +138,28 @@ export function HistoryScreen() {
     return out;
   }, [sorted]);
 
+  function removeRow(row: FeedRow) {
+    if (!row.isJournal) {
+      confirmRemoveEvent(row as unknown as HistoryEntry);
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Alert.alert('Remove this photo?', `The journal entry for ${row.plantName} will be deleted.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => dbDelete('journal', row.id) },
+    ]);
+  }
+
   const plantName = filterPlant === 'all' ? 'All plants' : plants.find((p) => p.id === filterPlant)?.name ?? 'All plants';
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <ScreenHeader title="History" subtitle={`${history.length} event${history.length === 1 ? '' : 's'}`} />
+      <ScreenHeader
+        title="History"
+        subtitle={`${history.length + journal.length} event${history.length + journal.length === 1 ? '' : 's'}`}
+      />
 
-      {history.length > 0 && (
+      {history.length + journal.length > 0 && (
         <View style={styles.filterWrap}>
           <Pressable style={styles.filterPill} onPress={() => setFilterOpen(true)}>
             <Text style={styles.filterText} numberOfLines={1}>
@@ -154,9 +202,9 @@ export function HistoryScreen() {
               <Text style={styles.groupLabel}>{label}</Text>
               {items.map((h) => (
                 <Pressable
-                  key={h.id}
+                  key={`${h.isJournal ? 'j' : 'h'}${h.id}`}
                   style={styles.entry}
-                  onLongPress={() => confirmRemoveEvent(h)}
+                  onLongPress={() => removeRow(h)}
                   delayLongPress={350}
                 >
                   <View style={{ flex: 1 }}>
