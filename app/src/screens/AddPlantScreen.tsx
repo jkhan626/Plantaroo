@@ -103,8 +103,18 @@ export function AddPlantScreen() {
     return Math.round(profile.species_baseline_days * (mult ?? 1) * 10) / 10;
   }, [soil, profile.species_baseline_days]);
 
-  function resolveProfile() {
-    const found = localProfileLookup(name);
+  // Resolve live as the user types — taps on other controls don't reliably
+  // blur the TextInput, so waiting for onBlur left the profile stuck on
+  // defaults. The lookup is an in-memory table; per-keystroke is free.
+  function resolveProfile(text: string = name) {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setProfile(defaultProfile());
+      setMatched(null);
+      setCare(null);
+      return;
+    }
+    const found = localProfileLookup(trimmed);
     if (found) {
       setProfile(found);
       setMatched(true);
@@ -114,7 +124,7 @@ export function AddPlantScreen() {
       setProfile(defaultProfile());
       setMatched(false);
     }
-    setCare(careInfoLookup(name));
+    setCare(careInfoLookup(trimmed));
   }
 
   function bump(field: 'species_baseline_days' | 'feed_every_n_waterings', delta: number) {
@@ -193,8 +203,11 @@ export function AddPlantScreen() {
           <Field label="Name">
             <TextInput
               value={name}
-              onChangeText={setName}
-              onBlur={resolveProfile}
+              onChangeText={(t) => {
+                setName(t);
+                resolveProfile(t);
+              }}
+              onBlur={() => resolveProfile()}
               placeholder="e.g. Monstera, Basil, Snake Plant"
               placeholderTextColor={colors.textMuted}
               style={styles.input}

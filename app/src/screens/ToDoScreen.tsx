@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, font, radius, spacing, shadow } from '../theme';
@@ -25,6 +25,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function ToDoScreen() {
   const nav = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const plants = usePlants();
   const { water } = useWaterAction();
   const toast = useToast();
@@ -158,7 +159,11 @@ export function ToDoScreen() {
         )}
       </ScrollView>
 
-      <PressableScale style={styles.fab} onPress={() => nav.navigate('AddPlant')} scaleTo={0.9}>
+      <PressableScale
+        style={[styles.fab, { bottom: Math.max(insets.bottom, 10) + 76 }]}
+        onPress={() => nav.navigate('AddPlant')}
+        scaleTo={0.9}
+      >
         <Plus size={24} color={colors.black} />
       </PressableScale>
 
@@ -206,7 +211,7 @@ function Section({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingHorizontal: spacing.lg, paddingBottom: 130 },
+  scroll: { paddingHorizontal: spacing.lg, paddingBottom: 170 },
   gear: { padding: 4 },
   section: { marginBottom: 18 },
   sectionHeaderRow: {
@@ -257,7 +262,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 22,
-    bottom: 96,
     width: 56,
     height: 56,
     borderRadius: 28,
