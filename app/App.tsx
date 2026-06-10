@@ -20,6 +20,7 @@ import { TabBar } from './src/navigation/TabBar';
 import { navigationRef } from './src/navigation/ref';
 import { setQuickActionItems, clearQuickActionItems } from './src/lib/quickActions';
 import { ToastProvider } from './src/ui/Toast';
+import { Onboarding } from './src/ui/Onboarding';
 
 import { onAuthChange, type User } from './src/lib/auth';
 import { initSentry, setSentryUser, wrapWithSentry } from './src/lib/sentry';
@@ -40,6 +41,7 @@ import { HistoryScreen } from './src/screens/HistoryScreen';
 import { PlantDetailScreen } from './src/screens/PlantDetailScreen';
 import { AddPlantScreen } from './src/screens/AddPlantScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { CareQueueScreen } from './src/screens/CareQueueScreen';
 
 initSentry();
 configureNotificationHandler();
@@ -173,12 +175,18 @@ function App() {
                   component={SettingsScreen}
                   options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                 />
+                <Stack.Screen
+                  name="CareQueue"
+                  component={CareQueueScreen}
+                  options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                />
               </>
             ) : (
               <Stack.Screen name="SignIn" component={SignInScreen} />
             )}
           </Stack.Navigator>
         </NavigationContainer>
+        <Onboarding enabled={!!user} />
       </ToastProvider>
     );
   }

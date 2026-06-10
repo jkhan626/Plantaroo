@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TextInput,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,9 +19,11 @@ import { useWaterAction } from '../ui/useWater';
 import { PlantCard } from '../ui/PlantCard';
 import { ScreenHeader } from '../ui/Header';
 import { EmptyState } from '../ui/EmptyState';
+import { SkeletonRows } from '../ui/Skeleton';
 import { PressableScale, OptionSheet } from '../ui/components';
 import { Plus, Search, Gear, Sprout, ChevronDown } from '../ui/icons';
 import { getDaysUntilDue, isWateredToday } from '../logic/schedule';
+import { isHydrated, refreshFromCloud } from '../data/db';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type SortBy = 'due' | 'name' | 'room';
@@ -43,6 +46,16 @@ export function PlantsScreen() {
   const [hideWatered, setHideWatered] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [roomOpen, setRoomOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshFromCloud();
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const rooms = useMemo(
     () => Array.from(new Set(plants.map((p) => p.room).filter(Boolean))).sort(),
@@ -126,12 +139,20 @@ export function PlantsScreen() {
         </View>
       )}
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {plants.length === 0 ? (
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textTertiary} />
+        }
+      >
+        {plants.length === 0 && !isHydrated() ? (
+          <SkeletonRows />
+        ) : plants.length === 0 ? (
           <EmptyState
             icon={<Sprout size={34} color={colors.green} />}
             title="No plants yet"
-            subtitle="Your collection will show up here."
+            subtitle="Add your first plant — its photo, schedule, and history live here."
             actionLabel="Add a plant"
             onAction={() => nav.navigate('AddPlant')}
           />

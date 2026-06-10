@@ -30,6 +30,7 @@ type Cache = {
 
 let _uid: string | null = null;
 let _cache: Cache = { plants: [], history: [], profileCache: {} };
+let _hydrated = false;
 
 // ---- change notification (screens subscribe) ---------------------------
 type Listener = () => void;
@@ -72,28 +73,57 @@ export function getHistory(): HistoryEntry[] {
 }
 
 /**
+ * True once the first load has settled — either the disk mirror had data, or
+ * the initial cloud refresh finished (successfully or not). Screens show
+ * skeleton rows while this is false and the cache is empty.
+ */
+export function isHydrated(): boolean {
+  return _hydrated;
+}
+
+/**
  * Begin a session: hydrate instantly from disk (so the UI paints offline),
  * then refresh from the cloud in the background.
  */
 export async function startSession(uid: string): Promise<void> {
   _uid = uid;
+  _hydrated = false;
   await hydrateFromDisk();
+  if (_cache.plants.length > 0 || _cache.history.length > 0) _hydrated = true;
   emit();
   // Fire-and-forget cloud refresh; failures keep the disk snapshot.
   loadAllFromCloud()
     .then(() => {
       persistToDisk();
-      emit();
     })
     .catch(() => {
       /* offline — keep the disk snapshot */
+    })
+    .finally(() => {
+      _hydrated = true;
+      emit();
     });
 }
 
 export function endSession() {
   _uid = null;
   _cache = { plants: [], history: [], profileCache: {} };
+  _hydrated = false;
   emit();
+}
+
+/** Pull-to-refresh: re-fetch everything from Firestore and persist. */
+export async function refreshFromCloud(): Promise<void> {
+  if (!_uid) return;
+  try {
+    await loadAllFromCloud();
+    persistToDisk();
+  } catch {
+    /* offline — keep what we have */
+  } finally {
+    _hydrated = true;
+    emit();
+  }
 }
 
 async function hydrateFromDisk(): Promise<void> {

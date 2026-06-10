@@ -17,8 +17,8 @@ Task list (also in the session task tracker):
 | Phase | Status |
 |---|---|
 | 0 — Housekeeping | **DONE, committed** (`c002a07`) |
-| 1 — UI & usability overhaul | **IN PROGRESS — design decided, no code written yet** |
-| 2 — Care tasks (mist/clean/prune/repot-check, winter feed pause) | pending |
+| 1 — UI & usability overhaul | **DONE, committed** (see commit on `ios-app`) |
+| 2 — Care tasks (mist/clean/prune/repot-check, winter feed pause) | **NEXT** |
 | 3 — Plant knowledge + symptom troubleshooter | pending |
 | 4 — Growth journal | pending |
 | 5 — iOS platform presence (badge, notif actions, widget, export) | pending — needs EAS build, ask first |
@@ -27,9 +27,9 @@ Phase 0 delivered: Apple token revocation end-to-end (`app/src/lib/auth.ts` re-a
 
 **Not yet pushed** — `git push origin ios-app` when convenient.
 
-## Phase 1 — decided design (implement this next)
+## Phase 1 — DELIVERED (design below kept for reference)
 
-All JS-only, ships OTA. The codebase has been fully read; key facts below under "Codebase facts".
+All six items implemented as specced, all JS-only/OTA-able. New files: `app/src/screens/CareQueueScreen.tsx` (route `CareQueue`, fullScreenModal), `app/src/ui/Onboarding.tsx` (overlay in `App.tsx`, flag `plantaroo:onboarded`), `app/src/ui/Skeleton.tsx`. Modified: `PlantCard.tsx` (swipe-right-to-water, layout/entering animations, 56px avatar), `PlantDetailScreen.tsx` (due ring + stat strip), `ToDoScreen.tsx` ("Water all · N" queue entry, pull-to-refresh, skeletons), `PlantsScreen.tsx` (same polish), `useWater.ts` (optional `WaterCallbacks` — `onWatered`/`onCancel`/`silent`, used by the queue), `db.ts` (`isHydrated()`, `refreshFromCloud()`). Visual verification on device still pending — ask Jamal to run it.
 
 1. **Care queue** — new `app/src/screens/CareQueueScreen.tsx`, route `CareQueue` in `RootStackParamList` (full-screen, slide_from_bottom). Snapshot the due list on mount (overdue + due-today + never-watered ids). One plant at a time: big `PlantAvatar` (~140), name, due text, feed/distilled hints; primary Water button, secondary Skip (uses `skipPlant`) and "Later" (advance without action). Progress line "2 of 7" + thin bar. On water: reuse the late-prompt logic from `useWater.ts` (Still wet / Too busy Alert), then a satisfying check animation (Reanimated spring + success haptic) before advancing. End state: "All done — n plants watered" + Done. Entry point: a prominent "Water all · N" row/button on ToDoScreen when dueCount > 0. Reschedule notifications after each water (cheap) or once at end.
 2. **Swipe-right-to-water** on `app/src/ui/PlantCard.tsx` — `Gesture.Pan()` from react-native-gesture-handler (installed), `activeOffsetX(20)` + `failOffsetY([-12,12])`, right-swipe only. Card translates; droplet revealed on the left scales in toward threshold (~88px); haptic detent on crossing (useAnimatedReaction + runOnJS); release past threshold → `runOnJS(onWater)()` + spring back. Disabled when `wateredToday`. Keep the water button.

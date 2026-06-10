@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, font, radius, spacing } from '../theme';
+import Svg, { Circle } from 'react-native-svg';
+import { colors, font, radius, spacing, dueColor as dueColorFor } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import type {
   Plant,
@@ -69,6 +70,13 @@ import { choosePhoto } from '../lib/photo';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type EditorField = 'moisture_pref' | 'fert_type' | 'water_source' | 'soil_type' | 'light_type' | 'room';
 
+// Due-progress ring around the hero avatar (elapsed / effective interval).
+const RING_SIZE = 126;
+const RING_STROKE = 6;
+const RING_R = (RING_SIZE - RING_STROKE) / 2;
+const RING_C = 2 * Math.PI * RING_R;
+const MS_PER_DAY = 86_400_000;
+
 interface Editor {
   field: EditorField;
   title: string;
@@ -106,6 +114,16 @@ export function PlantDetailScreen() {
   const dueDays = getDaysUntilDue(plant);
   const dueColor =
     !plant.last_watered ? colors.blue : dueDays < 0 ? colors.red : dueDays <= 2 ? colors.orange : colors.textPrimary;
+
+  // Ring progress: how far through the effective interval we are.
+  const effectiveInterval = interval * seasonal;
+  const elapsedDays = plant.last_watered
+    ? (Date.now() - new Date(plant.last_watered).getTime()) / MS_PER_DAY
+    : 0;
+  const ringProgress = plant.last_watered
+    ? Math.max(0.02, Math.min(elapsedDays / effectiveInterval, 1))
+    : 0;
+  const ringColor = dueColorFor(plant.last_watered ? dueDays : 0, !plant.last_watered);
   const myHistory = allHistory
     .filter((h) => h.plantId === plant.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -266,9 +284,35 @@ export function PlantDetailScreen() {
         {/* Hero */}
         <View style={styles.hero}>
           <Pressable onPress={() => choosePhoto((uri) => patchPlant(plant, { photo: uri }))}>
-            <PlantAvatar uri={plant.photo} size={104} />
-            <View style={styles.cameraBadge}>
-              <Camera size={15} color={colors.black} />
+            <View style={styles.ringWrap}>
+              <Svg width={RING_SIZE} height={RING_SIZE} style={StyleSheet.absoluteFill}>
+                <Circle
+                  cx={RING_SIZE / 2}
+                  cy={RING_SIZE / 2}
+                  r={RING_R}
+                  stroke={colors.surfaceElevated}
+                  strokeWidth={RING_STROKE}
+                  fill="none"
+                />
+                {ringProgress > 0 && (
+                  <Circle
+                    cx={RING_SIZE / 2}
+                    cy={RING_SIZE / 2}
+                    r={RING_R}
+                    stroke={ringColor}
+                    strokeWidth={RING_STROKE}
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={`${RING_C}`}
+                    strokeDashoffset={RING_C * (1 - ringProgress)}
+                    transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+                  />
+                )}
+              </Svg>
+              <PlantAvatar uri={plant.photo} size={104} />
+              <View style={styles.cameraBadge}>
+                <Camera size={15} color={colors.black} />
+              </View>
             </View>
           </Pressable>
           {editingName ? (
@@ -291,6 +335,24 @@ export function PlantDetailScreen() {
               <Text style={styles.name}>{plant.name}</Text>
             </Pressable>
           )}
+
+          {/* Quiet stat strip */}
+          <View style={styles.statStrip}>
+            <Stat value={`${Math.round(effectiveInterval)}d`} label="Interval" />
+            <View style={styles.statDivider} />
+            <Stat value={displayLabel(plant.moisture_pref)} label="Moisture" />
+            <View style={styles.statDivider} />
+            <Stat value={plant.light_type === 'grow' ? 'Grow' : 'Natural'} label="Light" />
+            <View style={styles.statDivider} />
+            <Stat
+              value={
+                plant.carnivore || !plant.feed_every_n_waterings
+                  ? 'Never'
+                  : `Every ${plant.feed_every_n_waterings}`
+              }
+              label="Feed"
+            />
+          </View>
         </View>
 
         {/* Quick actions */}
@@ -409,6 +471,19 @@ export function PlantDetailScreen() {
   );
 }
 
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue} numberOfLines={1}>
+        {value}
+      </Text>
+      <Text style={styles.statLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={styles.section}>
@@ -471,10 +546,47 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 60 },
 
   hero: { alignItems: 'center', paddingTop: 8, paddingBottom: 20 },
+  ringWrap: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    marginTop: 16,
+    marginHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: 10,
+  },
+  stat: { flex: 1, alignItems: 'center', paddingHorizontal: 4 },
+  statValue: {
+    color: colors.textPrimary,
+    fontSize: font.size.md,
+    fontWeight: font.weight.semibold,
+  },
+  statLabel: {
+    color: colors.textMuted,
+    fontSize: font.size.xs,
+    fontWeight: font.weight.medium,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginTop: 3,
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    backgroundColor: colors.hairline,
+  },
   cameraBadge: {
     position: 'absolute',
-    right: -2,
-    bottom: 2,
+    right: 4,
+    bottom: 8,
     width: 30,
     height: 30,
     borderRadius: 15,

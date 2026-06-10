@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,13 +11,14 @@ import { useToast } from '../ui/Toast';
 import { PlantCard } from '../ui/PlantCard';
 import { ScreenHeader } from '../ui/Header';
 import { EmptyState } from '../ui/EmptyState';
+import { SkeletonRows } from '../ui/Skeleton';
 import { PressableScale } from '../ui/components';
 import { DateSheet } from '../ui/DateSheet';
-import { Plus, Check, Gear, Sprout } from '../ui/icons';
+import { Plus, Check, Gear, Sprout, Droplet, ChevronRight } from '../ui/icons';
 import { getDaysUntilDue, getSeasonLabel } from '../logic/schedule';
 import { bulkSetLastWatered } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
-import { getPlants } from '../data/db';
+import { getPlants, isHydrated, refreshFromCloud } from '../data/db';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -27,6 +28,16 @@ export function ToDoScreen() {
   const { water } = useWaterAction();
   const toast = useToast();
   const [dateOpen, setDateOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshFromCloud();
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const overdue = plants
     .filter((p) => p.last_watered && getDaysUntilDue(p) < 0)
@@ -67,8 +78,13 @@ export function ToDoScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textTertiary} />
+        }
       >
-        {plants.length === 0 ? (
+        {plants.length === 0 && !isHydrated() ? (
+          <SkeletonRows />
+        ) : plants.length === 0 ? (
           <EmptyState
             icon={<Sprout size={34} color={colors.green} />}
             title="No plants yet"
@@ -84,6 +100,18 @@ export function ToDoScreen() {
           />
         ) : (
           <>
+            <PressableScale style={styles.queueBtn} onPress={() => nav.navigate('CareQueue')}>
+              <View style={styles.queueIcon}>
+                <Droplet size={18} color={colors.green} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.queueTitle}>Water all</Text>
+                <Text style={styles.queueSub}>
+                  {dueCount} plant{dueCount === 1 ? '' : 's'} · one at a time
+                </Text>
+              </View>
+              <ChevronRight size={18} color={colors.green} />
+            </PressableScale>
             <Section title="Overdue" tint={colors.red} items={overdue} water={water} nav={nav} />
             <Section title="Due today" tint={colors.orange} items={today} water={water} nav={nav} />
             {neverW.length > 0 && (
@@ -183,6 +211,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
   },
   setDateText: { color: colors.green, fontSize: font.size.sm, fontWeight: font.weight.semibold },
+  queueBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.greenBg,
+    borderWidth: 1,
+    borderColor: 'rgba(48,209,88,0.25)',
+    borderRadius: radius.md,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  queueIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(48,209,88,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  queueTitle: { color: colors.green, fontSize: font.size.lg, fontWeight: font.weight.semibold },
+  queueSub: { color: colors.textTertiary, fontSize: font.size.sm, marginTop: 2 },
   fab: {
     position: 'absolute',
     right: 22,

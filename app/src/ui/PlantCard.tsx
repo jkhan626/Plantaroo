@@ -1,12 +1,17 @@
-/** Plant row card used in the To Do and Plants tabs. */
+/** Plant row card used in the To Do and Plants tabs. Swipe right to water. */
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  FadeInDown,
+  LinearTransition,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSpring,
   withTiming,
-  withSequence,
   cancelAnimation,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -25,6 +30,9 @@ const STATUS_COLOR: Record<string, string> = {
   soon: colors.orange,
   later: colors.textTertiary,
 };
+
+/** Drag distance that commits a swipe-to-water. */
+const SWIPE_THRESHOLD = 88;
 
 export function PlantCard({
   plant,
@@ -63,73 +71,140 @@ export function PlantCard({
   const tap = useSharedValue(1);
   const tapStyle = useAnimatedStyle(() => ({ transform: [{ scale: tap.value }] }));
 
+  // ---- swipe-right-to-water ---------------------------------------------
+  const tx = useSharedValue(0);
+
+  function hapticDetent() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  }
+  function commitWater() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    onWater();
+  }
+
+  useAnimatedReaction(
+    () => tx.value >= SWIPE_THRESHOLD,
+    (past, prev) => {
+      if (past && prev === false) runOnJS(hapticDetent)();
+    },
+  );
+
+  const pan = Gesture.Pan()
+    .enabled(!wateredToday)
+    .activeOffsetX(20)
+    .failOffsetY([-12, 12])
+    .onUpdate((e) => {
+      const x = Math.max(0, e.translationX);
+      // Gentle resistance once past the commit point.
+      tx.value = x <= SWIPE_THRESHOLD ? x : SWIPE_THRESHOLD + (x - SWIPE_THRESHOLD) * 0.22;
+    })
+    .onEnd(() => {
+      if (tx.value >= SWIPE_THRESHOLD) runOnJS(commitWater)();
+      tx.value = withSpring(0, { damping: 19, stiffness: 240 });
+    })
+    .onFinalize(() => {
+      // Gesture cancelled (e.g. scroll won) — settle back.
+      tx.value = withSpring(0, { damping: 19, stiffness: 240 });
+    });
+
+  const slideStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }],
+  }));
+  const revealStyle = useAnimatedStyle(() => {
+    const p = Math.min(tx.value / SWIPE_THRESHOLD, 1);
+    return {
+      opacity: p,
+      transform: [{ scale: 0.45 + 0.55 * p }],
+    };
+  });
+  const revealBgStyle = useAnimatedStyle(() => ({
+    opacity: tx.value > 2 ? 1 : 0,
+  }));
+
   const soil = SOIL_TABLE[plant.soil_type]?.short ?? '';
   const metaParts = [plant.room, soil].filter(Boolean);
 
   return (
-    <Animated.View style={tapStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => (tap.value = withTiming(0.985, { duration: 90 }))}
-        onPressOut={() => (tap.value = withTiming(1, { duration: 140 }))}
-        style={[styles.card, wateredToday && styles.cardWatered]}
-      >
-        <PlantAvatar uri={plant.photo} size={48} />
+    <Animated.View
+      style={tapStyle}
+      entering={FadeInDown.duration(260)}
+      layout={LinearTransition.springify().damping(18).stiffness(180)}
+    >
+      <View>
+        {/* Droplet revealed behind the card as it slides right. */}
+        <Animated.View style={[styles.reveal, revealBgStyle]} pointerEvents="none">
+          <Animated.View style={revealStyle}>
+            <Droplet size={22} color={colors.green} strokeWidth={2.2} />
+          </Animated.View>
+        </Animated.View>
 
-        <View style={styles.info}>
-          <Text style={styles.name} numberOfLines={1}>
-            {plant.name}
-          </Text>
-          <Text style={styles.meta} numberOfLines={1}>
-            {metaParts.join('  ·  ')}
-          </Text>
+        <GestureDetector gesture={pan}>
+          <Animated.View style={slideStyle}>
+            <Pressable
+              onPress={onPress}
+              onPressIn={() => (tap.value = withTiming(0.985, { duration: 90 }))}
+              onPressOut={() => (tap.value = withTiming(1, { duration: 140 }))}
+              style={[styles.card, wateredToday && styles.cardWatered]}
+            >
+              <PlantAvatar uri={plant.photo} size={56} />
 
-          {mode === 'todo' ? (
-            <Text style={styles.action} numberOfLines={1}>
-              Water{feed ? <Text style={styles.feed}>{'  ·  Feed'}</Text> : ''}
-              {distilled ? <Text style={styles.distilled}>{'  ·  Distilled'}</Text> : ''}
-            </Text>
-          ) : wateredToday ? (
-            <View style={styles.scheduleRow}>
-              <Text style={styles.wateredText}>Watered today</Text>
-              <Check size={11} color={colors.green} />
-            </View>
-          ) : (
-            <Text style={styles.schedule} numberOfLines={1}>
-              <Text style={{ color: STATUS_COLOR[due.status] }}>{due.text}</Text>
-              {feed ? <Text style={styles.feed}>{'  ·  Feed due'}</Text> : ''}
-              {plant.last_watered ? (
-                <Text style={styles.scheduleMuted}>
-                  {'   '}
-                  {relativeDayLabel(plant.last_watered)}
+              <View style={styles.info}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {plant.name}
                 </Text>
-              ) : (
-                ''
-              )}
-            </Text>
-          )}
-        </View>
+                <Text style={styles.meta} numberOfLines={1}>
+                  {metaParts.join('  ·  ')}
+                </Text>
 
-        {!wateredToday && (
-          <Pressable
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-              onWater();
-            }}
-            hitSlop={8}
-            style={[styles.waterBtn, isDue && styles.waterBtnDue]}
-          >
-            <Animated.View style={isDue ? pulseStyle : undefined}>
-              <Droplet size={19} color={colors.green} />
-            </Animated.View>
-          </Pressable>
-        )}
-        {wateredToday && (
-          <View style={styles.doneBadge}>
-            <Check size={16} color={colors.green} />
-          </View>
-        )}
-      </Pressable>
+                {mode === 'todo' ? (
+                  <Text style={styles.action} numberOfLines={1}>
+                    Water{feed ? <Text style={styles.feed}>{'  ·  Feed'}</Text> : ''}
+                    {distilled ? <Text style={styles.distilled}>{'  ·  Distilled'}</Text> : ''}
+                  </Text>
+                ) : wateredToday ? (
+                  <View style={styles.scheduleRow}>
+                    <Text style={styles.wateredText}>Watered today</Text>
+                    <Check size={11} color={colors.green} />
+                  </View>
+                ) : (
+                  <Text style={styles.schedule} numberOfLines={1}>
+                    <Text style={{ color: STATUS_COLOR[due.status] }}>{due.text}</Text>
+                    {feed ? <Text style={styles.feed}>{'  ·  Feed due'}</Text> : ''}
+                    {plant.last_watered ? (
+                      <Text style={styles.scheduleMuted}>
+                        {'   '}
+                        {relativeDayLabel(plant.last_watered)}
+                      </Text>
+                    ) : (
+                      ''
+                    )}
+                  </Text>
+                )}
+              </View>
+
+              {!wateredToday && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+                    onWater();
+                  }}
+                  hitSlop={8}
+                  style={[styles.waterBtn, isDue && styles.waterBtnDue]}
+                >
+                  <Animated.View style={isDue ? pulseStyle : undefined}>
+                    <Droplet size={19} color={colors.green} />
+                  </Animated.View>
+                </Pressable>
+              )}
+              {wateredToday && (
+                <View style={styles.doneBadge}>
+                  <Check size={16} color={colors.green} />
+                </View>
+              )}
+            </Pressable>
+          </Animated.View>
+        </GestureDetector>
+      </View>
     </Animated.View>
   );
 }
@@ -150,6 +225,17 @@ const styles = StyleSheet.create({
   cardWatered: {
     backgroundColor: 'rgba(48,209,88,0.06)',
     borderColor: 'rgba(48,209,88,0.22)',
+  },
+  reveal: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 8, // mirror the card's marginBottom
+    width: SWIPE_THRESHOLD,
+    borderRadius: radius.md,
+    backgroundColor: colors.greenBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   info: { flex: 1, minWidth: 0 },
   name: {
