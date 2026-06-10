@@ -25,7 +25,37 @@ Task list (also in the session task tracker):
 
 Phase 0 delivered: Apple token revocation end-to-end (`app/src/lib/auth.ts` re-auths with Apple inline during deletion → POSTs authorizationCode to new `POST /api/apple-revoke` in `server/index.js`; returns 501 until Jamal sets `APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY` on Render — best-effort, never blocks deletion); Google button hidden while client IDs are `PASTE_` placeholders in `app/app.json → extra`; Android `RECORD_AUDIO` removed; `jsonwebtoken` added to root `package.json` (not yet `npm install`ed — Render installs on deploy; nothing local needs it).
 
-**Not yet pushed** — `git push origin ios-app` when convenient.
+Branch is pushed to `origin/ios-app` and tracking. **Render auto-deploys the server from this branch** (see infra section below) — pushing app-only commits is harmless but triggers a redeploy.
+
+## Infra session 2026-06-09 — Render + Apple revocation (one open item)
+
+Done in a parallel session with Jamal driving the consoles:
+
+- **Apple Developer portal:** Sign in with Apple key created and configured for the
+  Plantaroo App ID. Key ID `L4M8V8A7LJ`; Jamal has the `.p8` file locally (downloaded
+  once — do not ask him to re-download; never commit it).
+- **Server hardening (commit `07a5763`):** `server/index.js` now boots without
+  `ANTHROPIC_API_KEY` (Anthropic client is lazy; `/api/plant-profile` returns 501
+  without the key — the iOS app never calls it). Verified locally: boots, `/health`
+  ok, `/api/apple-revoke` returns "not configured" without env vars. `jsonwebtoken`
+  added to root `package.json` and installed locally.
+- **Render:** Jamal created a Render account (new workspace) and deployed a **free**
+  web service from repo `jkhan626/Plantaroo`, **branch `ios-app`**, build
+  `npm install`, start `node server/index.js`, with env vars `APPLE_TEAM_ID=AK6GDSF62K`,
+  `APPLE_KEY_ID=L4M8V8A7LJ`, `APPLE_PRIVATE_KEY=<.p8 contents>`. `render.yaml`
+  mirrors this config. Build reported successful.
+- **OPEN ITEM — service URL:** the app's `REVOKE_ENDPOINT` in `app/src/lib/auth.ts`
+  is hardcoded to `https://plantaroo-api.onrender.com`, but that subdomain answers
+  404 `x-render-routing: no-server` — new Render accounts suffix service URLs
+  (e.g. `plantaroo-api-xxxx.onrender.com`). **Get the real URL from Jamal's Render
+  dashboard (top of the service page), update `REVOKE_ENDPOINT` in
+  `app/src/lib/auth.ts` + the URL in `app/SETUP.md` + CLAUDE.md references, then
+  verify:** `GET <url>/health` → `{"status":"ok"}` and
+  `POST <url>/api/apple-revoke` with `{"authorizationCode":"bogus"}` →
+  `{"error":"Apple token exchange failed"}` (502) proves the Apple env vars are
+  loaded; `{"error":"Apple revocation not configured"}` (501) means they aren't.
+  Free tier sleeps ~15 min idle, cold start ~30–50 s — first curl may be slow;
+  revocation is best-effort so this never blocks account deletion.
 
 ## Phase 1 — DELIVERED (design below kept for reference)
 
