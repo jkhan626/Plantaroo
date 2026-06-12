@@ -8,3 +8,4 @@ dist/
 *.p8
 secret auth key/
 AuthKey_*
+app/assets/icon-source/render.png

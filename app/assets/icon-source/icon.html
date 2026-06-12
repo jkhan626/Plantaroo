@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap');
+  * { margin: 0; padding: 0; }
+  html, body { width: 1024px; height: 1024px; overflow: hidden; }
+  .icon {
+    width: 1024px; height: 1024px;
+    position: relative;
+    background:
+      radial-gradient(120% 90% at 50% 18%, #1B4231 0%, #122B20 52%, #0C1F17 100%);
+  }
+  .mark {
+    position: absolute;
+    left: 50%; top: 96px;
+    transform: translateX(-50%);
+  }
+  .wordmark {
+    position: absolute;
+    left: 0; right: 0;
+    top: 796px;
+    text-align: center;
+    font-family: 'Quicksand', sans-serif;
+    font-weight: 700;
+    font-size: 124px;
+    letter-spacing: -2px;
+    color: #5BD98A;
+  }
+</style>
+</head>
+<body>
+<div class="icon">
+  <svg class="mark" width="660" height="660" viewBox="0 0 660 660">
+    <defs>
+      <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#6FE39B"/>
+        <stop offset="55%" stop-color="#3FC878"/>
+        <stop offset="100%" stop-color="#2BAA62"/>
+      </linearGradient>
+      <mask id="slits">
+        <!-- leaf body: white = visible -->
+        <path fill="#fff" d="M330,118
+          C262,62 148,72 110,162
+          C74,248 86,366 168,464
+          C228,536 296,584 330,594
+          C364,584 432,536 492,464
+          C574,366 586,248 550,162
+          C512,72 398,62 330,118 Z"/>
+        <!-- midrib -->
+        <rect x="322" y="120" width="16" height="470" rx="8" fill="#000"/>
+        <!-- left slits: start outside the leaf edge so they cut into the silhouette -->
+        <g fill="#000">
+          <rect x="60"  y="170" width="230" height="30" rx="15" transform="rotate(16 60 170)"/>
+          <rect x="42"  y="262" width="250" height="30" rx="15" transform="rotate(24 42 262)"/>
+          <rect x="52"  y="358" width="240" height="30" rx="15" transform="rotate(32 52 358)"/>
+          <rect x="92"  y="450" width="200" height="30" rx="15" transform="rotate(42 92 450)"/>
+        </g>
+        <!-- right slits (mirrored) -->
+        <g fill="#000" transform="translate(660,0) scale(-1,1)">
+          <rect x="60"  y="170" width="230" height="30" rx="15" transform="rotate(16 60 170)"/>
+          <rect x="42"  y="262" width="250" height="30" rx="15" transform="rotate(24 42 262)"/>
+          <rect x="52"  y="358" width="240" height="30" rx="15" transform="rotate(32 52 358)"/>
+          <rect x="92"  y="450" width="200" height="30" rx="15" transform="rotate(42 92 450)"/>
+        </g>
+      </mask>
+    </defs>
+    <!-- stem -->
+    <path d="M330,560 C330,620 330,648 330,660" stroke="#2BAA62" stroke-width="26" stroke-linecap="round" fill="none"/>
+    <!-- leaf with slit mask -->
+    <rect x="0" y="0" width="660" height="660" fill="url(#leaf)" mask="url(#slits)"/>
+  </svg>
+  <div class="wordmark">plantaroo</div>
+</div>
+</body>
+</html>
