@@ -24,7 +24,9 @@ function monstera(fill) {
   return `
   <defs>
     <mask id="slits">
-      <g transform="rotate(-4 330 360)">
+        <!-- per Jamal's reference: solid heart silhouette, CLOSED interior slits
+             (never piercing the edge) + scattered oval holes — flipped to point up -->
+        <!-- leaf body: tip up, basal lobes + notch at the bottom -->
         <path fill="#fff" d="M330,542
           C262,598 148,588 110,498
           C74,412 86,294 168,196
@@ -32,25 +34,35 @@ function monstera(fill) {
           C364,76 432,124 492,196
           C574,294 586,412 550,498
           C512,588 398,598 330,542 Z"/>
-        <path d="M330,116 C322,250 326,400 330,528" stroke="#000" stroke-width="13" fill="none" stroke-linecap="round"/>
+        <!-- midrib: thin line rising from the bottom notch, fading out mid-leaf -->
+        <path d="M330,530 C327,460 326,350 328,250" stroke="#000" stroke-width="10" fill="none" stroke-linecap="round"/>
+        <!-- left slits: gentle ~30° downward sweep, rounded ends, fully enclosed -->
         <g stroke="#000" fill="none" stroke-linecap="round">
-          <path d="M20,180 Q150,215 252,225" stroke-width="46"/>
-          <path d="M4,300  Q140,340 256,344" stroke-width="50"/>
-          <path d="M22,425 Q150,460 258,452" stroke-width="48"/>
+          <path d="M255,408 Q185,455 125,492" stroke-width="32"/>
+          <path d="M250,325 Q175,372 100,410" stroke-width="30"/>
+          <path d="M248,242 Q180,285 115,320" stroke-width="28"/>
+          <path d="M255,165 Q220,190 185,212" stroke-width="24"/>
         </g>
+        <!-- right slits (mirrored) -->
         <g stroke="#000" fill="none" stroke-linecap="round">
-          <path d="M640,160 Q520,195 408,210" stroke-width="44"/>
-          <path d="M656,280 Q525,325 404,330" stroke-width="50"/>
-          <path d="M640,405 Q510,445 402,436" stroke-width="48"/>
+          <path d="M405,408 Q475,455 535,492" stroke-width="32"/>
+          <path d="M410,325 Q485,372 560,410" stroke-width="30"/>
+          <path d="M412,242 Q480,285 545,320" stroke-width="28"/>
+          <path d="M405,165 Q440,190 475,212" stroke-width="24"/>
         </g>
+        <!-- fenestration holes: scattered in the open band between midrib and slit ends -->
         <g fill="#000">
-          <ellipse cx="372" cy="252" rx="11" ry="16" transform="rotate(-10 372 252)"/>
-          <ellipse cx="290" cy="392" rx="12" ry="18" transform="rotate(12 290 392)"/>
+          <ellipse cx="295" cy="205" rx="8"  ry="13" transform="rotate(14 295 205)"/>
+          <ellipse cx="290" cy="290" rx="11" ry="17" transform="rotate(18 290 290)"/>
+          <ellipse cx="296" cy="372" rx="9"  ry="15" transform="rotate(16 296 372)"/>
+          <ellipse cx="292" cy="448" rx="8"  ry="12" transform="rotate(20 292 448)"/>
+          <ellipse cx="365" cy="205" rx="8"  ry="13" transform="rotate(-14 365 205)"/>
+          <ellipse cx="370" cy="290" rx="11" ry="17" transform="rotate(-18 370 290)"/>
+          <ellipse cx="364" cy="372" rx="9"  ry="15" transform="rotate(-16 364 372)"/>
+          <ellipse cx="368" cy="448" rx="8"  ry="12" transform="rotate(-20 368 448)"/>
         </g>
-      </g>
-    </mask>
+      </mask>
   </defs>
-  <path d="M322,660 C314,622 340,584 330,540" stroke="${fill}" stroke-width="26" stroke-linecap="round" fill="none" transform="rotate(-4 330 360)"/>
   <rect x="0" y="0" width="660" height="660" fill="${fill}" mask="url(#slits)"/>`;
 }
 
