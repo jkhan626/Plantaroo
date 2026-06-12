@@ -24,29 +24,29 @@ function monstera(fill) {
   return `
   <defs>
     <mask id="slits">
-      <path fill="#fff" d="M330,118
-        C262,62 148,72 110,162
-        C74,248 86,366 168,464
-        C228,536 296,584 330,594
-        C364,584 432,536 492,464
-        C574,366 586,248 550,162
-        C512,72 398,62 330,118 Z"/>
-      <rect x="322" y="120" width="16" height="470" rx="8" fill="#000"/>
+      <path fill="#fff" d="M330,542
+        C262,598 148,588 110,498
+        C74,412 86,294 168,196
+        C228,124 296,76 330,66
+        C364,76 432,124 492,196
+        C574,294 586,412 550,498
+        C512,588 398,598 330,542 Z"/>
+      <rect x="323" y="112" width="14" height="420" rx="7" fill="#000"/>
       <g fill="#000">
-        <rect x="60"  y="170" width="230" height="30" rx="15" transform="rotate(16 60 170)"/>
-        <rect x="42"  y="262" width="250" height="30" rx="15" transform="rotate(24 42 262)"/>
-        <rect x="52"  y="358" width="240" height="30" rx="15" transform="rotate(32 52 358)"/>
-        <rect x="92"  y="450" width="200" height="30" rx="15" transform="rotate(42 92 450)"/>
+        <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+        <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+        <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+        <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
       </g>
       <g fill="#000" transform="translate(660,0) scale(-1,1)">
-        <rect x="60"  y="170" width="230" height="30" rx="15" transform="rotate(16 60 170)"/>
-        <rect x="42"  y="262" width="250" height="30" rx="15" transform="rotate(24 42 262)"/>
-        <rect x="52"  y="358" width="240" height="30" rx="15" transform="rotate(32 52 358)"/>
-        <rect x="92"  y="450" width="200" height="30" rx="15" transform="rotate(42 92 450)"/>
+        <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+        <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+        <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+        <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
       </g>
     </mask>
   </defs>
-  <path d="M330,560 C330,620 330,648 330,660" stroke="${fill}" stroke-width="26" stroke-linecap="round" fill="none"/>
+  <path d="M330,660 C330,630 330,580 330,535" stroke="${fill}" stroke-width="26" stroke-linecap="round" fill="none"/>
   <rect x="0" y="0" width="660" height="660" fill="${fill}" mask="url(#slits)"/>`;
 }
 
