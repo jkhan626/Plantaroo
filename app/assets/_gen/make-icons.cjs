@@ -24,29 +24,33 @@ function monstera(fill) {
   return `
   <defs>
     <mask id="slits">
-      <path fill="#fff" d="M330,542
-        C262,598 148,588 110,498
-        C74,412 86,294 168,196
-        C228,124 296,76 330,66
-        C364,76 432,124 492,196
-        C574,294 586,412 550,498
-        C512,588 398,598 330,542 Z"/>
-      <rect x="323" y="112" width="14" height="420" rx="7" fill="#000"/>
-      <g fill="#000">
-        <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
-        <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
-        <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
-        <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
-      </g>
-      <g fill="#000" transform="translate(660,0) scale(-1,1)">
-        <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
-        <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
-        <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
-        <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+      <g transform="rotate(-4 330 360)">
+        <path fill="#fff" d="M330,542
+          C262,598 148,588 110,498
+          C74,412 86,294 168,196
+          C228,124 296,76 330,66
+          C364,76 432,124 492,196
+          C574,294 586,412 550,498
+          C512,588 398,598 330,542 Z"/>
+        <path d="M330,116 C322,250 326,400 330,528" stroke="#000" stroke-width="13" fill="none" stroke-linecap="round"/>
+        <g stroke="#000" fill="none" stroke-linecap="round">
+          <path d="M20,180 Q150,215 252,225" stroke-width="46"/>
+          <path d="M4,300  Q140,340 256,344" stroke-width="50"/>
+          <path d="M22,425 Q150,460 258,452" stroke-width="48"/>
+        </g>
+        <g stroke="#000" fill="none" stroke-linecap="round">
+          <path d="M640,160 Q520,195 408,210" stroke-width="44"/>
+          <path d="M656,280 Q525,325 404,330" stroke-width="50"/>
+          <path d="M640,405 Q510,445 402,436" stroke-width="48"/>
+        </g>
+        <g fill="#000">
+          <ellipse cx="372" cy="252" rx="11" ry="16" transform="rotate(-10 372 252)"/>
+          <ellipse cx="290" cy="392" rx="12" ry="18" transform="rotate(12 290 392)"/>
+        </g>
       </g>
     </mask>
   </defs>
-  <path d="M330,660 C330,630 330,580 330,535" stroke="${fill}" stroke-width="26" stroke-linecap="round" fill="none"/>
+  <path d="M322,660 C314,622 340,584 330,540" stroke="${fill}" stroke-width="26" stroke-linecap="round" fill="none" transform="rotate(-4 330 360)"/>
   <rect x="0" y="0" width="660" height="660" fill="${fill}" mask="url(#slits)"/>`;
 }
 

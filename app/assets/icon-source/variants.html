@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@600;700&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1380px; height: 560px;
+    background: #1C1C1E;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex; gap: 60px; align-items: center; justify-content: center;
+  }
+  .cell { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .cell span { color: #98989E; font-size: 15px; }
+  .icon {
+    width: 380px; height: 380px; border-radius: 86px;
+    position: relative; overflow: hidden;
+  }
+
+  /* A — Glow: huge leaf, no wordmark, soft green aura */
+  .a { background: radial-gradient(130% 100% at 50% 0%, #173B2B 0%, #0E2419 55%, #081710 100%); }
+  .a .aura {
+    position: absolute; left: 50%; top: 52%;
+    width: 360px; height: 360px; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(63,200,120,0.38) 0%, rgba(63,200,120,0.10) 45%, transparent 70%);
+  }
+  .a svg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+  /* B — Bold: white leaf on vivid green gradient */
+  .b { background: linear-gradient(150deg, #3EDB7E 0%, #1FB45C 55%, #0E8A42 100%); }
+  .b svg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+
+  /* C — Family: leaf + wordmark, refined with aura */
+  .c { background: radial-gradient(120% 90% at 50% 15%, #1B4231 0%, #122B20 52%, #0C1F17 100%); }
+  .c .aura {
+    position: absolute; left: 50%; top: 40%;
+    width: 300px; height: 300px; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(63,200,120,0.30) 0%, rgba(63,200,120,0.08) 45%, transparent 70%);
+  }
+  .c svg { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); }
+  .c .word {
+    position: absolute; left: 0; right: 0; top: 296px; text-align: center;
+    font-family: 'Quicksand', sans-serif; font-weight: 700;
+    font-size: 44px; letter-spacing: -0.5px; color: #5BD98A;
+  }
+</style>
+</head>
+<body>
+
+<div class="cell">
+  <div class="icon a">
+    <div class="aura"></div>
+    <svg width="300" height="300" viewBox="0 0 660 660">
+      <defs>
+        <linearGradient id="leafA" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#7BEFA8"/>
+          <stop offset="55%" stop-color="#3FC878"/>
+          <stop offset="100%" stop-color="#249A58"/>
+        </linearGradient>
+        <mask id="mA">
+          <path fill="#fff" d="M330,542 C262,598 148,588 110,498 C74,412 86,294 168,196 C228,124 296,76 330,66 C364,76 432,124 492,196 C574,294 586,412 550,498 C512,588 398,598 330,542 Z"/>
+          <rect x="323" y="112" width="14" height="420" rx="7" fill="#000"/>
+          <g fill="#000">
+            <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+            <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+            <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+            <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+          </g>
+          <g fill="#000" transform="translate(660,0) scale(-1,1)">
+            <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+            <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+            <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+            <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+          </g>
+        </mask>
+      </defs>
+      <path d="M330,660 C330,630 330,580 330,535" stroke="#249A58" stroke-width="26" stroke-linecap="round" fill="none"/>
+      <rect width="660" height="660" fill="url(#leafA)" mask="url(#mA)"/>
+    </svg>
+  </div>
+  <span>A — Glow, no wordmark</span>
+</div>
+
+<div class="cell">
+  <div class="icon b">
+    <svg width="300" height="300" viewBox="0 0 660 660">
+      <defs>
+        <mask id="mB">
+          <path fill="#fff" d="M330,542 C262,598 148,588 110,498 C74,412 86,294 168,196 C228,124 296,76 330,66 C364,76 432,124 492,196 C574,294 586,412 550,498 C512,588 398,598 330,542 Z"/>
+          <rect x="323" y="112" width="14" height="420" rx="7" fill="#000"/>
+          <g fill="#000">
+            <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+            <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+            <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+            <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+          </g>
+          <g fill="#000" transform="translate(660,0) scale(-1,1)">
+            <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+            <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+            <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+            <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+          </g>
+        </mask>
+      </defs>
+      <path d="M330,660 C330,630 330,580 330,535" stroke="#ffffff" stroke-width="26" stroke-linecap="round" fill="none"/>
+      <rect width="660" height="660" fill="#ffffff" mask="url(#mB)"/>
+    </svg>
+  </div>
+  <span>B — Bold white on green</span>
+</div>
+
+<div class="cell">
+  <div class="icon c">
+    <div class="aura"></div>
+    <svg width="250" height="250" viewBox="0 0 660 660">
+      <defs>
+        <linearGradient id="leafC" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#7BEFA8"/>
+          <stop offset="55%" stop-color="#3FC878"/>
+          <stop offset="100%" stop-color="#249A58"/>
+        </linearGradient>
+        <mask id="mC">
+          <path fill="#fff" d="M330,542 C262,598 148,588 110,498 C74,412 86,294 168,196 C228,124 296,76 330,66 C364,76 432,124 492,196 C574,294 586,412 550,498 C512,588 398,598 330,542 Z"/>
+          <rect x="323" y="112" width="14" height="420" rx="7" fill="#000"/>
+          <g fill="#000">
+            <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+            <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+            <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+            <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+          </g>
+          <g fill="#000" transform="translate(660,0) scale(-1,1)">
+            <rect x="95" y="150" width="185" height="42" rx="21" transform="rotate(8 95 150)"/>
+            <rect x="52" y="232" width="230" height="46" rx="23" transform="rotate(10 52 232)"/>
+            <rect x="28" y="330" width="255" height="48" rx="24" transform="rotate(14 28 330)"/>
+            <rect x="18" y="430" width="260" height="48" rx="24" transform="rotate(18 18 430)"/>
+          </g>
+        </mask>
+      </defs>
+      <path d="M330,660 C330,630 330,580 330,535" stroke="#249A58" stroke-width="26" stroke-linecap="round" fill="none"/>
+      <rect width="660" height="660" fill="url(#leafC)" mask="url(#mC)"/>
+    </svg>
+    <div class="word">plantaroo</div>
+  </div>
+  <span>C — Family style, refined</span>
+</div>
+
+</body>
+</html>
