@@ -29,6 +29,8 @@ import { useWaterAction } from '../ui/useWater';
 import { useToast } from '../ui/Toast';
 import { PlantAvatar, OptionSheet } from '../ui/components';
 import { DateSheet } from '../ui/DateSheet';
+import { ImageViewerModal } from '../ui/ImageViewer';
+import { addPhotoToHistory, getAllPhotos, formatPhotoDate } from '../logic/photoHistory';
 import {
   ChevronLeft,
   Droplet,
@@ -114,6 +116,8 @@ export function PlantDetailScreen() {
   const [notesDraft, setNotesDraft] = useState('');
   const [dateOpen, setDateOpen] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (plant) setNotesDraft(plant.notes ?? '');
