@@ -32,6 +32,7 @@ export interface Plant extends PlantProfile {
   light_type: LightType;
   soil_type: SoilType;
   photo: string | null; // data URI (base64) or null
+  photo_history?: Array<{ date: string; photo: string }>; // timestamped photo history
   current_interval: number;
   recent_valid_gaps: number[];
   last_watered: string | null; // ISO timestamp
