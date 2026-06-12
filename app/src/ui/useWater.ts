@@ -5,6 +5,7 @@ import { waterPlant, undoAction, type LateChoice } from '../logic/actions';
 import { getDaysUntilDue } from '../logic/schedule';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { recordWateringForReview } from '../lib/review';
+import { writeWateringSummary } from '../lib/wateringSummary';
 import { getPlants } from '../data/db';
 import type { Plant } from '../types';
 
@@ -22,14 +23,18 @@ export function useWaterAction() {
 
   async function doWater(plant: Plant, late: LateChoice, cb?: WaterCallbacks) {
     const { undo, fed } = await waterPlant(plant, late);
-    rescheduleWateringReminders(getPlants());
+    const plants = getPlants();
+    rescheduleWateringReminders(plants);
     recordWateringForReview();
+    writeWateringSummary(plants);
     if (!cb?.silent) {
       toast.show({
         message: fed ? `${plant.name} watered + fed` : `${plant.name} watered`,
         onUndo: async () => {
           await undoAction(undo);
-          rescheduleWateringReminders(getPlants());
+          const updated = getPlants();
+          rescheduleWateringReminders(updated);
+          writeWateringSummary(updated);
         },
       });
     }

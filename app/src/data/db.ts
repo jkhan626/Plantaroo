@@ -20,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../firebase';
+import { writeWateringSummary } from '../lib/wateringSummary';
 import type { Plant, HistoryEntry, JournalEntry, Store } from '../types';
 
 type Cache = {
@@ -195,6 +196,9 @@ export async function loadAllFromCloud(): Promise<void> {
       }
     }),
   );
+
+  // Publish the names-free watering summary for the Claude Agent routine
+  writeWateringSummary(_cache.plants);
 }
 
 // ---- public db* API ----------------------------------------------------

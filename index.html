@@ -2025,7 +2025,7 @@ function writeWateringSummary() {
     _lastSummaryJSON = json;
     summary.updatedAt = new Date().toISOString();
     var FB = window.FB;
-    FB.setDoc(FB.doc(FB.db, 'public', 'summary'), summary)
+    FB.setDoc(FB.doc(FB.db, 'public', FB.uid, 'summary'), summary)
       .catch(function (e) { console.warn('watering summary write failed', e); });
   } catch (e) { console.warn('watering summary build failed', e); }
 }

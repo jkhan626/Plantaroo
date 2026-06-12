@@ -4,6 +4,7 @@
  * app offered undo. Ported faithfully from the web app's handlers.
  */
 import { dbPut, dbAdd, dbDelete, genId, getPlants, getHistory } from '../data/db';
+import { writeWateringSummary } from '../lib/wateringSummary';
 import {
   getEffectiveStartingInterval,
   getLearnedInterval,
@@ -69,6 +70,8 @@ export async function waterPlant(
   };
   const historyId = (await dbAdd('history', entry)) as number;
 
+  writeWateringSummary(getPlants());
+
   return { undo: { snapshot, historyId }, fed: type === 'Watered + Fed' };
 }
 
@@ -89,6 +92,9 @@ export async function skipPlant(input: Plant): Promise<{ undo: UndoToken }> {
     lateReason: null,
   };
   const historyId = (await dbAdd('history', entry)) as number;
+
+  writeWateringSummary(getPlants());
+
   return { undo: { snapshot, historyId } };
 }
 
