@@ -22,7 +22,7 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.PASTE_REVERSED_IOS_CLIENT_ID"
+              "com.googleusercontent.apps.870788325984-acnnssl8i8os2ept2vrrp7s60t118ona"
             ]
           }
         ]
@@ -105,8 +105,8 @@
       "expo-localization"
     ],
     "extra": {
-      "googleIosClientId": "PASTE_IOS_CLIENT_ID.apps.googleusercontent.com",
-      "googleWebClientId": "PASTE_WEB_CLIENT_ID.apps.googleusercontent.com",
+      "googleIosClientId": "870788325984-acnnssl8i8os2ept2vrrp7s60t118ona.apps.googleusercontent.com",
+      "googleWebClientId": "870788325984-s4dv8d4moflhadck7go043bh9ab96pb0.apps.googleusercontent.com",
       "googleAndroidClientId": "PASTE_ANDROID_CLIENT_ID.apps.googleusercontent.com",
       "eas": {
         "projectId": "5cd86768-cf71-4e06-8179-96dd03769dd2"
