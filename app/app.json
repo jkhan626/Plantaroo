@@ -18,7 +18,14 @@
       "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.PASTE_REVERSED_IOS_CLIENT_ID"
+            ]
+          }
+        ]
       },
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": [
@@ -100,6 +107,7 @@
     "extra": {
       "googleIosClientId": "PASTE_IOS_CLIENT_ID.apps.googleusercontent.com",
       "googleWebClientId": "PASTE_WEB_CLIENT_ID.apps.googleusercontent.com",
+      "googleAndroidClientId": "PASTE_ANDROID_CLIENT_ID.apps.googleusercontent.com",
       "eas": {
         "projectId": "5cd86768-cf71-4e06-8179-96dd03769dd2"
       }

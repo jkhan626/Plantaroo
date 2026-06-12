@@ -33,9 +33,14 @@ const TERMS_URL = 'https://jkhan626.github.io/Plantaroo/terms.html';
 const extra = (Constants.expoConfig?.extra ?? {}) as {
   googleIosClientId?: string;
   googleWebClientId?: string;
+  googleAndroidClientId?: string;
 };
+const isRealClientId = (v?: string) => !!v && !v.startsWith('PASTE');
+// Each platform needs its own OAuth client; the button hides until it exists.
 const googleConfigured =
-  !!extra.googleIosClientId && !extra.googleIosClientId.startsWith('PASTE');
+  Platform.OS === 'android'
+    ? isRealClientId(extra.googleAndroidClientId)
+    : isRealClientId(extra.googleIosClientId);
 
 export function SignInScreen() {
   const insets = useSafeAreaInsets();
@@ -48,6 +53,7 @@ export function SignInScreen() {
 
   const [, googleResponse, googlePrompt] = Google.useIdTokenAuthRequest({
     iosClientId: extra.googleIosClientId,
+    androidClientId: extra.googleAndroidClientId,
     clientId: extra.googleWebClientId,
   });
 
