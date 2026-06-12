@@ -384,7 +384,8 @@ export function PlantDetailScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
-          <Pressable onPress={() => choosePhoto((uri) => patchPlant(plant, { photo: uri }))}>
+          {/* Photo viewer - tap to enlarge */}
+          <Pressable onPress={() => plant.photo && (setSelectedImage(plant.photo), setImageViewerVisible(true))}>
             <View style={styles.ringWrap}>
               <Svg width={RING_SIZE} height={RING_SIZE} style={StyleSheet.absoluteFill}>
                 <Circle
@@ -411,9 +412,20 @@ export function PlantDetailScreen() {
                 )}
               </Svg>
               <PlantAvatar uri={plant.photo} size={104} />
-              <View style={styles.cameraBadge}>
+              {/* Camera badge - tap to take photo */}
+              <Pressable
+                style={styles.cameraBadge}
+                onPress={() =>
+                  choosePhoto((uri) => {
+                    const updated = addPhotoToHistory(plant, uri);
+                    patchPlant(plant, { photo: updated.photo, photo_history: updated.photo_history });
+                    // Journal entry creation coming in next phase
+                  })
+                }
+                hitSlop={8}
+              >
                 <Camera size={15} color={colors.black} />
-              </View>
+              </Pressable>
             </View>
           </Pressable>
           {editingName ? (
@@ -718,6 +730,12 @@ export function PlantDetailScreen() {
         selected={editor?.selected}
         onSelect={applyEditor}
         onClose={() => setEditor(null)}
+      />
+
+      <ImageViewerModal
+        visible={imageViewerVisible}
+        imageUri={selectedImage}
+        onClose={() => setImageViewerVisible(false)}
       />
     </SafeAreaView>
   );
