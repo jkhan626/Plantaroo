@@ -468,6 +468,30 @@ export function PlantDetailScreen() {
           </View>
         </View>
 
+        {/* Growth Progress - Photo History */}
+        {(plant.photo || plant.photo_history?.length) && (
+          <View style={styles.growthSection}>
+            <Text style={styles.sectionTitle}>Growth Progress</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoGallery}>
+              {getAllPhotos(plant).map((item, idx) => (
+                <Pressable
+                  key={idx}
+                  onPress={() => (setSelectedImage(item.photo), setImageViewerVisible(true))}
+                  style={styles.photoThumb}
+                >
+                  <Image
+                    source={{ uri: item.photo }}
+                    style={styles.photoThumbImage}
+                    contentFit="cover"
+                  />
+                  {item.isFirst && <View style={styles.firstPhotoLabel}><Text style={styles.firstPhotoText}>First</Text></View>}
+                  <Text style={styles.photoThumbDate}>{formatPhotoDate(item.date)}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Quick actions */}
         <View style={styles.actions}>
           <ActionBtn label="Water" tint={colors.green} bg={colors.greenBg} onPress={() => water(plant)}>
@@ -1036,4 +1060,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.redBg,
   },
   deleteText: { color: colors.red, fontSize: font.size.lg, fontWeight: font.weight.semibold },
+
+  growthSection: { marginTop: 20, paddingHorizontal: spacing.lg },
+  photoGallery: { marginTop: 8, marginHorizontal: -spacing.lg, paddingHorizontal: spacing.lg },
+  photoThumb: { marginRight: 10, alignItems: 'center' },
+  photoThumbImage: { width: 80, height: 80, borderRadius: radius.md },
+  photoThumbDate: { color: colors.textMuted, fontSize: font.size.xs, marginTop: 4, textAlign: 'center' },
+  firstPhotoLabel: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: colors.green,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  firstPhotoText: { color: colors.black, fontSize: font.size.xs, fontWeight: font.weight.semibold },
 });
