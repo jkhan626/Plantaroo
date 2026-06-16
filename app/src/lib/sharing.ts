@@ -58,6 +58,10 @@ function toYMD(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
+function ymdToDate(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map((n) => parseInt(n, 10));
+  return new Date(y, m - 1, d);
+}
 const OWNER_NAME_KEY = (uid: string) => `plantaroo:ownerName:${uid}`;
 
 /**
@@ -184,6 +188,40 @@ export async function revokeGuestShare(token: string): Promise<void> {
     /* ignore — owner may delete leftover events later */
   }
   await deleteDoc(doc(db, 'public', uid, 'shares', token));
+}
+
+/**
+ * Recompute every still-relevant sitter link from the LATEST watering data, so
+ * a link created days before a trip reflects what you actually watered before
+ * leaving (not a stale snapshot). Cheap when there are no active links; only
+ * writes a share doc whose schedule actually changed. Own account only.
+ */
+export async function refreshActiveShares(): Promise<void> {
+  const uid = getSignedInUid();
+  if (!uid || !isViewingOwnAccount()) return;
+  let snap;
+  try {
+    snap = await getDocs(collection(db, 'public', uid, 'shares'));
+  } catch {
+    return; // offline — try again next open
+  }
+  const today = toYMD(new Date());
+  const sig = (arr: GuestSharePlant[]) => JSON.stringify(arr.map((p) => [p.id, p.dueDates]));
+  for (const d of snap.docs) {
+    const s = d.data() as GuestShare;
+    if (s.status === 'revoked' || !s.start || !s.end || s.end < today) continue; // gone or over
+    const plants = buildAwaySchedule(ymdToDate(s.start), ymdToDate(s.end));
+    if (sig(plants) === sig(s.plants || [])) continue; // schedule unchanged
+    let next: Partial<GuestShare> = { plants };
+    if (JSON.stringify({ ...s, ...next }).length > MAX_SHARE_BYTES) {
+      next = { plants: plants.map((p) => ({ ...p, photo: null })) };
+    }
+    try {
+      await setDoc(d.ref, next, { merge: true });
+    } catch {
+      /* ignore — retry next time */
+    }
+  }
 }
 
 const APPLIED_KEY = (uid: string) => `plantaroo:guestEventsApplied:${uid}`;

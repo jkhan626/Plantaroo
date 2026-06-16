@@ -6,6 +6,7 @@ import { getDaysUntilDue, relativeDayLabel } from '../logic/schedule';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { recordWateringForReview } from '../lib/review';
 import { writeWateringSummary } from '../lib/wateringSummary';
+import { refreshActiveShares } from '../lib/sharing';
 import { getPlants } from '../data/db';
 import type { Plant } from '../types';
 
@@ -27,6 +28,7 @@ export function useWaterAction() {
     rescheduleWateringReminders(plants);
     recordWateringForReview();
     writeWateringSummary(plants);
+    refreshActiveShares().catch(() => {}); // keep any sitter links in sync
     if (!cb?.silent) {
       const on = when ? ` ${relativeDayLabel(when.toISOString()).toLowerCase()}` : '';
       toast.show({
@@ -36,6 +38,7 @@ export function useWaterAction() {
           const updated = getPlants();
           rescheduleWateringReminders(updated);
           writeWateringSummary(updated);
+          refreshActiveShares().catch(() => {});
         },
       });
     }

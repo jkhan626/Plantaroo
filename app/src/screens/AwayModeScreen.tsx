@@ -173,7 +173,8 @@ export function AwayModeScreen() {
         <Text style={styles.screenTitle}>Going away?</Text>
         <Text style={styles.subtitle}>
           Pick the days you'll be gone. We'll build a watering schedule you can send to a plant
-          sitter — they just open the link, no app needed.
+          sitter — they just open the link, no app needed. The link keeps itself up to date as you
+          water, so it reflects your latest watering the day you leave.
         </Text>
 
         <Text style={styles.sectionLabel}>Your name</Text>

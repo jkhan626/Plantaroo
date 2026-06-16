@@ -35,6 +35,7 @@ import {
 import {
   drainGuestEvents,
   finalizePendingInvites,
+  refreshActiveShares,
   acceptInvite,
   parseJoinCode,
 } from './src/lib/sharing';
@@ -149,6 +150,7 @@ function runSharingSync() {
   if (!getSignedInUid()) return;
   drainGuestEvents().catch(() => {});
   finalizePendingInvites().catch(() => {});
+  refreshActiveShares().catch(() => {}); // keep sitter links fresh with latest watering
 }
 
 function App() {
