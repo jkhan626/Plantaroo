@@ -108,7 +108,7 @@ export function PlantDetailScreen() {
   const plant = usePlant(route.params.id);
   const allHistory = useHistory();
   const allJournal = useJournal();
-  const { water } = useWaterAction();
+  const { water, waterOn } = useWaterAction();
   const toast = useToast();
 
   const [editingName, setEditingName] = useState(false);
@@ -195,12 +195,13 @@ export function PlantDetailScreen() {
     if (n && plant && n !== plant.name) patchPlant(plant, { name: n });
   }
 
+  // Picking a date logs a real (possibly backdated) watering: learns the gap,
+  // adds a History entry, bumps the count, and re-anchors the schedule.
   async function onLastWateredDone(d: Date) {
     setDateOpen(false);
     if (!plant) return;
-    const iso = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0).toISOString();
-    await setLastWatered(plant, iso);
-    reschedule();
+    if (sameCalendarDay(plant.last_watered, d)) return; // already watered that day — no-op
+    waterOn(plant, d);
   }
   async function onLastWateredClear() {
     setDateOpen(false);
@@ -494,7 +495,13 @@ export function PlantDetailScreen() {
 
         {/* Quick actions */}
         <View style={styles.actions}>
-          <ActionBtn label="Water" tint={colors.green} bg={colors.greenBg} onPress={() => water(plant)}>
+          <ActionBtn
+            label="Water"
+            tint={colors.green}
+            bg={colors.greenBg}
+            onPress={() => water(plant)}
+            onLongPress={() => setDateOpen(true)}
+          >
             <Droplet size={18} color={colors.green} />
           </ActionBtn>
           <ActionBtn label="Skip" tint={colors.textSecondary} bg="rgba(142,142,147,0.1)" onPress={doSkip}>
@@ -740,8 +747,7 @@ export function PlantDetailScreen() {
 
       <DateSheet
         visible={dateOpen}
-        title="Last watered"
-        initial={plant.last_watered ? new Date(plant.last_watered) : undefined}
+        title="When did you water?"
         allowClear
         onDone={onLastWateredDone}
         onClear={onLastWateredClear}
@@ -791,6 +797,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** True if an ISO date string falls on the same calendar day as a Date. */
+function sameCalendarDay(iso: string | null, d: Date): boolean {
+  if (!iso) return false;
+  const a = new Date(iso);
+  return (
+    a.getFullYear() === d.getFullYear() &&
+    a.getMonth() === d.getMonth() &&
+    a.getDate() === d.getDate()
+  );
+}
+
 function Row({
   label,
   value,
@@ -820,16 +837,22 @@ function ActionBtn({
   tint,
   bg,
   onPress,
+  onLongPress,
   children,
 }: {
   label: string;
   tint: string;
   bg: string;
   onPress: () => void;
+  onLongPress?: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <Pressable style={[styles.actionBtn, { backgroundColor: bg }]} onPress={onPress}>
+    <Pressable
+      style={[styles.actionBtn, { backgroundColor: bg }]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+    >
       {children}
       <Text style={[styles.actionLabel, { color: tint }]}>{label}</Text>
     </Pressable>

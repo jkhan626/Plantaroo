@@ -2,7 +2,7 @@
 import { Alert } from 'react-native';
 import { useToast } from './Toast';
 import { waterPlant, undoAction, type LateChoice } from '../logic/actions';
-import { getDaysUntilDue } from '../logic/schedule';
+import { getDaysUntilDue, relativeDayLabel } from '../logic/schedule';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { recordWateringForReview } from '../lib/review';
 import { writeWateringSummary } from '../lib/wateringSummary';
@@ -21,15 +21,16 @@ export interface WaterCallbacks {
 export function useWaterAction() {
   const toast = useToast();
 
-  async function doWater(plant: Plant, late: LateChoice, cb?: WaterCallbacks) {
-    const { undo, fed } = await waterPlant(plant, late);
+  async function doWater(plant: Plant, late: LateChoice, cb?: WaterCallbacks, when?: Date) {
+    const { undo, fed } = await waterPlant(plant, late, when);
     const plants = getPlants();
     rescheduleWateringReminders(plants);
     recordWateringForReview();
     writeWateringSummary(plants);
     if (!cb?.silent) {
+      const on = when ? ` ${relativeDayLabel(when.toISOString()).toLowerCase()}` : '';
       toast.show({
-        message: fed ? `${plant.name} watered + fed` : `${plant.name} watered`,
+        message: fed ? `${plant.name} watered + fed${on}` : `${plant.name} watered${on}`,
         onUndo: async () => {
           await undoAction(undo);
           const updated = getPlants();
@@ -64,5 +65,15 @@ export function useWaterAction() {
     }
   }
 
-  return { water };
+  /**
+   * Log a watering that happened on a past date (forgot to tap it in time).
+   * No late prompt — the gap to the chosen date is the real interval, so it's
+   * valid evidence by definition. Anchored at local noon to avoid TZ day-shift.
+   */
+  function waterOn(plant: Plant, day: Date, cb?: WaterCallbacks) {
+    const when = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 12, 0, 0);
+    doWater(plant, null, cb, when);
+  }
+
+  return { water, waterOn };
 }

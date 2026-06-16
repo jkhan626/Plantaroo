@@ -26,18 +26,27 @@ export interface UndoToken {
 
 export type LateChoice = 'still_wet' | 'too_busy' | null;
 
-/** Water a plant. lateReason 'too_busy' discards the gap from learning. */
+/**
+ * Water a plant. lateReason 'too_busy' discards the gap from learning.
+ * Pass `when` to log a watering that actually happened in the past (e.g. you
+ * forgot to tap it yesterday): the anchor, history date, and learned gap all
+ * use that date instead of now, so the schedule stays accurate.
+ */
 export async function waterPlant(
   input: Plant,
   lateReason: LateChoice = null,
+  when?: Date | string | null,
 ): Promise<{ undo: UndoToken; fed: boolean }> {
   const snapshot = clone(input);
   const plant = clone(input);
-  const now = new Date().toISOString();
+  const at = when ? new Date(when) : new Date();
+  const now = at.toISOString();
 
   if (plant.last_watered) {
-    const gapDays = (Date.now() - new Date(plant.last_watered).getTime()) / MS_PER_DAY;
-    if (lateReason !== 'too_busy') {
+    const gapDays = (at.getTime() - new Date(plant.last_watered).getTime()) / MS_PER_DAY;
+    // A backdated event whose gap is the real interval is valid evidence; a
+    // non-positive gap (same day / before the prior watering) teaches nothing.
+    if (lateReason !== 'too_busy' && gapDays > 0) {
       updateIntervalFromGap(plant, gapDays); // 'still_wet' & on-time gaps are valid evidence
     }
     // 'too_busy': discard the gap entirely — keep prior learning.
