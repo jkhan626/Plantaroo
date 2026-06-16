@@ -13,6 +13,7 @@ import {
   Share,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -25,6 +26,8 @@ import {
   listGuestShares,
   revokeGuestShare,
   sitterUrl,
+  getOwnerName,
+  setOwnerName,
   type GuestShare,
 } from '../lib/sharing';
 import { getSignedInUid, isViewingOwnAccount, switchAccount } from '../data/db';
@@ -56,6 +59,14 @@ export function AwayModeScreen() {
   const [picking, setPicking] = useState<null | 'from' | 'to'>(null);
   const [creating, setCreating] = useState(false);
   const [shares, setShares] = useState<GuestShare[]>([]);
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    getOwnerName().then(setName);
+  }, []);
+  function saveName() {
+    setOwnerName(name).then(loadShares); // back-fill existing links + refresh list
+  }
 
   const schedule = useMemo(() => buildAwaySchedule(from, to), [from, to]);
   const totalWaterings = useMemo(
@@ -77,6 +88,7 @@ export function AwayModeScreen() {
     }
     setCreating(true);
     try {
+      await setOwnerName(name); // make sure the link uses the latest name
       const { url, plantCount } = await createGuestShare(from, to);
       await loadShares();
       await Share.share(
@@ -159,6 +171,21 @@ export function AwayModeScreen() {
           Pick the days you'll be gone. We'll build a watering schedule you can send to a plant
           sitter — they just open the link, no app needed.
         </Text>
+
+        <Text style={styles.sectionLabel}>Your name</Text>
+        <View style={styles.card}>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            onEndEditing={saveName}
+            onBlur={saveName}
+            placeholder="e.g. Jamal"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="words"
+            style={styles.nameInput}
+          />
+        </View>
+        <Text style={styles.fieldHint}>The sitter sees this — "{name || 'Your'}'s plants".</Text>
 
         <Text style={styles.sectionLabel}>Dates away</Text>
         <View style={styles.card}>
@@ -321,6 +348,12 @@ const styles = StyleSheet.create({
   rowHint: { color: colors.textMuted, fontSize: font.size.sm, marginTop: 3 },
   rowLink: { color: colors.green, fontSize: font.size.md, fontWeight: font.weight.medium },
   revoke: { color: colors.red, fontSize: font.size.md, fontWeight: font.weight.medium },
+  nameInput: {
+    color: colors.textPrimary,
+    fontSize: font.size.md,
+    paddingVertical: 15,
+  },
+  fieldHint: { color: colors.textMuted, fontSize: font.size.sm, marginTop: 6, paddingLeft: 2 },
   dates: { color: colors.textSecondary, fontSize: font.size.sm, maxWidth: 170, textAlign: 'right' },
   cta: {
     marginTop: 24,

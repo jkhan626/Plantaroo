@@ -58,9 +58,43 @@ function toYMD(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
-function ownerLabel(): string {
+const OWNER_NAME_KEY = (uid: string) => `plantaroo:ownerName:${uid}`;
+
+/**
+ * The name the sitter / co-owner sees. Prefers a name the user set explicitly,
+ * then their provider displayName. Never uses an Apple private-relay email
+ * prefix (a random string like "pnv9nrhbzd"), which reads as gibberish.
+ */
+export async function getOwnerName(): Promise<string> {
+  const uid = getSignedInUid();
+  if (uid) {
+    try {
+      const stored = await AsyncStorage.getItem(OWNER_NAME_KEY(uid));
+      if (stored && stored.trim()) return stored.trim();
+    } catch {
+      /* ignore */
+    }
+  }
   const u = currentUser();
-  return u?.displayName || u?.email?.split('@')[0] || 'A Plantaroo user';
+  if (u?.displayName?.trim()) return u.displayName.trim();
+  const email = u?.email || '';
+  if (email && !email.endsWith('privaterelay.appleid.com')) return email.split('@')[0];
+  return '';
+}
+
+/** Persist the display name and back-fill it onto any active sitter links. */
+export async function setOwnerName(name: string): Promise<void> {
+  const uid = getSignedInUid();
+  if (!uid) return;
+  const clean = name.trim();
+  await AsyncStorage.setItem(OWNER_NAME_KEY(uid), clean).catch(() => {});
+  // Update existing share docs so already-sent links show the new name.
+  try {
+    const snap = await getDocs(collection(db, 'public', uid, 'shares'));
+    await Promise.all(snap.docs.map((d) => setDoc(d.ref, { ownerName: clean }, { merge: true })));
+  } catch {
+    /* offline — new shares will still use the saved name */
+  }
 }
 
 // =======================================================================
@@ -113,7 +147,7 @@ export async function createGuestShare(
 
   let share: GuestShare = {
     token,
-    ownerName: ownerLabel(),
+    ownerName: (await getOwnerName()) || 'Your plant friend',
     status: 'active',
     start: toYMD(start),
     end: toYMD(end),
@@ -241,7 +275,7 @@ export async function createInvite(): Promise<{ token: string; url: string }> {
   if (!uid) throw new Error('Not signed in');
   const token = makeToken();
   await setDoc(doc(db, 'public', uid, 'invites', token), {
-    ownerName: ownerLabel(),
+    ownerName: (await getOwnerName()) || 'A Plantaroo user',
     status: 'pending',
     createdAt: new Date().toISOString(),
   });
@@ -269,7 +303,11 @@ export async function acceptInvite(ownerUid: string, token: string): Promise<Mem
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error('This invite is no longer valid.');
   const data = snap.data() as any;
-  await updateDoc(ref, { acceptedBy: me, acceptedByName: ownerLabel(), status: 'accepted' });
+  await updateDoc(ref, {
+    acceptedBy: me,
+    acceptedByName: (await getOwnerName()) || 'Co-owner',
+    status: 'accepted',
+  });
   const membership: Membership = { ownerUid, ownerName: data.ownerName || 'Shared account' };
   await addLocalMembership(me, membership);
   return membership;
