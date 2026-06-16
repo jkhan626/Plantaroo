@@ -68,6 +68,10 @@ export function AwayModeScreen() {
     setOwnerName(name).then(loadShares); // back-fill existing links + refresh list
   }
 
+  // Away dates are in the future; allow up to a year out. (DateSheet defaults
+  // maximumDate to today for the past-date pickers, so it must be set here.)
+  const maxAway = new Date(today.getTime() + 365 * MS_PER_DAY);
+
   const schedule = useMemo(() => buildAwaySchedule(from, to), [from, to]);
   const totalWaterings = useMemo(
     () => schedule.reduce((n, p) => n + p.dueDates.length, 0),
@@ -273,7 +277,7 @@ export function AwayModeScreen() {
         title="From"
         initial={from}
         minimumDate={today}
-        maximumDate={undefined}
+        maximumDate={maxAway}
         onDone={(d) => {
           const nd = startOfDay(d);
           setFrom(nd);
@@ -287,7 +291,7 @@ export function AwayModeScreen() {
         title="To"
         initial={to}
         minimumDate={from}
-        maximumDate={undefined}
+        maximumDate={maxAway}
         onDone={(d) => {
           setTo(startOfDay(d));
           setPicking(null);
