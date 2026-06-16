@@ -200,7 +200,7 @@ export function PlantCard({
                   style={styles.stillWetBtn}
                   accessibilityLabel="Still wet — remind me tomorrow"
                 >
-                  <Leaf size={18} color={colors.lightBlue} />
+                  <Leaf size={18} color={colors.blue} />
                 </Pressable>
               )}
               {!wateredToday && (
@@ -211,9 +211,12 @@ export function PlantCard({
                   }}
                   hitSlop={8}
                   style={[styles.waterBtn, isDue && styles.waterBtnDue]}
+                  accessibilityLabel="Water"
                 >
                   <Animated.View style={isDue ? pulseStyle : undefined}>
-                    <Droplet size={19} color={colors.green} />
+                    {/* Red when it's actually due (dry → water it); calm green when
+                        watering early on a not-yet-due plant. */}
+                    <Droplet size={19} color={isDue ? colors.red : colors.green} />
                   </Animated.View>
                 </Pressable>
               )}
@@ -286,12 +289,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  waterBtnDue: { backgroundColor: colors.greenBg },
+  waterBtnDue: { backgroundColor: colors.redBg },
   stillWetBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(90,200,250,0.10)',
+    backgroundColor: 'rgba(10,132,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
