@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { View, AppState } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, AppState, Linking, Alert } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -24,7 +24,22 @@ import { Onboarding } from './src/ui/Onboarding';
 
 import { onAuthChange, type User } from './src/lib/auth';
 import { initSentry, setSentryUser, wrapWithSentry } from './src/lib/sentry';
-import { startSession, endSession, getPlants } from './src/data/db';
+import {
+  startSession,
+  endSession,
+  getPlants,
+  getActiveOwnerName,
+  getSignedInUid,
+  switchAccount,
+} from './src/data/db';
+import {
+  drainGuestEvents,
+  finalizePendingInvites,
+  acceptInvite,
+  parseJoinCode,
+} from './src/lib/sharing';
+import { useStore } from './src/ui/hooks';
+import { SharedAccountBanner } from './src/ui/SharedAccountBanner';
 import {
   configureNotificationHandler,
   getNotifyEnabled,
@@ -41,6 +56,8 @@ import { HistoryScreen } from './src/screens/HistoryScreen';
 import { PlantDetailScreen } from './src/screens/PlantDetailScreen';
 import { AddPlantScreen } from './src/screens/AddPlantScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { SharingScreen } from './src/screens/SharingScreen';
+import { AwayModeScreen } from './src/screens/AwayModeScreen';
 import { CareQueueScreen } from './src/screens/CareQueueScreen';
 import { TroubleshootScreen } from './src/screens/TroubleshootScreen';
 
@@ -90,7 +107,7 @@ function QuickActionsBridge({ enabled }: { enabled: boolean }) {
   return null;
 }
 
-function Tabs() {
+function TabNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <TabBar {...props} />}
@@ -104,10 +121,72 @@ function Tabs() {
   );
 }
 
+function Tabs() {
+  useStore(); // re-render when the active account switches
+  const shared = !!getActiveOwnerName();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <SharedAccountBanner />
+      {shared ? (
+        // The banner consumed the real top inset — zero it out for the screens
+        // so they don't double-pad below it.
+        <SafeAreaInsetsContext.Consumer>
+          {(insets) => (
+            <SafeAreaInsetsContext.Provider value={{ ...(insets ?? { top: 0, bottom: 0, left: 0, right: 0 }), top: 0 }}>
+              <TabNavigator />
+            </SafeAreaInsetsContext.Provider>
+          )}
+        </SafeAreaInsetsContext.Consumer>
+      ) : (
+        <TabNavigator />
+      )}
+    </View>
+  );
+}
+
+/** Drain sitter check-offs + finalize accepted co-owner invites (own account). */
+function runSharingSync() {
+  if (!getSignedInUid()) return;
+  drainGuestEvents().catch(() => {});
+  finalizePendingInvites().catch(() => {});
+}
+
 function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [gateChecked, setGateChecked] = useState(false);
   const [forcedUpdate, setForcedUpdate] = useState(false);
+  const pendingJoin = useRef<{ ownerUid: string; token: string } | null>(null);
+
+  // Accept a co-owner invite once we're signed in (links may arrive cold).
+  async function processPendingJoin() {
+    const job = pendingJoin.current;
+    if (!job || !getSignedInUid()) return;
+    pendingJoin.current = null;
+    try {
+      const m = await acceptInvite(job.ownerUid, job.token);
+      Alert.alert('Invite accepted', `You can now access ${m.ownerName}'s plants.`, [
+        { text: 'Later' },
+        { text: 'Switch to it', onPress: () => switchAccount(m.ownerUid, m.ownerName).catch(() => {}) },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Could not join', String(e?.message ?? e));
+    }
+  }
+
+  // Deep links: plantaroo://join?u=<owner>&t=<token>
+  useEffect(() => {
+    const handle = (url: string | null) => {
+      if (!url || !url.includes('join')) return;
+      const parsed = parseJoinCode(url);
+      if (parsed) {
+        pendingJoin.current = parsed;
+        processPendingJoin();
+      }
+    };
+    Linking.getInitialURL().then(handle).catch(() => {});
+    const sub = Linking.addEventListener('url', (e) => handle(e.url));
+    return () => sub.remove();
+  }, []);
 
   // Forced-update gate + foreground OTA fetch.
   useEffect(() => {
@@ -119,6 +198,7 @@ function App() {
       if (next === 'active') {
         isForcedUpdateRequired().then(setForcedUpdate);
         fetchOtaUpdateSilently();
+        runSharingSync();
       }
     });
     return () => sub.remove();
@@ -133,6 +213,10 @@ function App() {
         // We DON'T prompt here — permission is requested after the first plant
         // is added (high-intent moment) or from Settings.
         if (await getNotifyEnabled()) rescheduleWateringReminders(getPlants());
+        // Apply any sitter check-offs / finalize co-owner invites, then handle a
+        // pending join link that arrived before sign-in completed.
+        runSharingSync();
+        processPendingJoin();
       } else {
         endSession();
       }
@@ -174,6 +258,16 @@ function App() {
                 <Stack.Screen
                   name="Settings"
                   component={SettingsScreen}
+                  options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                />
+                <Stack.Screen
+                  name="Sharing"
+                  component={SharingScreen}
+                  options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+                />
+                <Stack.Screen
+                  name="AwayMode"
+                  component={AwayModeScreen}
                   options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
                 />
                 <Stack.Screen

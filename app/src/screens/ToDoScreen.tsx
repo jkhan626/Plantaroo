@@ -15,9 +15,9 @@ import { SkeletonRows } from '../ui/Skeleton';
 import { PressableScale } from '../ui/components';
 import { DateSheet } from '../ui/DateSheet';
 import { Plus, Check, Gear, Sprout, Droplet, ChevronRight } from '../ui/icons';
-import { getDaysUntilDue, getSeasonLabel } from '../logic/schedule';
+import { getDaysUntilDue, getSeasonLabel, isSnoozed } from '../logic/schedule';
 import { getDueTasks } from '../logic/tasks';
-import { bulkSetLastWatered } from '../logic/actions';
+import { bulkSetLastWatered, stillWetDefer, undoAction } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants, isHydrated, refreshFromCloud } from '../data/db';
 
@@ -42,9 +42,9 @@ export function ToDoScreen() {
   }, []);
 
   const overdue = plants
-    .filter((p) => p.last_watered && getDaysUntilDue(p) < 0)
+    .filter((p) => p.last_watered && !isSnoozed(p) && getDaysUntilDue(p) < 0)
     .sort((a, b) => getDaysUntilDue(a) - getDaysUntilDue(b));
-  const today = plants.filter((p) => p.last_watered && getDaysUntilDue(p) === 0);
+  const today = plants.filter((p) => p.last_watered && !isSnoozed(p) && getDaysUntilDue(p) === 0);
   const neverW = plants
     .filter((p) => !p.last_watered)
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -56,6 +56,19 @@ export function ToDoScreen() {
   const otherCare = plants
     .filter((p) => !waterDueIds.has(p.id) && getDueTasks(p).length > 0)
     .sort((a, b) => a.name.localeCompare(b.name));
+
+  async function stillWet(p: (typeof plants)[number]) {
+    const { undo } = await stillWetDefer(p);
+    rescheduleWateringReminders(getPlants());
+    toast.show({
+      message: `${p.name} — still wet, back tomorrow`,
+      kind: 'info',
+      onUndo: async () => {
+        await undoAction(undo);
+        rescheduleWateringReminders(getPlants());
+      },
+    });
+  }
 
   async function onBulkDate(d: Date) {
     setDateOpen(false);
@@ -124,8 +137,8 @@ export function ToDoScreen() {
                 <ChevronRight size={18} color={colors.green} />
               </PressableScale>
             )}
-            <Section title="Overdue" tint={colors.red} items={overdue} water={water} nav={nav} />
-            <Section title="Due today" tint={colors.orange} items={today} water={water} nav={nav} />
+            <Section title="Overdue" tint={colors.red} items={overdue} water={water} stillWet={stillWet} nav={nav} />
+            <Section title="Due today" tint={colors.orange} items={today} water={water} stillWet={stillWet} nav={nav} />
             {neverW.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
@@ -182,6 +195,7 @@ function Section({
   tint,
   items,
   water,
+  stillWet,
   nav,
   mode = 'todo',
 }: {
@@ -189,6 +203,7 @@ function Section({
   tint: string;
   items: ReturnType<typeof usePlants>;
   water: (p: any) => void;
+  stillWet?: (p: any) => void;
   nav: Nav;
   mode?: 'todo' | 'all';
 }) {
@@ -203,6 +218,7 @@ function Section({
           mode={mode}
           onPress={() => nav.navigate('PlantDetail', { id: p.id })}
           onWater={() => water(p)}
+          onStillWet={stillWet ? () => stillWet(p) : undefined}
         />
       ))}
     </View>

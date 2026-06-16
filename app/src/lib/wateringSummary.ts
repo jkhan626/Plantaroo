@@ -8,6 +8,7 @@
 import { setDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getAuth } from 'firebase/auth';
+import { isViewingOwnAccount } from '../data/db';
 import type { Plant } from '../types';
 
 const MS_PER_DAY = 86_400_000;
@@ -26,7 +27,9 @@ function getNextDueDate(plant: Plant): Date | null {
 
   const lastWateredMs = new Date(plant.last_watered).getTime();
   const interval = plant.current_interval ?? 7;
-  const baseDays = interval * (plant.seasonal_multiplier ?? 1.0);
+  // seasonal_multiplier is never stored (computed at display time) — kept here
+  // only for backward compatibility with any legacy field; defaults to 1.0.
+  const baseDays = interval * ((plant as any).seasonal_multiplier ?? 1.0);
   const dueMs = lastWateredMs + baseDays * MS_PER_DAY;
 
   return new Date(dueMs);
@@ -81,6 +84,9 @@ export async function writeWateringSummary(plants: Plant[]): Promise<void> {
   try {
     const auth = getAuth();
     if (!auth.currentUser) return; // Only write when signed in
+    // Only publish for the user's own account — never overwrite my summary with
+    // a co-owned account's plants (and I can't write the owner's summary anyway).
+    if (!isViewingOwnAccount()) return;
 
     const summary = buildWateringSummary(plants);
     const json = JSON.stringify(summary);
@@ -94,7 +100,11 @@ export async function writeWateringSummary(plants: Plant[]): Promise<void> {
       updatedAt: new Date().toISOString(),
     };
 
-    const summaryDoc = doc(db, 'public', auth.currentUser.uid, 'summary');
+    // NOTE: must be an EVEN-segment path. `public/{uid}/summary` is 3 segments
+    // and throws "Document references must have an even number of segments" —
+    // which silently broke this write. The summary now lives on the `public/{uid}`
+    // doc itself (the nightly Notion routine reads .../documents/public/{uid}).
+    const summaryDoc = doc(db, 'public', auth.currentUser.uid);
     await setDoc(summaryDoc, summaryWithTimestamp);
   } catch (e) {
     console.warn('[Plantaroo] watering summary write failed:', e);

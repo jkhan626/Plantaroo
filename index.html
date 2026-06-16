@@ -2025,7 +2025,9 @@ function writeWateringSummary() {
     _lastSummaryJSON = json;
     summary.updatedAt = new Date().toISOString();
     var FB = window.FB;
-    FB.setDoc(FB.doc(FB.db, 'public', FB.uid, 'summary'), summary)
+    // Must be an EVEN-segment path: 'public'/{uid}/'summary' is 3 segments and
+    // throws, silently breaking this write. Store on the public/{uid} doc itself.
+    FB.setDoc(FB.doc(FB.db, 'public', FB.uid), summary)
       .catch(function (e) { console.warn('watering summary write failed', e); });
   } catch (e) { console.warn('watering summary build failed', e); }
 }

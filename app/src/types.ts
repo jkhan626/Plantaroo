@@ -47,6 +47,8 @@ export interface Plant extends PlantProfile {
   last_cleaned?: string | null;
   last_pruned?: string | null;
   last_repotted?: string | null;
+  /** "Still wet" snooze: hide from the To Do list until this ISO time (next day). */
+  snooze_until?: string | null;
 }
 
 export type HistoryType =

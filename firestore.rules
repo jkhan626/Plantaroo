@@ -1,20 +1,59 @@
 rules_version = '2';
 
-// Plantaroo — each signed-in user can read/write only their own data under
-// users/{uid}/**. No cross-user access; unauthenticated access is denied.
+// Plantaroo — each signed-in user owns their data under users/{uid}/**. A user
+// may also grant co-owners (Planta "Family") full access by adding them to
+// users/{uid}/members; and may publish capability-token docs under
+// public/{uid}/** for plant-sitter schedules and co-owner invites.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+    // True when the requester has been granted co-owner access to ownerUid.
+    function isMember(ownerUid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(ownerUid)/members/$(request.auth.uid));
     }
 
-    // Names-free watering summary published for the nightly "Water Plants"
-    // Notion routine (counts + next-due dates only, no plant names/notes/
-    // photos). Per-user at public/{uid}/summary — world-readable so the
-    // cloud routine (not signed in) can fetch it; only the owning user can write.
-    match /public/{uid}/summary {
-      allow read:  if true;
+    // Owner OR an accepted co-owner can read/write the owner's whole subtree
+    // (plants, history, journal, profileCache, members). Co-owners are trusted
+    // family — full access, matching Planta's "Family" role.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && (request.auth.uid == uid || isMember(uid));
+    }
+
+    // Names-free watering summary for the nightly Notion routine (counts +
+    // next-due dates only) lives on the public/{uid} doc. `get` is world-readable
+    // so the cloud routine can fetch a specific user's doc, but `list` is denied
+    // so the collection of summaries can't be enumerated. (Was /public/{uid}/summary,
+    // an invalid 3-segment doc path that silently failed every write.)
+    match /public/{uid} {
+      allow get:   if true;
       allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Plant-sitter schedule. The token is an unguessable capability: anyone with
+    // the link can GET the schedule and POST a check-off, but only the owner can
+    // LIST/manage shares or read the check-off inbox.
+    match /public/{uid}/shares/{token} {
+      allow get:   if true;
+      allow list:  if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid;
+
+      match /events/{eventId} {
+        allow read:   if request.auth != null && request.auth.uid == uid; // owner drains
+        allow create: if request.auth != null;                           // sitter checks off
+      }
+    }
+
+    // Co-owner invites. The invitee (any signed-in user) may GET the invite and
+    // stamp their acceptance; only the owner may LIST, create or delete invites.
+    match /public/{uid}/invites/{token} {
+      allow get:           if true;
+      allow list:          if request.auth != null && request.auth.uid == uid;
+      allow create, delete: if request.auth != null && request.auth.uid == uid;
+      allow update: if (request.auth != null && request.auth.uid == uid)
+        || (request.auth != null
+            && request.resource.data.diff(resource.data)
+                 .affectedKeys().hasOnly(['acceptedBy', 'acceptedByName', 'status']));
     }
   }
 }

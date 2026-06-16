@@ -22,7 +22,7 @@ import { isFeedDue, needsDistilled } from '../logic/fertilize';
 import { getDueTasks } from '../logic/tasks';
 import { SOIL_TABLE } from '../logic/constants';
 import { PlantAvatar } from './components';
-import { Droplet, Check } from './icons';
+import { Droplet, Check, Leaf } from './icons';
 
 const STATUS_COLOR: Record<string, string> = {
   never: colors.blue,
@@ -39,11 +39,14 @@ export function PlantCard({
   plant,
   onPress,
   onWater,
+  onStillWet,
   mode = 'all',
 }: {
   plant: Plant;
   onPress: () => void;
   onWater: () => void;
+  /** "Still wet" — defer to tomorrow without watering (shown on due To Do cards). */
+  onStillWet?: () => void;
   mode?: 'all' | 'todo';
 }) {
   const due = getDueText(plant);
@@ -187,6 +190,19 @@ export function PlantCard({
                 )}
               </View>
 
+              {!wateredToday && onStillWet && isDue && plant.last_watered && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    onStillWet();
+                  }}
+                  hitSlop={8}
+                  style={styles.stillWetBtn}
+                  accessibilityLabel="Still wet — remind me tomorrow"
+                >
+                  <Leaf size={18} color={colors.lightBlue} />
+                </Pressable>
+              )}
               {!wateredToday && (
                 <Pressable
                   onPress={() => {
@@ -271,6 +287,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   waterBtnDue: { backgroundColor: colors.greenBg },
+  stillWetBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(90,200,250,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   doneBadge: {
     width: 40,
     height: 40,

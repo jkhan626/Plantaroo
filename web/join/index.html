@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<title>Co-own plants · Plantaroo</title>
+<style>
+  :root {
+    --bg: #000; --surface: #111116; --elev: #1c1c24; --border: rgba(255,255,255,.07);
+    --text: #f5f5f7; --muted: #8a8a92; --faint: #555; --green: #30d158;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text); min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; align-items: center; justify-content: center; line-height: 1.45;
+    padding: 24px;
+  }
+  .card {
+    max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 30px 24px; text-align: center;
+  }
+  .leaf { font-size: 34px; }
+  h1 { font-size: 22px; font-weight: 700; margin: 14px 0 6px; }
+  p { color: var(--muted); font-size: 15px; margin: 0 0 22px; }
+  .btn {
+    display: block; width: 100%; background: var(--green); color: #000; font-size: 16px;
+    font-weight: 600; border: none; border-radius: 14px; padding: 15px; text-decoration: none;
+    cursor: pointer; margin-bottom: 12px;
+  }
+  .code {
+    background: var(--elev); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; font-size: 13px; color: var(--text); word-break: break-all;
+    margin-top: 8px; cursor: pointer;
+  }
+  .hint { color: var(--faint); font-size: 12px; margin-top: 14px; }
+  .copied { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="leaf">🌿</div>
+  <h1 id="title">Loading invite…</h1>
+  <p id="sub"></p>
+  <div id="actions" style="display:none">
+    <a class="btn" id="open">Open in Plantaroo</a>
+    <div class="code" id="code" title="Tap to copy"></div>
+    <div class="hint">No app yet? Install Plantaroo, sign in, then paste this link into
+      Settings → Sharing → Join an account.</div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyBfQ0-PFAaglQvowhD4uh17QAYrqBiqMtA',
+  authDomain: 'plantaroo-204ca.firebaseapp.com',
+  projectId: 'plantaroo-204ca',
+  storageBucket: 'plantaroo-204ca.firebasestorage.app',
+  messagingSenderId: '870788325984',
+  appId: '1:870788325984:web:ebf0121f07cec2b4175905',
+};
+const db = getFirestore(initializeApp(firebaseConfig));
+
+const params = new URLSearchParams(location.search);
+const uid = params.get('u');
+const token = params.get('t');
+const title$ = document.getElementById('title');
+const sub$ = document.getElementById('sub');
+const actions$ = document.getElementById('actions');
+const open$ = document.getElementById('open');
+const code$ = document.getElementById('code');
+function esc(s){ return String(s ?? '').replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+(async () => {
+  if (!uid || !token) { title$.textContent = 'Invalid invite link'; return; }
+  let ownerName = 'A Plantaroo user';
+  try {
+    const snap = await getDoc(doc(db, 'public', uid, 'invites', token));
+    if (snap.exists()) ownerName = snap.data().ownerName || ownerName;
+    else { title$.textContent = 'This invite is no longer valid'; sub$.textContent = 'Ask for a fresh link.'; return; }
+  } catch (_) { /* show the actions anyway — the app will validate on accept */ }
+
+  const url = `${location.origin}${location.pathname}${location.search}`;
+  title$.innerHTML = `${esc(ownerName)} invited you to<br>co-own their plants`;
+  sub$.textContent = 'You’ll be able to water, add and edit their plants from your own account.';
+  open$.href = `plantaroo://join?u=${encodeURIComponent(uid)}&t=${encodeURIComponent(token)}`;
+  code$.textContent = url;
+  actions$.style.display = 'block';
+
+  code$.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(url); code$.textContent = 'Copied!'; code$.classList.add('copied');
+      setTimeout(() => { code$.textContent = url; code$.classList.remove('copied'); }, 1500); } catch (_) {}
+  });
+})();
+</script>
+</body>
+</html>

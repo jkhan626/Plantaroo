@@ -10,6 +10,8 @@ export function DateSheet({
   title,
   initial,
   allowClear,
+  minimumDate,
+  maximumDate = new Date(),
   onDone,
   onClear,
   onClose,
@@ -18,6 +20,10 @@ export function DateSheet({
   title: string;
   initial?: Date;
   allowClear?: boolean;
+  /** Lower bound (e.g. away mode picks future dates). */
+  minimumDate?: Date;
+  /** Upper bound — defaults to today (past-date pickers like last-watered). */
+  maximumDate?: Date;
   onDone: (date: Date) => void;
   onClear?: () => void;
   onClose: () => void;
@@ -56,7 +62,8 @@ export function DateSheet({
             value={date}
             mode="date"
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={new Date()}
+            minimumDate={minimumDate}
+            maximumDate={maximumDate}
             themeVariant="dark"
             textColor={colors.textPrimary}
             onChange={(_, d) => {

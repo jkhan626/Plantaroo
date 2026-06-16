@@ -8,6 +8,7 @@ import { writeWateringSummary } from '../lib/wateringSummary';
 import {
   getEffectiveStartingInterval,
   getLearnedInterval,
+  getClampedInterval,
   updateIntervalFromGap,
 } from './schedule';
 import { isFeedDue } from './fertilize';
@@ -56,6 +57,7 @@ export async function waterPlant(
   }
 
   plant.last_watered = now;
+  plant.snooze_until = null; // watering clears any "still wet" snooze
   plant.watering_count = (plant.watering_count || 0) + 1;
 
   let type: HistoryType = 'Watered';
@@ -90,6 +92,7 @@ export async function skipPlant(input: Plant): Promise<{ undo: UndoToken }> {
   const plant = clone(input);
   const now = new Date().toISOString();
   plant.last_watered = now; // anchor moves; watering_count & gaps untouched
+  plant.snooze_until = null; // skipping clears any "still wet" snooze
   await dbPut('plants', plant);
 
   const entry: HistoryEntry = {
@@ -105,6 +108,26 @@ export async function skipPlant(input: Plant): Promise<{ undo: UndoToken }> {
   writeWateringSummary(getPlants());
 
   return { undo: { snapshot, historyId } };
+}
+
+/**
+ * "Still wet" — the plant is due but the soil is still moist, so don't water.
+ * Hide it from the To Do list until tomorrow, and gently teach the schedule it
+ * can wait a little longer (one day past the current prediction is valid
+ * evidence). No watering is logged, so the plant isn't over-watered.
+ */
+export async function stillWetDefer(input: Plant): Promise<{ undo: UndoToken }> {
+  const snapshot = clone(input);
+  const plant = clone(input);
+  // Reappear at the start of the next local day.
+  const t = new Date();
+  const tomorrow = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1, 0, 0, 0);
+  plant.snooze_until = tomorrow.toISOString();
+  // Gentle learning: it lasted ~one day longer than predicted.
+  if (plant.last_watered) updateIntervalFromGap(plant, getClampedInterval(plant) + 1);
+  await dbPut('plants', plant);
+  writeWateringSummary(getPlants());
+  return { undo: { snapshot, historyId: -1 } }; // no history entry to remove
 }
 
 /** Repot: suppress fertilizer for 2 weeks and reset the repot-check anchor. */

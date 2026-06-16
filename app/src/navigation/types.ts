@@ -4,6 +4,8 @@ export type RootStackParamList = {
   PlantDetail: { id: number };
   AddPlant: undefined;
   Settings: undefined;
+  Sharing: undefined;
+  AwayMode: undefined;
   CareQueue: undefined;
   Troubleshoot: { id: number };
 };

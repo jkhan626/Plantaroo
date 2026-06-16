@@ -66,6 +66,49 @@ export function getNextDueDate(plant: Plant): Date | null {
   return new Date(last.getTime() + effective * MS_PER_DAY);
 }
 
+/** YYYY-MM-DD in local time (matches the watering-summary convention). */
+function toYMD(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Every date (YYYY-MM-DD) a plant should be watered within an away window
+ * [start, end], used to build a plant-sitter schedule. Steps from the plant's
+ * real next-due date by its clamped × seasonal interval. A plant that is
+ * already overdue at the window start gets its first watering on day one of the
+ * window (the sitter can't water it in the past), then continues at interval.
+ * Never-watered plants return [] (no learned cadence to project yet).
+ */
+export function getDueDatesInWindow(plant: Plant, start: Date, end: Date): string[] {
+  const first = getNextDueDate(plant);
+  if (!first) return [];
+  const clamped = getClampedInterval(plant);
+  const seasonal = getSeasonalMultiplier(plant.light_type);
+  const stepMs = Math.max(1, clamped * seasonal) * MS_PER_DAY;
+
+  const s = new Date(start);
+  s.setHours(0, 0, 0, 0);
+  const e = new Date(end);
+  e.setHours(23, 59, 59, 999);
+
+  // Anchor on the real due date, but never before the window (overdue → day one).
+  let cur = first.getTime() < s.getTime() ? new Date(s) : new Date(first);
+  const out: string[] = [];
+  for (; cur.getTime() <= e.getTime(); cur = new Date(cur.getTime() + stepMs)) {
+    const ymd = toYMD(cur);
+    if (out[out.length - 1] !== ymd) out.push(ymd);
+  }
+  return out;
+}
+
+/** True while a "still wet" snooze is active (hidden from To Do until next day). */
+export function isSnoozed(plant: Plant, now: Date = new Date()): boolean {
+  return !!plant.snooze_until && new Date(plant.snooze_until).getTime() > now.getTime();
+}
+
 /** Whole-day delta until due. -Infinity = never watered (needs water now). */
 export function getDaysUntilDue(plant: Plant): number {
   const due = getNextDueDate(plant);

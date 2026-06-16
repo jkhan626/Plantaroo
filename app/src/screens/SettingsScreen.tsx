@@ -16,7 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Application from 'expo-application';
 import { colors, font, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
-import { ChevronLeft } from '../ui/icons';
+import { ChevronLeft, ChevronRight } from '../ui/icons';
 import { currentUser, signOutUser, deleteAccount } from '../lib/auth';
 import {
   getNotifyEnabled,
@@ -135,6 +135,25 @@ export function SettingsScreen() {
               {user?.email ?? user?.displayName ?? 'Apple ID'}
             </Text>
           </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Sharing</Text>
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => nav.navigate('Sharing')}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.rowLabel}>Co-owners</Text>
+              <Text style={styles.rowHint}>Share your plants with a partner or family.</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textMuted} />
+          </Pressable>
+          <View style={styles.divider} />
+          <Pressable style={styles.row} onPress={() => nav.navigate('AwayMode')}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.rowLabel}>Going away?</Text>
+              <Text style={styles.rowHint}>Send a plant sitter a watering schedule.</Text>
+            </View>
+            <ChevronRight size={16} color={colors.textMuted} />
+          </Pressable>
         </View>
 
         <Text style={styles.sectionLabel}>Reminders</Text>
