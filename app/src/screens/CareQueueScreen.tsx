@@ -1,21 +1,14 @@
 /**
  * Care queue — one-plant-at-a-time watering blitz for everything due today.
  * The due list is snapshotted on mount so plants don't jump around as they're
- * watered; each step offers Water / Skip / Later with a check animation
- * between plants. Morning routine in under 30 seconds.
+ * watered; each step offers Water / Skip / Later and advances instantly.
+ * Morning routine in under 30 seconds.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Animated, {
-  FadeInDown,
-  ZoomIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors, font, radius, spacing } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
@@ -32,8 +25,6 @@ import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants } from '../data/db';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-
-const CHECK_DWELL_MS = 700;
 
 export function CareQueueScreen() {
   const nav = useNavigation<Nav>();
@@ -58,7 +49,6 @@ export function CareQueueScreen() {
 
   const [index, setIndex] = useState(0);
   const [wateredCount, setWateredCount] = useState(0);
-  const [checking, setChecking] = useState(false);
 
   const total = queueIds.length;
   const plant: Plant | undefined =
@@ -67,41 +57,29 @@ export function CareQueueScreen() {
 
   // Plant deleted underneath us mid-queue — move on.
   useEffect(() => {
-    if (!done && !plant && !checking) setIndex((i) => i + 1);
-  }, [done, plant, checking]);
+    if (!done && !plant) setIndex((i) => i + 1);
+  }, [done, plant]);
 
-  // Thin progress bar.
-  const progress = useSharedValue(0);
-  useEffect(() => {
-    progress.value = withSpring(total === 0 ? 1 : Math.min(index, total) / total, {
-      damping: 18,
-      stiffness: 160,
-    });
-  }, [index, total, progress]);
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
+  const progressPct = total === 0 ? 100 : (Math.min(index, total) / total) * 100;
 
   function advance() {
-    setChecking(false);
     setIndex((i) => i + 1);
   }
 
   function onWater() {
-    if (!plant || checking) return;
+    if (!plant) return;
     water(plant, {
       silent: true,
       onWatered: () => {
         setWateredCount((n) => n + 1);
-        setChecking(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-        setTimeout(advance, CHECK_DWELL_MS);
+        advance();
       },
     });
   }
 
   async function onSkip() {
-    if (!plant || checking) return;
+    if (!plant) return;
     await skipPlant(plant);
     rescheduleWateringReminders(getPlants());
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
@@ -109,7 +87,6 @@ export function CareQueueScreen() {
   }
 
   function onLater() {
-    if (checking) return;
     advance();
   }
 
@@ -143,11 +120,11 @@ export function CareQueueScreen() {
         <View style={styles.closeBtn} />
       </View>
       <View style={styles.barTrack}>
-        <Animated.View style={[styles.barFill, barStyle]} />
+        <View style={[styles.barFill, { width: `${progressPct}%` }]} />
       </View>
 
       {done ? (
-        <Animated.View style={styles.center} entering={FadeInDown.springify().damping(16)}>
+        <View style={styles.center}>
           <View style={styles.doneCircle}>
             <Check size={40} strokeWidth={2.6} />
           </View>
@@ -160,34 +137,16 @@ export function CareQueueScreen() {
           <PressableScale style={styles.doneBtn} onPress={() => nav.goBack()}>
             <Text style={styles.doneBtnText}>Done</Text>
           </PressableScale>
-        </Animated.View>
+        </View>
       ) : plant ? (
         <>
-          <Animated.View
-            key={plant.id}
-            style={styles.center}
-            entering={FadeInDown.springify().damping(16)}
-          >
-            <View>
-              <PlantAvatar uri={plant.photo} size={140} />
-              {checking && (
-                <Animated.View
-                  style={styles.checkOverlay}
-                  entering={ZoomIn.springify().damping(12).stiffness(220)}
-                >
-                  <Check size={52} color={colors.black} strokeWidth={2.6} />
-                </Animated.View>
-              )}
-            </View>
+          <View style={styles.center}>
+            <PlantAvatar uri={plant.photo} size={140} />
             <Text style={styles.name} numberOfLines={2}>
               {plant.name}
             </Text>
-            {checking ? (
-              <Text style={[styles.due, { color: colors.green }]}>Watered</Text>
-            ) : (
-              due && <Text style={[styles.due, { color: dueTint }]}>{due.text}</Text>
-            )}
-            {!checking && (feed || distilled || !!taskText) && (
+            {due && <Text style={[styles.due, { color: dueTint }]}>{due.text}</Text>}
+            {(feed || distilled || !!taskText) && (
               <Text style={styles.hints}>
                 {feed ? <Text style={styles.feedHint}>Feed this time</Text> : null}
                 {feed && distilled ? '  ·  ' : ''}
@@ -196,24 +155,19 @@ export function CareQueueScreen() {
                 {taskText ? <Text style={styles.taskHint}>{taskText}</Text> : null}
               </Text>
             )}
-          </Animated.View>
+          </View>
 
           <View style={styles.actions}>
-            <PressableScale
-              style={[styles.waterBtn, checking && { opacity: 0.5 }]}
-              onPress={onWater}
-              disabled={checking}
-              scaleTo={0.97}
-            >
+            <PressableScale style={styles.waterBtn} onPress={onWater} scaleTo={0.97}>
               <Droplet size={20} color={colors.black} strokeWidth={2.2} />
               <Text style={styles.waterText}>Water</Text>
             </PressableScale>
             <View style={styles.secondaryRow}>
-              <PressableScale style={styles.secondaryBtn} onPress={onSkip} disabled={checking}>
+              <PressableScale style={styles.secondaryBtn} onPress={onSkip}>
                 <SkipIcon size={16} />
                 <Text style={styles.secondaryText}>Skip</Text>
               </PressableScale>
-              <PressableScale style={styles.secondaryBtn} onPress={onLater} disabled={checking}>
+              <PressableScale style={styles.secondaryBtn} onPress={onLater}>
                 <Clock size={16} color={colors.textSecondary} />
                 <Text style={styles.secondaryText}>Later</Text>
               </PressableScale>
@@ -252,13 +206,6 @@ const styles = StyleSheet.create({
   barFill: { height: 3, backgroundColor: colors.green, borderRadius: 2 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  checkOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 70,
-    backgroundColor: colors.green,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   name: {
     color: colors.textPrimary,
     fontSize: 26,

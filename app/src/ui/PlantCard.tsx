@@ -3,8 +3,6 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  FadeInDown,
-  LinearTransition,
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -131,11 +129,7 @@ export function PlantCard({
   const metaParts = [plant.room, soil].filter(Boolean);
 
   return (
-    <Animated.View
-      style={tapStyle}
-      entering={FadeInDown.duration(260)}
-      layout={LinearTransition.springify().damping(18).stiffness(180)}
-    >
+    <Animated.View style={tapStyle}>
       <View>
         {/* Droplet revealed behind the card as it slides right. */}
         <Animated.View style={[styles.reveal, revealBgStyle]} pointerEvents="none">
