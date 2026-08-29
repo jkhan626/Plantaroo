@@ -166,6 +166,11 @@ export function PlantCard({
                   <View style={styles.scheduleRow}>
                     <Text style={styles.wateredText}>Watered today</Text>
                     <Check size={11} color={colors.green} />
+                    {taskText ? (
+                      <Text style={styles.taskAfterWatered} numberOfLines={1}>
+                        {`·  ${taskText}`}
+                      </Text>
+                    ) : null}
                   </View>
                 ) : (
                   <Text style={styles.schedule} numberOfLines={1}>
@@ -275,6 +280,12 @@ const styles = StyleSheet.create({
   feed: { color: colors.purple, fontWeight: font.weight.semibold },
   distilled: { color: colors.lightBlue },
   task: { color: colors.lightBlue, fontWeight: font.weight.medium },
+  taskAfterWatered: {
+    color: colors.lightBlue,
+    fontWeight: font.weight.medium,
+    fontSize: font.size.sm,
+    flexShrink: 1,
+  },
   waterBtn: {
     width: 40,
     height: 40,
