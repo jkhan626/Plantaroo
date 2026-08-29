@@ -25,6 +25,60 @@ Task list (also in the session task tracker):
 
 **SHIPPED OTA 2026-06-09:** everything through commit `7cb49e9` published via `eas update --branch production` (runtime 1.0.0, update group `2668e881-fab3-46aa-8f92-b4240f96ff6f`). **Gotcha found & fixed:** the `production` channel had NO branch linked, so no OTA update had ever reached devices (including the earlier "Terms + Support links" one). Fixed with `eas channel:edit production --branch production` — the link persists, future `eas update` pushes flow automatically. On-device visual verification still pending — first thing to confirm with Jamal next session.
 
+## Session 2026-08-29 — Other-care stuck card fix (READY TO SHIP OTA)
+
+**What happened:** Jamal reported a To Do card that "pops up and won't go away" — his
+Hoya heuschkiana sat in **Other care** showing only "Watered today ✓" with an inert
+check badge. Root cause: hoyas get a default `clean_every_days: 45` from
+`TASK_DEFAULT_PATTERNS`; with no clean ever logged the task anchors to `created_at`
+and stays due forever, watering doesn't clear it, and the watered-today card branch
+hid the task label AND replaced the water button with a non-tappable badge — so
+nothing on the card explained it or could clear it.
+
+**Fix (2 commits on `claude/persistent-popup-issue-vuh1uj`, PR #1 → `ios-app`):**
+
+1. `PlantCard.tsx` watered-today row now appends the due-task label
+   ("Watered today ✓ · Clean leaves"), new `taskAfterWatered` style.
+2. One-tap task completion from cards: new `app/src/ui/useCareTask.ts`
+   (`useCareTaskAction` — mirrors `useWater`: logs via existing
+   `mistPlant`/`cleanPlant`/`prunePlant`, undo toast, reschedules the digest).
+   `PlantCard` gained `onTask` + a task button (Mist/Sparkle/Scissors, detail-row
+   tints) shown when a task is due and watering isn't the pending action; it
+   REPLACES the inert done badge on watered-today cards. Repot check deliberately
+   stays detail-view-only (repot also suppresses fert 2 weeks; it self-clears).
+   Wired into all To Do sections + Plants tab. Typecheck passes.
+
+**Why no OTA yet:** the cloud session's network policy blocks `api.expo.dev`
+(proxy 403) — publish must happen from Jamal's machine (or a Claude environment
+with Expo domains allowed + `EXPO_TOKEN` set).
+
+**TO SHIP — from the project folder (`E:\Downloads 2026\Claude\Plantaroo`):**
+
+```
+git fetch origin
+git checkout ios-app
+git merge origin/claude/persistent-popup-issue-vuh1uj   # or merge PR #1 on GitHub, then git pull
+npm --prefix app run typecheck
+cd app
+eas update --branch production -m "Other care: show due task + one-tap complete from cards"
+```
+
+Publish from `ios-app` after merging (Render auto-deploys the server from `ios-app`;
+these commits are app-only, so the redeploy is harmless). `eas whoami` should show
+Jamal's account (log in with `eas login` if not). Runtime is 1.0.0 and the
+production channel↔branch link already persists (fixed 2026-06-09), so the update
+flows to devices automatically.
+
+**Verify on device:** force-quit + reopen the app twice (expo-updates applies on
+the second launch). The Hoya card in Other care should read
+"Watered today ✓ · Clean leaves" with a tappable Sparkle button; tapping it logs
+the clean (undo toast) and the card leaves the list. A "Cleaned" row lands in
+History.
+
+**Security note:** an Expo access token was pasted into the Claude chat on
+2026-08-29 (never used — the publish was blocked). Revoke it at
+expo.dev/settings/access-tokens.
+
 Phase 0 delivered: Apple token revocation end-to-end (`app/src/lib/auth.ts` re-auths with Apple inline during deletion → POSTs authorizationCode to new `POST /api/apple-revoke` in `server/index.js`; returns 501 until Jamal sets `APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY` on Render — best-effort, never blocks deletion); Google button hidden while client IDs are `PASTE_` placeholders in `app/app.json → extra`; Android `RECORD_AUDIO` removed; `jsonwebtoken` added to root `package.json` (not yet `npm install`ed — Render installs on deploy; nothing local needs it).
 
 Branch is pushed to `origin/ios-app` and tracking. **Render auto-deploys the server from this branch** (see infra section below) — pushing app-only commits is harmless but triggers a redeploy.
