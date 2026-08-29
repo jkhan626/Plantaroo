@@ -7,6 +7,7 @@ import { colors, font, radius, spacing, shadow } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import { usePlants } from '../ui/hooks';
 import { useWaterAction } from '../ui/useWater';
+import { useCareTaskAction } from '../ui/useCareTask';
 import { useToast } from '../ui/Toast';
 import { PlantCard } from '../ui/PlantCard';
 import { ScreenHeader } from '../ui/Header';
@@ -16,7 +17,7 @@ import { PressableScale } from '../ui/components';
 import { DateSheet } from '../ui/DateSheet';
 import { Plus, Check, Gear, Sprout, Droplet, ChevronRight } from '../ui/icons';
 import { getDaysUntilDue, getSeasonLabel, isSnoozed } from '../logic/schedule';
-import { getDueTasks } from '../logic/tasks';
+import { getDueTasks, type CareTask } from '../logic/tasks';
 import { bulkSetLastWatered, stillWetDefer, undoAction } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants, isHydrated, refreshFromCloud } from '../data/db';
@@ -28,6 +29,7 @@ export function ToDoScreen() {
   const insets = useSafeAreaInsets();
   const plants = usePlants();
   const { water } = useWaterAction();
+  const { completeTask } = useCareTaskAction();
   const toast = useToast();
   const [dateOpen, setDateOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -137,8 +139,8 @@ export function ToDoScreen() {
                 <ChevronRight size={18} color={colors.green} />
               </PressableScale>
             )}
-            <Section title="Overdue" tint={colors.red} items={overdue} water={water} stillWet={stillWet} nav={nav} />
-            <Section title="Due today" tint={colors.orange} items={today} water={water} stillWet={stillWet} nav={nav} />
+            <Section title="Overdue" tint={colors.red} items={overdue} water={water} stillWet={stillWet} task={completeTask} nav={nav} />
+            <Section title="Due today" tint={colors.orange} items={today} water={water} stillWet={stillWet} task={completeTask} nav={nav} />
             {neverW.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
@@ -165,6 +167,7 @@ export function ToDoScreen() {
               tint={colors.lightBlue}
               items={otherCare}
               water={water}
+              task={completeTask}
               nav={nav}
               mode="all"
             />
@@ -196,6 +199,7 @@ function Section({
   items,
   water,
   stillWet,
+  task,
   nav,
   mode = 'todo',
 }: {
@@ -204,6 +208,7 @@ function Section({
   items: ReturnType<typeof usePlants>;
   water: (p: any) => void;
   stillWet?: (p: any) => void;
+  task?: (p: any, t: CareTask) => void;
   nav: Nav;
   mode?: 'todo' | 'all';
 }) {
@@ -219,6 +224,7 @@ function Section({
           onPress={() => nav.navigate('PlantDetail', { id: p.id })}
           onWater={() => water(p)}
           onStillWet={stillWet ? () => stillWet(p) : undefined}
+          onTask={task ? (t) => task(p, t) : undefined}
         />
       ))}
     </View>

@@ -17,10 +17,10 @@ import { colors, radius, font } from '../theme';
 import type { Plant } from '../types';
 import { getDueText, isWateredToday, relativeDayLabel } from '../logic/schedule';
 import { isFeedDue, needsDistilled } from '../logic/fertilize';
-import { getDueTasks } from '../logic/tasks';
+import { getDueTasks, type CareTask } from '../logic/tasks';
 import { SOIL_TABLE } from '../logic/constants';
 import { PlantAvatar } from './components';
-import { Droplet, Check, Leaf } from './icons';
+import { Droplet, Check, Leaf, Mist, Sparkle, Scissors } from './icons';
 
 const STATUS_COLOR: Record<string, string> = {
   never: colors.blue,
@@ -38,6 +38,7 @@ export function PlantCard({
   onPress,
   onWater,
   onStillWet,
+  onTask,
   mode = 'all',
 }: {
   plant: Plant;
@@ -45,6 +46,8 @@ export function PlantCard({
   onWater: () => void;
   /** "Still wet" — defer to tomorrow without watering (shown on due To Do cards). */
   onStillWet?: () => void;
+  /** Complete a due care task (mist/clean/prune) straight from the card. */
+  onTask?: (task: CareTask) => void;
   mode?: 'all' | 'todo';
 }) {
   const due = getDueText(plant);
@@ -54,6 +57,10 @@ export function PlantCard({
   const distilled = needsDistilled(plant);
   const dueTasks = getDueTasks(plant);
   const taskText = dueTasks.map((t) => t.label).join('  ·  ');
+  // One-tap task completion: only when watering isn't the pending action
+  // (repot check stays a detail-view flow — it suppresses fertilizer too).
+  const oneTapTask = onTask ? dueTasks.find((t) => t.type !== 'repot_check') : undefined;
+  const showTaskBtn = !!oneTapTask && (wateredToday || !isDue);
 
   // Pulse the water button when the plant needs water.
   const pulse = useSharedValue(0);
@@ -189,6 +196,19 @@ export function PlantCard({
                 )}
               </View>
 
+              {showTaskBtn && oneTapTask && (
+                <Pressable
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    onTask?.(oneTapTask);
+                  }}
+                  hitSlop={8}
+                  style={[styles.taskBtn, TASK_BTN_BG[oneTapTask.type]]}
+                  accessibilityLabel={oneTapTask.label}
+                >
+                  <TaskIcon type={oneTapTask.type} />
+                </Pressable>
+              )}
               {!wateredToday && onStillWet && isDue && plant.last_watered && (
                 <Pressable
                   onPress={() => {
@@ -219,7 +239,7 @@ export function PlantCard({
                   </Animated.View>
                 </Pressable>
               )}
-              {wateredToday && (
+              {wateredToday && !showTaskBtn && (
                 <View style={styles.doneBadge}>
                   <Check size={16} color={colors.green} />
                 </View>
@@ -231,6 +251,20 @@ export function PlantCard({
     </Animated.View>
   );
 }
+
+/** Icon + tint per one-tap task, matching the detail view's action row. */
+function TaskIcon({ type }: { type: CareTask['type'] }) {
+  if (type === 'mist') return <Mist size={18} color={colors.lightBlue} />;
+  if (type === 'clean') return <Sparkle size={18} color={colors.textSecondary} />;
+  return <Scissors size={18} color={colors.orange} />;
+}
+
+const TASK_BTN_BG: Record<CareTask['type'], { backgroundColor: string }> = {
+  mist: { backgroundColor: 'rgba(90,200,250,0.12)' },
+  clean: { backgroundColor: 'rgba(142,142,147,0.12)' },
+  prune: { backgroundColor: colors.orangeBg },
+  repot_check: { backgroundColor: colors.orangeBg }, // never rendered
+};
 
 const styles = StyleSheet.create({
   card: {
@@ -295,6 +329,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   waterBtnDue: { backgroundColor: colors.redBg },
+  taskBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   stillWetBtn: {
     width: 40,
     height: 40,
