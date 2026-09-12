@@ -9,3 +9,9 @@ dist/
 secret auth key/
 AuthKey_*
 app/assets/icon-source/render.png
+
+# Local AI bridge (local-ai/) — local deps, secrets, downloaded test fixtures
+local-ai/.env
+local-ai/node_modules/
+local-ai/test/fixtures/
+local-ai/server.log

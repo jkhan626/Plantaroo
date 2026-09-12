@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -58,7 +59,14 @@ import {
   getNotifyEnabled,
   requestNotificationPermission,
 } from '../logic/notify';
-import { choosePhoto } from '../lib/photo';
+import { choosePhoto, resizeImage } from '../lib/photo';
+import {
+  identifyPlant,
+  generateProfile,
+  localAiAvailable,
+  type IdentifyCandidate,
+  type AiProfile,
+} from '../lib/localAi';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -75,9 +83,51 @@ export function AddPlantScreen() {
   const [matched, setMatched] = useState<null | boolean>(null);
   const [care, setCare] = useState<CareInfo | null>(null);
 
-  const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'moisture' | 'fert' | 'water'>(null);
+  const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'moisture' | 'fert' | 'water' | 'identify'>(null);
   // Soil the user explicitly chose to keep after a warning — don't re-nag at save.
   const soilWarnedRef = useRef<SoilType | null>(null);
+
+  // ---- Photo identification ----
+  const [identifying, setIdentifying] = useState(false);
+  const [identifyCaption, setIdentifyCaption] = useState<string | null>(null);
+  const [identifyCandidates, setIdentifyCandidates] = useState<IdentifyCandidate[]>([]);
+  const [scientificName, setScientificName] = useState<string | undefined>(undefined);
+  const identifyReqRef = useRef(0);
+  const identifiedNameRef = useRef<string | null>(null);
+  const identifyAbortRef = useRef<AbortController | null>(null);
+
+  // ---- AI-tailored schedule ----
+  const [tailoring, setTailoring] = useState(false);
+  const [aiRationale, setAiRationale] = useState<string | null>(null);
+  const tailorReqRef = useRef(0);
+  const tailorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tailorAbortRef = useRef<AbortController | null>(null);
+  // Profile fields the user has manually edited on this screen — the AI-tailored
+  // profile only fills in fields NOT in this set. Bundled-DB prefill doesn't count.
+  const touchedRef = useRef<Set<string>>(new Set());
+  const lightSoilMounted = useRef(false);
+
+  // Latest values for use inside debounced/async callbacks without stale closures.
+  const nameRef = useRef(name);
+  nameRef.current = name;
+  const scientificNameRef = useRef(scientificName);
+  scientificNameRef.current = scientificName;
+  const lightRef = useRef(light);
+  lightRef.current = light;
+  const soilRef = useRef(soil);
+  soilRef.current = soil;
+  const roomRef = useRef(room);
+  roomRef.current = room;
+
+  // Abort in-flight identify/tailor requests and cancel the debounce on unmount.
+  useEffect(() => {
+    return () => {
+      identifyAbortRef.current?.abort();
+      tailorAbortRef.current?.abort();
+      clearTailorDebounce();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Preset rooms + any rooms already used by the user's plants + the current pick.
   const roomOptions = useMemo(() => {
@@ -130,6 +180,186 @@ export function AddPlantScreen() {
     setCare(careInfoLookup(trimmed));
   }
 
+  function onNameChange(t: string) {
+    setName(t);
+    resolveProfile(t);
+    // Any name change invalidates whatever identification/AI-rationale state
+    // was tied to the previous name — clear it, and discard any in-flight
+    // tailor result (the 700ms debounce below re-tailors for the new name).
+    identifiedNameRef.current = null;
+    setIdentifyCaption(null);
+    setIdentifyCandidates([]);
+    setScientificName(undefined);
+    setAiRationale(null);
+    tailorReqRef.current++;
+    if (t.trim()) scheduleTailor(700);
+    else {
+      clearTailorDebounce();
+      setTailoring(false);
+    }
+  }
+
+  function clearTailorDebounce() {
+    if (tailorDebounceRef.current) clearTimeout(tailorDebounceRef.current);
+    tailorDebounceRef.current = null;
+  }
+
+  function scheduleTailor(delayMs: number) {
+    clearTailorDebounce();
+    tailorDebounceRef.current = setTimeout(() => {
+      runTailor();
+    }, delayMs);
+  }
+
+  async function runTailor() {
+    const trimmed = nameRef.current.trim();
+    if (!trimmed) return;
+    const myReq = ++tailorReqRef.current;
+    // A new run supersedes any in-flight request — abort it so it can't land late.
+    tailorAbortRef.current?.abort();
+    const controller = new AbortController();
+    tailorAbortRef.current = controller;
+    try {
+      const available = await localAiAvailable();
+      if (!available || tailorReqRef.current !== myReq) return; // stay silent — screen looks identical to today
+      setTailoring(true);
+      const result = await generateProfile(
+        {
+          name: trimmed,
+          scientific_name: scientificNameRef.current,
+          light_type: lightRef.current,
+          soil_type: soilRef.current,
+          room: roomRef.current,
+        },
+        { signal: controller.signal },
+      );
+      if (tailorReqRef.current !== myReq) return; // superseded by a newer request
+      if (!result.ok) {
+        // Silently keep whatever the DB/default values already are.
+        return;
+      }
+      applyAiProfile(result.data);
+    } finally {
+      if (tailorReqRef.current === myReq) setTailoring(false);
+    }
+  }
+
+  function applyAiProfile(ai: AiProfile) {
+    setProfile((p) => {
+      const next = { ...p };
+      if (!touchedRef.current.has('moisture_pref')) next.moisture_pref = ai.moisture_pref;
+      if (!touchedRef.current.has('species_baseline_days')) next.species_baseline_days = ai.species_baseline_days;
+      if (!touchedRef.current.has('feed_every_n_waterings')) next.feed_every_n_waterings = ai.feed_every_n_waterings;
+      if (!touchedRef.current.has('fert_type')) next.fert_type = ai.fert_type;
+      if (!touchedRef.current.has('water_source')) next.water_source = ai.water_source;
+      if (!touchedRef.current.has('carnivore')) next.carnivore = ai.carnivore;
+      if (ai.mist_every_days !== null) next.mist_every_days = ai.mist_every_days;
+      if (ai.clean_every_days !== null) next.clean_every_days = ai.clean_every_days;
+      return enforceCarnivoreInvariant(next);
+    });
+    setAiRationale(ai.rationale || null);
+  }
+
+  // A carnivore on tap water or fertilizer dies — force the safe defaults
+  // whenever the resulting profile ends up carnivorous, regardless of which
+  // fields the user touched.
+  function enforceCarnivoreInvariant(p: PlantProfile): PlantProfile {
+    if (!p.carnivore) return p;
+    return {
+      ...p,
+      moisture_pref: 'moist',
+      water_source: 'distilled_or_rain',
+      fert_type: 'none',
+      feed_every_n_waterings: 0,
+      species_baseline_days: Math.min(p.species_baseline_days, 3),
+    };
+  }
+
+  function regenerateTailor() {
+    touchedRef.current.clear();
+    clearTailorDebounce();
+    runTailor();
+  }
+
+  // Re-tailor whenever light or soil change after the first mount, as long as
+  // a plant name has been entered.
+  useEffect(() => {
+    if (!lightSoilMounted.current) {
+      lightSoilMounted.current = true;
+      return;
+    }
+    if (nameRef.current.trim()) scheduleTailor(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [light, soil]);
+
+  function applyIdentifiedCandidate(candidate: IdentifyCandidate, opts: { force: boolean }) {
+    identifiedNameRef.current = candidate.common_name;
+    setIdentifyCaption(
+      `Identified as ${candidate.common_name} · ${Math.round(candidate.confidence * 100)}%`,
+    );
+    // Only trust the candidate's scientific name once its common name is
+    // actually applied to the form — otherwise it doesn't describe what's
+    // in the Name field (the user's typed name was preserved instead).
+    if (opts.force || !nameRef.current.trim()) {
+      setScientificName(candidate.scientific_name || undefined);
+      setName(candidate.common_name);
+      resolveProfile(candidate.common_name);
+      scheduleTailor(0);
+    }
+  }
+
+  function onIdentifySelect(value: string) {
+    if (value === '__manual__') {
+      identifiedNameRef.current = null;
+      setIdentifyCaption(null);
+      setIdentifyCandidates([]);
+      setScientificName(undefined);
+      return;
+    }
+    const candidate = identifyCandidates[Number(value)];
+    if (!candidate) return;
+    applyIdentifiedCandidate(candidate, { force: true });
+  }
+
+  async function runIdentify(rawUri: string) {
+    const myReq = ++identifyReqRef.current;
+    identifyAbortRef.current?.abort();
+    const controller = new AbortController();
+    identifyAbortRef.current = controller;
+    try {
+      const available = await localAiAvailable();
+      if (!available || identifyReqRef.current !== myReq) return; // unreachable — look identical to today
+      setIdentifying(true);
+      setIdentifyCaption(null);
+      setIdentifyCandidates([]);
+      const identifyUri = await resizeImage(rawUri, 768);
+      if (identifyReqRef.current !== myReq) return;
+      const result = await identifyPlant(identifyUri, { signal: controller.signal });
+      if (identifyReqRef.current !== myReq) return;
+      if (!result.ok || result.data.candidates.length === 0) {
+        setIdentifyCaption("Couldn't identify — type the name");
+        return;
+      }
+      const candidates = result.data.candidates;
+      setIdentifyCandidates(candidates);
+      if (candidates.length === 1) {
+        applyIdentifiedCandidate(candidates[0], { force: false });
+      } else {
+        setSheet('identify');
+      }
+    } catch {
+      if (identifyReqRef.current === myReq) {
+        setIdentifyCaption("Couldn't identify — type the name");
+      }
+    } finally {
+      if (identifyReqRef.current === myReq) setIdentifying(false);
+    }
+  }
+
+  function onPhotoPress() {
+    choosePhoto(setPhoto, { onRaw: (rawUri) => runIdentify(rawUri) });
+  }
+
   function onSoilSelect(v: SoilType) {
     setSoil(v);
     soilWarnedRef.current = null;
@@ -155,6 +385,7 @@ export function AddPlantScreen() {
   }
 
   function bump(field: 'species_baseline_days' | 'feed_every_n_waterings', delta: number) {
+    touchedRef.current.add(field);
     setProfile((p) => {
       const min = field === 'feed_every_n_waterings' ? 0 : 1;
       const max = field === 'feed_every_n_waterings' ? 30 : 90;
@@ -175,21 +406,30 @@ export function AddPlantScreen() {
           text: `Use ${SOIL_TABLE[warn.recommended].short}`,
           onPress: () => {
             setSoil(warn.recommended);
-            doSave(trimmed, warn.recommended);
+            doSave(trimmed, warn.recommended).catch(onSaveError);
           },
         },
-        { text: 'Add anyway', onPress: () => doSave(trimmed, soil) },
+        { text: 'Add anyway', onPress: () => doSave(trimmed, soil).catch(onSaveError) },
         { text: 'Cancel', style: 'cancel' },
       ]);
       return;
     }
-    doSave(trimmed, soil);
+    doSave(trimmed, soil).catch(onSaveError);
+  }
+
+  function onSaveError(err: unknown) {
+    Alert.alert('Could not add plant', 'Something went wrong saving this plant. Please try again.');
+    // eslint-disable-next-line no-console
+    console.error('doSave failed', err);
   }
 
   async function doSave(trimmed: string, soilChoice: SoilType) {
     const firstPlant = getPlants().length === 0;
+    // Last-guard carnivore invariant — a carnivore on tap water/fertilizer
+    // dies, so this must hold no matter how the profile got here.
+    const safeProfile = enforceCarnivoreInvariant(profile);
     const soilMult = SOIL_TABLE[soilChoice]?.mult;
-    const effectiveStart = soilMult === null ? 2 : profile.species_baseline_days * (soilMult ?? 1);
+    const effectiveStart = soilMult === null ? 2 : safeProfile.species_baseline_days * (soilMult ?? 1);
     const plant: Plant = {
       id: genId(),
       name: trimmed,
@@ -197,7 +437,7 @@ export function AddPlantScreen() {
       light_type: light,
       soil_type: soilChoice,
       photo,
-      ...profile,
+      ...safeProfile,
       current_interval: effectiveStart,
       recent_valid_gaps: [],
       last_watered: null,
@@ -208,6 +448,10 @@ export function AddPlantScreen() {
       notes: '',
       created_at: new Date().toISOString(),
     };
+    // Firestore's setDoc rejects any explicit `undefined` field value — only
+    // write ai_rationale when there's an actual value (the default no-AI path
+    // has none).
+    if (aiRationale) plant.ai_rationale = aiRationale;
     await dbAdd('plants', plant);
     rescheduleWateringReminders(getPlants());
     toast.show({ message: `${trimmed} added` });
@@ -237,24 +481,41 @@ export function AddPlantScreen() {
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.photoRow}>
-            <Pressable onPress={() => choosePhoto(setPhoto)}>
+            <Pressable onPress={onPhotoPress}>
               <PlantAvatar uri={photo} size={72} />
               <View style={styles.cameraBadge}>
                 <Camera size={13} color={colors.black} />
               </View>
             </Pressable>
-            <Pressable onPress={() => choosePhoto(setPhoto)} style={styles.photoBtn}>
-              <Text style={styles.photoBtnText}>{photo ? 'Change photo' : 'Add a photo'}</Text>
-            </Pressable>
+            <View style={{ flex: 1 }}>
+              <Pressable onPress={onPhotoPress} style={styles.photoBtn}>
+                <Text style={styles.photoBtnText}>{photo ? 'Change photo' : 'Add a photo'}</Text>
+              </Pressable>
+              {identifying && (
+                <View style={styles.identifyRow}>
+                  <ActivityIndicator size="small" color={colors.textTertiary} />
+                  <Text style={styles.identifyText}>Identifying…</Text>
+                </View>
+              )}
+              {!identifying && identifyCaption && (
+                <View style={styles.identifyRow}>
+                  <Text style={styles.identifyText} numberOfLines={1}>
+                    {identifyCaption}
+                  </Text>
+                  {identifyCandidates.length > 0 && (
+                    <Pressable onPress={() => setSheet('identify')} hitSlop={6}>
+                      <Text style={styles.identifyAction}>Not right?</Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
 
           <Field label="Name">
             <TextInput
               value={name}
-              onChangeText={(t) => {
-                setName(t);
-                resolveProfile(t);
-              }}
+              onChangeText={onNameChange}
               onBlur={() => resolveProfile()}
               placeholder="e.g. Monstera, Basil, Snake Plant"
               placeholderTextColor={colors.textMuted}
@@ -317,6 +578,25 @@ export function AddPlantScreen() {
             </Text>
           )}
 
+          {tailoring && (
+            <View style={styles.identifyRow}>
+              <ActivityIndicator size="small" color={colors.textTertiary} />
+              <Text style={styles.identifyText}>Tailoring schedule…</Text>
+            </View>
+          )}
+
+          {!tailoring && aiRationale && (
+            <View style={styles.tailoredRow}>
+              <Text style={styles.tailoredText}>
+                <Text style={styles.tailoredLabel}>Tailored schedule  </Text>
+                {aiRationale}
+              </Text>
+              <Pressable onPress={regenerateTailor} hitSlop={6}>
+                <Text style={styles.identifyAction}>Regenerate</Text>
+              </Pressable>
+            </View>
+          )}
+
           <View style={styles.card}>
             <SelectRow
               label="Moisture"
@@ -355,7 +635,10 @@ export function AddPlantScreen() {
               <View style={{ width: 150 }}>
                 <Segmented
                   value={profile.carnivore ? 'yes' : 'no'}
-                  onChange={(v) => setProfile((p) => ({ ...p, carnivore: v === 'yes' }))}
+                  onChange={(v) => {
+                    touchedRef.current.add('carnivore');
+                    setProfile((p) => ({ ...p, carnivore: v === 'yes' }));
+                  }}
                   options={[
                     { label: 'No', value: 'no' },
                     { label: 'Yes', value: 'yes' },
@@ -399,7 +682,10 @@ export function AddPlantScreen() {
         title="Moisture preference"
         selected={profile.moisture_pref}
         options={MOISTURE_OPTIONS.map((v) => ({ label: DROPDOWN_LABELS[v], value: v }))}
-        onSelect={(v) => setProfile((p) => ({ ...p, moisture_pref: v as MoisturePref }))}
+        onSelect={(v) => {
+          touchedRef.current.add('moisture_pref');
+          setProfile((p) => ({ ...p, moisture_pref: v as MoisturePref }));
+        }}
         onClose={() => setSheet(null)}
       />
       <OptionSheet
@@ -407,7 +693,10 @@ export function AddPlantScreen() {
         title="Fertilizer type"
         selected={profile.fert_type}
         options={FERT_TYPE_OPTIONS.map((v) => ({ label: DROPDOWN_LABELS[v], value: v }))}
-        onSelect={(v) => setProfile((p) => ({ ...p, fert_type: v as FertType }))}
+        onSelect={(v) => {
+          touchedRef.current.add('fert_type');
+          setProfile((p) => ({ ...p, fert_type: v as FertType }));
+        }}
         onClose={() => setSheet(null)}
       />
       <OptionSheet
@@ -415,7 +704,23 @@ export function AddPlantScreen() {
         title="Water source"
         selected={profile.water_source}
         options={WATER_SRC_OPTIONS.map((v) => ({ label: DROPDOWN_LABELS[v], value: v }))}
-        onSelect={(v) => setProfile((p) => ({ ...p, water_source: v as WaterSource }))}
+        onSelect={(v) => {
+          touchedRef.current.add('water_source');
+          setProfile((p) => ({ ...p, water_source: v as WaterSource }));
+        }}
+        onClose={() => setSheet(null)}
+      />
+      <OptionSheet
+        visible={sheet === 'identify'}
+        title="Which plant is this?"
+        options={[
+          ...identifyCandidates.map((c, i) => ({
+            label: `${c.common_name} · ${Math.round(c.confidence * 100)}%`,
+            value: String(i),
+          })),
+          { label: 'Enter manually', value: '__manual__' },
+        ]}
+        onSelect={onIdentifySelect}
         onClose={() => setSheet(null)}
       />
     </SafeAreaView>
@@ -543,6 +848,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingLeft: 2,
   },
+
+  identifyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  identifyText: { color: colors.textTertiary, fontSize: font.size.sm, flexShrink: 1 },
+  identifyAction: { color: colors.green, fontSize: font.size.sm, fontWeight: font.weight.semibold },
+
+  tailoredRow: {
+    marginBottom: 12,
+    gap: 4,
+  },
+  tailoredText: { color: colors.textTertiary, fontSize: 13, lineHeight: 17 },
+  tailoredLabel: { color: colors.textSecondary, fontWeight: font.weight.semibold, fontSize: 13 },
 
   rowLabel: { color: colors.textSecondary, fontSize: font.size.md },
   stepperRow: {

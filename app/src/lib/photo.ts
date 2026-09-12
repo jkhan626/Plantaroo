@@ -11,6 +11,8 @@ export interface PhotoOptions {
   width?: number;
   /** Force a square crop in the picker (default true — avatars are round). */
   square?: boolean;
+  /** Called with the raw (unresized) picked asset uri, before the width/compress pass. */
+  onRaw?: (rawUri: string) => void;
 }
 
 async function process(uri: string, width: number): Promise<string> {
@@ -20,6 +22,12 @@ async function process(uri: string, width: number): Promise<string> {
     { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true },
   );
   return `data:image/jpeg;base64,${result.base64}`;
+}
+
+/** Resize an already-picked (raw) asset uri to an arbitrary width — e.g. a
+ * larger version for photo identification while the 400px version is stored. */
+export async function resizeImage(uri: string, width: number): Promise<string> {
+  return process(uri, width);
 }
 
 export async function captureFromCamera(opts: PhotoOptions = {}): Promise<string | null> {
@@ -34,6 +42,7 @@ export async function captureFromCamera(opts: PhotoOptions = {}): Promise<string
     quality: 0.8,
   });
   if (res.canceled || !res.assets?.[0]) return null;
+  opts.onRaw?.(res.assets[0].uri);
   return process(res.assets[0].uri, opts.width ?? 400);
 }
 
@@ -45,6 +54,7 @@ export async function pickFromLibrary(opts: PhotoOptions = {}): Promise<string |
     quality: 0.8,
   });
   if (res.canceled || !res.assets?.[0]) return null;
+  opts.onRaw?.(res.assets[0].uri);
   return process(res.assets[0].uri, opts.width ?? 400);
 }
 

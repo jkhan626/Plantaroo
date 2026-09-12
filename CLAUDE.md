@@ -9,6 +9,15 @@ Adaptive plant care app — an event-anchored watering/fertilizing tracker that 
 
 Both talk to the **same Firebase project `plantaroo-204ca`** (per-user isolation via `firestore.rules`), so a signed-in account syncs across web + mobile. The native app ports the web app's data model, learning algorithm, and seasonal/soil/fertilize logic **verbatim** (`app/src/logic/`). It is **local-first for plant profiles** — a bundled ~350-entry plant+herb DB (`app/src/logic/profiles.ts`) replaces the Claude API entirely ($0, offline); unknown plants fall back to editable manual defaults. Watering reminders are on-device local notifications (no server). Auth = Sign in with Apple (required by App Store 4.8) + Google. In-app account deletion is implemented (required by 5.1.1). Built on the Liftaroo Expo stack; **always `npm install --legacy-peer-deps`**. The native app does NOT seed Jamal's 28 plants and does NOT use the Render Claude API.
 
+## Local AI (photo plant-ID + tailored schedules) — added 2026-09-12
+
+Runs on **Jamal's PC**, $0: Ollama `qwen2.5vl:7b` (vision, ~6 GB VRAM) behind `local-ai/` (Express, 127.0.0.1:3100), exposed publicly via **Tailscale Funnel** at `https://jamal.taila00dc9.ts.net`. The iOS app (`app/src/lib/localAi.ts`, used by `AddPlantScreen`) calls:
+- `POST /api/identify` — photo (768px JPEG data URI) → 1–3 name candidates with confidence; fills the name in Add Plant.
+- `POST /api/profile` — name + light/soil/room → the 6 profile fields + mist/clean cadence + rationale, applied on every add unless the user hand-edited a field. Baseline is soil-agnostic on purpose; the app still applies its soil + seasonal multipliers.
+- Gated on a 4 s `GET /health` probe (cached 60 s): when the PC is off, Add Plant behaves exactly as before (bundled DB → defaults).
+- **Auth:** Firebase ID token verified server-side (no secret in the app). Per-uid limits: identify 20/day, profile 80/day. Photos are processed in memory only, never stored or logged.
+- **Ops:** Windows scheduled task **"Plantaroo Local AI"** starts `local-ai/start-hidden.vbs` at logon; log in `local-ai/server.log`. Funnel: `tailscale funnel --bg 3100` (one-time enable in the tailnet admin console). Never set `DEV_ALLOW_NO_AUTH=1` on this machine. See `local-ai/README.md`.
+
 ## Architecture
 
 - **Frontend:** Single `index.html` file — all HTML/CSS/JS inline, no build tools, no npm for the UI (same pattern as the CSCS study hub)

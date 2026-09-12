@@ -49,6 +49,8 @@ export interface Plant extends PlantProfile {
   last_repotted?: string | null;
   /** "Still wet" snooze: hide from the To Do list until this ISO time (next day). */
   snooze_until?: string | null;
+  /** Rationale from the AI-tailored schedule shown at add time, if generated. */
+  ai_rationale?: string;
 }
 
 export type HistoryType =
