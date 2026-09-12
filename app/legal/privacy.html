@@ -40,7 +40,7 @@
       <h1>Plantaroo — Privacy Policy</h1>
     </div>
 
-    <p class="muted">Last updated: June 2026</p>
+    <p class="muted">Last updated: September 2026</p>
 
     <p>
       Plantaroo is a plant-care tracker. We built it to be quiet and respectful of
@@ -55,6 +55,9 @@
       <li><strong>Your plant data</strong> — the plants you add and their details
       (name, room, care settings, notes, watering/feeding history) and any
       <strong>photos</strong> you choose to attach.</li>
+      <li><strong>Crash reports</strong> — if the app crashes, a technical report
+      (device model, OS version, app version and the error) is sent to Sentry so we
+      can fix the bug. Crash reports do not include your plants or photos.</li>
     </ul>
     <p>
       We do <strong>not</strong> collect your location, contacts, advertising
@@ -70,6 +73,30 @@
       advertising.
     </p>
 
+    <h2>Plant identification and care suggestions</h2>
+    <p>
+      When you add a plant with a photo, the app can identify the plant and suggest
+      a care schedule. To do this, the photo (reduced in size) and the plant's name,
+      light and soil settings are sent over an encrypted connection to a server we
+      operate ourselves. That server runs an AI model on our own hardware; nothing is
+      sent to a third-party AI provider. Photos are processed in memory only — they
+      are <strong>never stored, logged or used for training</strong> — and are
+      discarded as soon as the answer is returned. The request is tied to your
+      signed-in account only to prevent abuse. If the server is unavailable, the app
+      uses its built-in plant database and nothing is sent.
+    </p>
+
+    <h2>Sharing features</h2>
+    <p>
+      Sharing is off unless you turn it on. If you invite a <strong>co-owner</strong>,
+      that person can see and edit your plants. If you create a
+      <strong>plant-sitter link</strong> (Away mode), anyone with the link can see the
+      names, rooms, photos and due dates of the plants in that schedule for the dates
+      you chose. You can revoke either at any time in Settings → Sharing. The app also
+      publishes an anonymous summary of your account — counts and due dates only,
+      never plant names, notes or photos — used solely to power reminders.
+    </p>
+
     <h2>Notifications</h2>
     <p>
       Watering reminders are scheduled entirely on your device. They are not sent
@@ -81,6 +108,8 @@
       <li><strong>Delete everything</strong> — Settings → Delete account permanently
       removes your account and all associated plants, photos and history.</li>
       <li><strong>Turn off reminders</strong> — Settings → Watering reminders.</li>
+      <li><strong>Skip identification</strong> — add a plant without a photo, or type
+      the name yourself. A photo is only sent when you attach one.</li>
       <li><strong>Sign out</strong> at any time; your data stays safely in your
       account until you return.</li>
     </ul>
