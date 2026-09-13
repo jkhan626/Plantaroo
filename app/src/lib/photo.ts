@@ -78,3 +78,35 @@ export function choosePhoto(onPicked: (dataUri: string) => void, opts: PhotoOpti
     { text: 'Cancel', style: 'cancel' },
   ]);
 }
+
+/** Same Take Photo / Choose action sheet as choosePhoto, but skips the
+ * 400px resize/compress pass and resolves with just the raw picked uri —
+ * for callers (e.g. the health check) that only need the raw asset and
+ * would otherwise resize it themselves. */
+export function pickRawPhoto(): Promise<string | null> {
+  return new Promise((resolve) => {
+    Alert.alert('Plant photo', undefined, [
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Camera access needed', 'Enable camera access in Settings to take plant photos.');
+            resolve(null);
+            return;
+          }
+          const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+          resolve(res.canceled || !res.assets?.[0] ? null : res.assets[0].uri);
+        },
+      },
+      {
+        text: 'Choose from Library',
+        onPress: async () => {
+          const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+          resolve(res.canceled || !res.assets?.[0] ? null : res.assets[0].uri);
+        },
+      },
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
+    ]);
+  });
+}

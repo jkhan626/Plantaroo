@@ -8,15 +8,21 @@
 //
 // Middleware order matters and is load-bearing:
 //   cors -> client+global buckets -> [/health] -> auth (headers only)
-//   -> content-type -> express.json -> body checks -> per-uid quota -> route
+//   -> content-type -> express.json -> body checks -> route
 // Auth deliberately runs BEFORE the body parser: an unauthenticated 4 MB POST
 // must cost a 401 and nothing else — no JSON parse, no buffered string.
+// The per-uid daily quota is NOT middleware: each route spends it by hand, after
+// its body validation and image precheck have passed and before the GPU gate, so a
+// client bug cannot burn a user's daily allowance on 400s. Flood protection for
+// invalid traffic is the job of the two token buckets above, which run first for
+// every request regardless.
 //
 // Endpoints:
 //   GET  /health          — no auth, minimal body, 15 s cached Ollama probe
 //   GET  /api/status      — auth required, the detailed version of /health
 //   POST /api/identify    — photo -> plant candidates
-//   POST /api/profile     — plant + setup -> care profile
+//   POST /api/profile     — plant + pot + setup -> care profile
+//   POST /api/diagnose    — photo + watering history -> health check
 import 'dotenv/config';
 import { execFileSync } from 'node:child_process';
 import express from 'express';
@@ -31,14 +37,20 @@ import {
   IDENTIFY_USER,
   PROFILE_SYSTEM,
   profileUserPrompt,
+  DIAGNOSE_SYSTEM,
+  diagnoseUserPrompt,
+  DIAGNOSE_RETRY_NUDGE,
   RETRY_NUDGE,
 } from './lib/prompts.js';
 import {
   decodeImage,
   precheckImage,
+  looksCarnivorous,
   normalizeIdentify,
   normalizeProfile,
+  normalizeDiagnose,
   validateProfileBody,
+  validateDiagnoseBody,
 } from './lib/normalize.js';
 
 const PORT = Number(process.env.PORT || 3100);
@@ -52,15 +64,21 @@ const TAILSCALE_EXE = process.env.TAILSCALE_EXE || 'C:\\Program Files\\Tailscale
 const BODY_LIMIT = '4mb';
 
 // --- Timeout budget -------------------------------------------------------
-// The app client allows 70 s for identify and 60 s for profile. Every server
-// path must fit inside that with room for network, so:
+// The app client allows 70 s for identify, 60 s for profile and 70 s for diagnose.
+// Every server path must fit inside that with room for network, so:
 //   identify: gate wait 15 + generate 50            = 65 s  (< 70)
 //   profile:  gate wait 15 + first 25 + retry 15    = 55 s  (< 60)
+//   diagnose: gate wait 15 + first 35 + retry 15    = 65 s  (< 70)
+// Diagnose gets the same 65 s worst case as identify even though it also retries:
+// its retry re-sends only text (see the route), so it costs a fraction of the
+// first pass and 15 s is ample for it.
 // Changing any of these means changing the client's timeouts to match.
 const BUSY_WAIT_MS = 15_000;
 const IDENTIFY_TIMEOUT_MS = 50_000;
 const PROFILE_FIRST_TIMEOUT_MS = 25_000;
 const PROFILE_RETRY_TIMEOUT_MS = 15_000;
+const DIAGNOSE_FIRST_TIMEOUT_MS = 35_000;
+const DIAGNOSE_RETRY_TIMEOUT_MS = 15_000;
 // Node's own socket caps sit just outside the worst case above.
 const SERVER_REQUEST_TIMEOUT_MS = 80_000;
 const SERVER_HEADERS_TIMEOUT_MS = 80_000;
@@ -123,6 +141,9 @@ function logThrottled(kind, fields) {
 
 const identifyLimiter = new RateLimiter(20);
 const profileLimiter = new RateLimiter(80);
+// Diagnose is its own bucket: a photo health-check is as expensive as an identify
+// and must not be able to eat the identify allowance (or vice versa).
+const diagnoseLimiter = new RateLimiter(20);
 const ipBucket = new IpBucket({
   capacity: IP_RATE_CAPACITY,
   windowMs: IP_RATE_WINDOW_MS,
@@ -152,6 +173,7 @@ const counters = {
 setInterval(() => {
   identifyLimiter.sweep();
   profileLimiter.sweep();
+  diagnoseLimiter.sweep();
 }, 60 * 60 * 1000).unref();
 setInterval(() => ipBucket.sweep(), 5 * 60 * 1000).unref();
 
@@ -326,22 +348,35 @@ app.use('/api', (req, res, next) => {
 
 // ---------------------------------------------------------------- helpers
 
-function rateLimit(limiter, kind) {
-  return (req, res, next) => {
-    const verdict = limiter.take(req.uid);
-    if (!verdict.ok) {
-      log({
-        evt: 'rate_limited',
-        kind,
-        uid: req.uid,
-        ip: req.clientIp,
-        retry_after_s: verdict.retry_after_s,
-      });
-      res.set('Retry-After', String(verdict.retry_after_s));
-      return res.status(429).json({ error: 'rate_limited', retry_after_s: verdict.retry_after_s });
-    }
-    return next();
-  };
+/**
+ * Spend one token of a per-uid daily quota, answering 429 if it is exhausted.
+ *
+ * Deliberately called from inside each route rather than mounted as middleware,
+ * and deliberately called LATE: after body validation and the cheap image
+ * precheck, so a malformed request costs a 400 and nothing else — an app bug that
+ * sends the wrong enum must not be able to eat a user's 20 diagnoses for the day.
+ * It still runs BEFORE the GPU gate and before the base64 decode, so nothing
+ * expensive ever happens on an uncharged request.
+ *
+ * The floods that this ordering lets through unmetered (garbage bodies from a
+ * valid token) are already bounded by the per-client and global token buckets in
+ * front of everything, which do not care whether a request is valid.
+ *
+ * @returns {boolean} true = charged, carry on. false = 429 already sent.
+ */
+function chargeQuota(req, res, limiter, kind) {
+  const verdict = limiter.take(req.uid);
+  if (verdict.ok) return true;
+  log({
+    evt: 'rate_limited',
+    kind,
+    uid: req.uid,
+    ip: req.clientIp,
+    retry_after_s: verdict.retry_after_s,
+  });
+  res.set('Retry-After', String(verdict.retry_after_s));
+  res.status(429).json({ error: 'rate_limited', retry_after_s: verdict.retry_after_s });
+  return false;
 }
 
 /**
@@ -467,6 +502,8 @@ app.get('/api/status', async (req, res) => {
       identify_ms: IDENTIFY_TIMEOUT_MS,
       profile_first_ms: PROFILE_FIRST_TIMEOUT_MS,
       profile_retry_ms: PROFILE_RETRY_TIMEOUT_MS,
+      diagnose_first_ms: DIAGNOSE_FIRST_TIMEOUT_MS,
+      diagnose_retry_ms: DIAGNOSE_RETRY_TIMEOUT_MS,
     },
     client_ip: req.clientIp || null,
     ip_limit: { capacity: IP_RATE_CAPACITY, window_ms: IP_RATE_WINDOW_MS, tracked: ipBucket.size },
@@ -476,7 +513,7 @@ app.get('/api/status', async (req, res) => {
   });
 });
 
-app.post('/api/identify', rateLimit(identifyLimiter, 'identify'), async (req, res) => {
+app.post('/api/identify', async (req, res) => {
   const t0 = Date.now();
 
   // Cheap checks BEFORE the gate: string length, data-URI mime, base64 magic.
@@ -490,6 +527,9 @@ app.post('/api/identify', rateLimit(identifyLimiter, 'identify'), async (req, re
     if (pre.detail) payload.detail = pre.detail;
     return res.status(pre.status).json(payload);
   }
+
+  // Only now does this cost the user one of their daily identifies.
+  if (!chargeQuota(req, res, identifyLimiter, 'identify')) return undefined;
 
   const watch = watchClient(req, res);
   try {
@@ -549,13 +589,16 @@ app.post('/api/identify', rateLimit(identifyLimiter, 'identify'), async (req, re
   }
 });
 
-app.post('/api/profile', rateLimit(profileLimiter, 'profile'), async (req, res) => {
+app.post('/api/profile', async (req, res) => {
   const t0 = Date.now();
   const parsedBody = validateProfileBody(req.body);
   if (!parsedBody.ok) {
     log({ evt: 'reject', kind: 'profile', uid: req.uid, reason: parsedBody.detail });
     return res.status(400).json({ error: 'bad_request', detail: parsedBody.detail });
   }
+  // Charged only once the body is known to be good — see chargeQuota().
+  if (!chargeQuota(req, res, profileLimiter, 'profile')) return undefined;
+
   const p = parsedBody.value;
   const userPrompt = profileUserPrompt(p);
 
@@ -633,6 +676,131 @@ app.post('/api/profile', rateLimit(profileLimiter, 'profile'), async (req, res) 
     }
   } catch (err) {
     return sendOllamaError(res, err, 'profile', req.uid, Date.now() - t0);
+  } finally {
+    watch.dispose();
+  }
+});
+
+app.post('/api/diagnose', async (req, res) => {
+  const t0 = Date.now();
+
+  // Same schedule as /api/identify: the cheap image checks (length, data-URI mime,
+  // base64 magic) run before the GPU gate, the allocating decode runs only once a
+  // slot is held.
+  const pre = precheckImage(req.body?.image);
+  if (!pre.ok) {
+    log({ evt: 'reject', kind: 'diagnose', uid: req.uid, reason: pre.error, detail: pre.detail });
+    const payload = { error: pre.error };
+    if (pre.detail) payload.detail = pre.detail;
+    return res.status(pre.status).json(payload);
+  }
+
+  const parsedBody = validateDiagnoseBody(req.body);
+  if (!parsedBody.ok) {
+    log({ evt: 'reject', kind: 'diagnose', uid: req.uid, reason: parsedBody.detail });
+    return res.status(400).json({ error: 'bad_request', detail: parsedBody.detail });
+  }
+  // Both gates passed, so the request is well-formed: charge it. See chargeQuota().
+  if (!chargeQuota(req, res, diagnoseLimiter, 'diagnose')) return undefined;
+
+  const p = parsedBody.value;
+  const userPrompt = diagnoseUserPrompt(p);
+  // Belt and braces for rule 7 of the prompt: fertilizer and tap water are lethal
+  // to bog plants, so the advice is filtered as well as asked for. Any of three
+  // signals is enough — the owner's own flag, a carnivorous potting medium, or a
+  // name that matches a bog genus — because a false negative here can kill a plant
+  // and a false positive only costs one dropped sentence of advice.
+  const ctx = {
+    carnivore:
+      p.carnivore === true ||
+      p.soil_type === 'carnivore_peat' ||
+      looksCarnivorous(p.name, p.scientific_name),
+  };
+
+  const watch = watchClient(req, res);
+  try {
+    const slot = await takeGpuSlot(req, res, 'diagnose', t0, watch.signal);
+    if (!slot.ok) return undefined;
+
+    let retried = false;
+    try {
+      const img = decodeImage(req.body.image);
+      if (!img.ok) {
+        log({ evt: 'reject', kind: 'diagnose', uid: req.uid, reason: img.error, detail: img.detail });
+        const payload = { error: img.error };
+        if (img.detail) payload.detail = img.detail;
+        return res.status(img.status).json(payload);
+      }
+
+      const first = await chatJson({
+        baseUrl: OLLAMA_URL,
+        model: MODEL,
+        timeoutMs: DIAGNOSE_FIRST_TIMEOUT_MS,
+        temperature: 0.2,
+        numPredict: 700,
+        signal: watch.signal,
+        messages: [
+          { role: 'system', content: DIAGNOSE_SYSTEM },
+          { role: 'user', content: userPrompt, images: [img.base64] },
+        ],
+      });
+
+      let result = normalizeDiagnose(first.parsed, ctx);
+      if (!result && !watch.gone) {
+        // One corrective round-trip, as on /api/profile. The retry deliberately
+        // omits the image: the model only has to re-emit findings it has already
+        // made, and re-sending the photo would buy a second vision-encode pass
+        // that does not fit the timeout budget.
+        retried = true;
+        const second = await chatJson({
+          baseUrl: OLLAMA_URL,
+          model: MODEL,
+          timeoutMs: DIAGNOSE_RETRY_TIMEOUT_MS,
+          temperature: 0.2,
+          numPredict: 700,
+          signal: watch.signal,
+          messages: [
+            { role: 'system', content: DIAGNOSE_SYSTEM },
+            { role: 'user', content: userPrompt },
+            { role: 'assistant', content: first.raw.slice(0, 2000) },
+            { role: 'user', content: DIAGNOSE_RETRY_NUDGE },
+          ],
+        });
+        result = normalizeDiagnose(second.parsed, ctx);
+      }
+
+      if (watch.gone) {
+        log({ evt: 'abandoned', kind: 'diagnose', uid: req.uid, ms: Date.now() - t0, at: 'reply' });
+        return undefined;
+      }
+
+      if (!result) {
+        log({
+          evt: 'error',
+          kind: 'diagnose',
+          uid: req.uid,
+          ms: Date.now() - t0,
+          reason: 'model_output_invalid',
+        });
+        return res.status(502).json({ error: 'model_output_invalid' });
+      }
+
+      // Deliberately minimal: a health check is about the user's own plant and its
+      // problems, so nothing but the verdict is worth keeping. No plant name, no
+      // summary, no observations.
+      log({
+        evt: 'diagnose',
+        uid: req.uid,
+        ms: Date.now() - t0,
+        verdict: result.watering_verdict,
+        ...(retried ? { retried: true } : {}),
+      });
+      return res.json(result);
+    } finally {
+      gpuGate.release();
+    }
+  } catch (err) {
+    return sendOllamaError(res, err, 'diagnose', req.uid, Date.now() - t0);
   } finally {
     watch.dispose();
   }

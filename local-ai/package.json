@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test test/unit.mjs",
+    "test:quota": "node test/quota-order.mjs",
     "smoke": "node test/smoke.mjs"
   },
   "engines": { "node": ">=20" },

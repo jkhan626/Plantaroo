@@ -11,6 +11,8 @@ export type SoilType =
   | 'regular_perlite'
   | 'cactus_gritty'
   | 'carnivore_peat';
+export type PotSize = 'small' | 'medium' | 'large';
+export type PotMaterial = 'terracotta' | 'plastic' | 'glazed' | 'other';
 
 /** The 6-field care profile resolved from the local DB (or manual entry). */
 export interface PlantProfile {
@@ -51,6 +53,10 @@ export interface Plant extends PlantProfile {
   snooze_until?: string | null;
   /** Rationale from the AI-tailored schedule shown at add time, if generated. */
   ai_rationale?: string;
+  /** Optional pot details — inform the tailored schedule; never required. */
+  pot_size?: PotSize;
+  pot_material?: PotMaterial;
+  pot_drainage?: boolean;
 }
 
 export type HistoryType =

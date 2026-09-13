@@ -51,6 +51,13 @@ const WANTED = [
   },
 ];
 
+// Extra fixtures used only by /api/diagnose. The chlorosis photo is a real potted
+// citrus seedling with one clearly yellowed, green-veined leaf — an unambiguous
+// "something is wrong" image, which is what makes it worth asserting against.
+const DIAGNOSE_EXTRA = [
+  { file: 'chlorosis.jpg', commons: 'Chlorose ferrique sur Citrus aurantium.jpg' },
+];
+
 const commonsUrl = (name) =>
   `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=900`;
 
@@ -68,9 +75,9 @@ function skip(label, why) {
   console.log(`[SKIP] ${label}${why ? ' — ' + why : ''}`);
 }
 
-async function ensureFixtures() {
+async function ensureFixtures(wanted) {
   await fs.mkdir(FIXTURES, { recursive: true });
-  for (const w of WANTED) {
+  for (const w of wanted) {
     const dest = path.join(FIXTURES, w.file);
     try {
       const st = await fs.stat(dest);
@@ -194,6 +201,17 @@ async function main() {
     garbage.status === 401 && garbage.json.error === 'unauthorized'
   );
 
+  const noAuthDiagnose = await call('POST', '/api/diagnose', { image: 'x' }, { auth: false });
+  if (detected.mode === 'dev') {
+    skip('POST /api/diagnose without token -> 401', 'server is in DEV_ALLOW_NO_AUTH=1 mode');
+  } else {
+    console.log(`  no token:      HTTP ${noAuthDiagnose.status}  ${JSON.stringify(noAuthDiagnose.json)}`);
+    ok(
+      'POST /api/diagnose without token -> 401 unauthorized',
+      noAuthDiagnose.status === 401 && noAuthDiagnose.json.error === 'unauthorized'
+    );
+  }
+
   const statusNoAuth = await call('GET', '/api/status', undefined, { auth: false });
   if (detected.mode === 'dev') {
     skip('GET /api/status without token → 401', 'server is in DEV_ALLOW_NO_AUTH=1 mode');
@@ -257,9 +275,12 @@ async function main() {
     skip('POST /api/identify oversized dimensions → 413', 'no credentials');
     skip('POST /api/profile (4 plants)', 'no credentials');
     skip('POST /api/profile bad enum → 400', 'no credentials');
+    skip('POST /api/profile terracotta vs glazed pot', 'no credentials');
+    skip('POST /api/diagnose (2 fixture photos)', 'no credentials');
+    skip('POST /api/diagnose bad body → 400', 'no credentials');
   } else {
     console.log('== fixtures ==');
-    await ensureFixtures();
+    await ensureFixtures([...WANTED, ...DIAGNOSE_EXTRA]);
     console.log('  fixtures ready\n');
 
     console.log('== POST /api/identify ==');
@@ -313,7 +334,15 @@ async function main() {
     console.log('== POST /api/profile ==');
     const profileCases = [
       { name: 'Monstera Deliciosa', light_type: 'natural', soil_type: 'chunky_aroid', room: 'Living room' },
-      { name: 'Hoya Kerrii', light_type: 'grow', soil_type: 'chunky_aroid', room: 'Office', pot_size: '4 inch' },
+      {
+        name: 'Hoya Kerrii',
+        light_type: 'grow',
+        soil_type: 'chunky_aroid',
+        room: 'Office',
+        pot_size: 'small',
+        pot_material: 'terracotta',
+        pot_drainage: true,
+      },
       { name: 'Alocasia Dragon Scale', light_type: 'natural', soil_type: 'sphagnum_moss', room: 'Bathroom' },
       {
         name: 'Cape Sundew',
@@ -387,6 +416,215 @@ async function main() {
     });
     console.log(`  HTTP ${bad.status}  ${JSON.stringify(bad.json)}`);
     ok('bad light_type → 400 bad_request', bad.status === 400 && bad.json.error === 'bad_request');
+    console.log();
+
+    // The pot is now part of species_baseline_days, so the same plant in a small
+    // unglazed terracotta pot must not be told to wait LONGER between waterings
+    // than the same plant in a large glazed pot with no drainage hole.
+    console.log('== POST /api/profile (same plant, opposite pots) ==');
+    const potPlant = {
+      name: 'Monstera Deliciosa',
+      scientific_name: 'Monstera deliciosa',
+      light_type: 'natural',
+      soil_type: 'regular_perlite',
+      room: 'Living room',
+    };
+    const dryPot = await call('POST', '/api/profile', {
+      ...potPlant,
+      pot_size: 'small',
+      pot_material: 'terracotta',
+      pot_drainage: true,
+    });
+    const wetPot = await call('POST', '/api/profile', {
+      ...potPlant,
+      pot_size: 'large',
+      pot_material: 'glazed',
+      pot_drainage: false,
+    });
+    console.log(`  small terracotta, drainage   ${dryPot.ms} ms  HTTP ${dryPot.status}`);
+    console.log(`  ${JSON.stringify(dryPot.json)}`);
+    console.log(`  large glazed, NO drainage    ${wetPot.ms} ms  HTTP ${wetPot.status}`);
+    console.log(`  ${JSON.stringify(wetPot.json)}`);
+    ok('both pot variants → 200', dryPot.status === 200 && wetPot.status === 200);
+    if (dryPot.status === 200 && wetPot.status === 200) {
+      ok(
+        'terracotta+small baseline <= glazed+large baseline',
+        dryPot.json.species_baseline_days <= wetPot.json.species_baseline_days,
+        `terracotta=${dryPot.json.species_baseline_days} glazed=${wetPot.json.species_baseline_days}`
+      );
+      ok(
+        'terracotta rationale mentions the pot',
+        /pot|terracotta|clay/i.test(dryPot.json.rationale || ''),
+        dryPot.json.rationale
+      );
+      ok(
+        'no-drainage case warns about it somewhere',
+        /drain|standing water|no hole|sit in water|waterlog|root rot/i.test(
+          [wetPot.json.rationale, ...(wetPot.json.tips || [])].join(' ')
+        ),
+        JSON.stringify(wetPot.json.tips)
+      );
+    }
+    console.log();
+
+    console.log('== POST /api/profile (bad pot enum) ==');
+    const badPot = await call('POST', '/api/profile', {
+      name: 'Pothos',
+      light_type: 'natural',
+      soil_type: 'chunky_aroid',
+      pot_size: '4 inch',
+    });
+    console.log(`  HTTP ${badPot.status}  ${JSON.stringify(badPot.json)}`);
+    ok(
+      'free-text pot_size → 400 bad_request',
+      badPot.status === 400 && /pot_size must be one of/.test(badPot.json.detail || '')
+    );
+    console.log();
+
+    // ----------------------------------------------------------- /diagnose
+    console.log('== POST /api/diagnose ==');
+    const diagnoseCases = [
+      {
+        label: 'healthy monstera',
+        file: 'monstera.jpg',
+        body: {
+          name: 'Monstera Deliciosa',
+          scientific_name: 'Monstera deliciosa',
+          light_type: 'natural',
+          soil_type: 'chunky_aroid',
+          moisture_pref: 'light_dry',
+          days_since_watered: 3,
+          current_interval: 7,
+          watering_count: 22,
+          recent_events: [
+            { type: 'water', days_ago: 3 },
+            { type: 'water', days_ago: 10 },
+            { type: 'water', days_ago: 18 },
+          ],
+          season: 'summer',
+        },
+      },
+      {
+        label: 'chlorotic citrus seedling',
+        file: 'chlorosis.jpg',
+        body: {
+          name: 'Citrus Seedling',
+          scientific_name: 'Citrus aurantium',
+          light_type: 'natural',
+          soil_type: 'regular_perlite',
+          moisture_pref: 'light_dry',
+          days_since_watered: 1,
+          current_interval: 5,
+          watering_count: 41,
+          recent_events: [
+            { type: 'water', days_ago: 1 },
+            { type: 'still_wet', days_ago: 6 },
+            { type: 'water', days_ago: 11 },
+            { type: 'still_wet', days_ago: 16 },
+            { type: 'too_busy', days_ago: 24 },
+          ],
+          season: 'summer',
+          notes: 'One leaf has gone pale yellow with green veins over the last two weeks.',
+        },
+      },
+    ];
+
+    const VERDICTS = ['likely_overwatered', 'likely_underwatered', 'watering_ok', 'unclear'];
+    for (const c of diagnoseCases) {
+      const buf = await fs.readFile(path.join(FIXTURES, c.file));
+      const r = await call('POST', '/api/diagnose', {
+        image: `data:image/jpeg;base64,${buf.toString('base64')}`,
+        ...c.body,
+      });
+      console.log(`  ${c.label}  (${(buf.length / 1024).toFixed(0)} KB)  ${r.ms} ms  HTTP ${r.status}`);
+      console.log(`  ${JSON.stringify(r.json)}`);
+      ok(`diagnose ${c.label} → 200`, r.status === 200);
+      if (r.status === 200) {
+        const d = r.json;
+        ok(
+          `diagnose ${c.label} summary present and <= 200 chars`,
+          typeof d.summary === 'string' && d.summary.length > 0 && d.summary.length <= 200,
+          `len=${(d.summary || '').length}`
+        );
+        ok(
+          `diagnose ${c.label} verdict is one of the four`,
+          VERDICTS.includes(d.watering_verdict),
+          String(d.watering_verdict)
+        );
+        ok(
+          `diagnose ${c.label} observations <= 4 strings`,
+          Array.isArray(d.observations) &&
+            d.observations.length <= 4 &&
+            d.observations.every((o) => typeof o === 'string' && o.length > 0)
+        );
+        ok(
+          `diagnose ${c.label} actions <= 3 strings`,
+          Array.isArray(d.actions) &&
+            d.actions.length <= 3 &&
+            d.actions.every((a) => typeof a === 'string' && a.length > 0)
+        );
+        const causesOk =
+          Array.isArray(d.likely_causes) &&
+          d.likely_causes.length <= 3 &&
+          d.likely_causes.every(
+            (x) =>
+              x &&
+              typeof x.cause === 'string' &&
+              x.cause.length > 0 &&
+              x.cause.length <= 80 &&
+              typeof x.confidence === 'number' &&
+              x.confidence >= 0 &&
+              x.confidence <= 1
+          );
+        ok(`diagnose ${c.label} likely_causes <= 3, clamped`, causesOk);
+        const ordered = d.likely_causes.every(
+          (x, i) => i === 0 || d.likely_causes[i - 1].confidence >= x.confidence
+        );
+        ok(`diagnose ${c.label} likely_causes best first`, ordered);
+        ok(
+          `diagnose ${c.label} confidence in 0..1`,
+          typeof d.confidence === 'number' && d.confidence >= 0 && d.confidence <= 1,
+          String(d.confidence)
+        );
+        ok(`diagnose ${c.label} not_a_plant false`, d.not_a_plant === false);
+      }
+      console.log();
+    }
+
+    console.log('== POST /api/diagnose (bad body) ==');
+    const badDiag = await call('POST', '/api/diagnose', {
+      image: `data:image/jpeg;base64,${(await fs.readFile(path.join(FIXTURES, 'monstera.jpg'))).toString('base64')}`,
+      name: 'Monstera',
+      light_type: 'natural',
+      soil_type: 'chunky_aroid',
+      moisture_pref: 'light_dry',
+      days_since_watered: 3,
+      current_interval: 7,
+      watering_count: 4,
+      recent_events: [{ type: 'fertilize', days_ago: 2 }],
+      season: 'summer',
+    });
+    console.log(`  HTTP ${badDiag.status}  ${JSON.stringify(badDiag.json)}`);
+    ok(
+      'bad recent_events[].type → 400 bad_request',
+      badDiag.status === 400 && /recent_events\[0\]\.type/.test(badDiag.json.detail || '')
+    );
+
+    const missingSeason = await call('POST', '/api/diagnose', {
+      image: 'data:image/jpeg;base64,/9j/' + 'A'.repeat(200),
+      name: 'Monstera',
+      light_type: 'natural',
+      soil_type: 'chunky_aroid',
+      moisture_pref: 'light_dry',
+      days_since_watered: 3,
+      current_interval: 7,
+      watering_count: 4,
+    });
+    console.log(`  HTTP ${missingSeason.status}  ${JSON.stringify(missingSeason.json)}`);
+    ok(
+      'missing season → 400 bad_request',
+      missingSeason.status === 400 && /season must be one of/.test(missingSeason.json.detail || '')
+    );
     console.log();
   }
 

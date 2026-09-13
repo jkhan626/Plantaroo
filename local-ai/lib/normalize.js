@@ -13,6 +13,16 @@ export const SOIL = [
   'cactus_gritty',
   'carnivore_peat',
 ];
+export const POT_SIZE = ['small', 'medium', 'large'];
+export const POT_MATERIAL = ['terracotta', 'plastic', 'glazed', 'other'];
+export const SEASON = ['winter', 'spring', 'summer', 'fall'];
+export const EVENT_TYPE = ['water', 'skip', 'still_wet', 'too_busy'];
+export const VERDICT = [
+  'likely_overwatered',
+  'likely_underwatered',
+  'watering_ok',
+  'unclear',
+];
 
 // Near-miss spellings the model produces often enough to be worth absorbing.
 const MOISTURE_ALIASES = {
@@ -165,7 +175,11 @@ function clampSentence(v, max) {
 
   const lastSpace = head.lastIndexOf(' ');
   const cut = (lastSpace > 0 ? head.slice(0, lastSpace) : head).replace(/[\s,;:.\-–—]+$/, '');
-  return cut + '.';
+  // The appended full stop counts against the budget too. Without this, a single
+  // unbroken `max`-character token comes back at max+1 — which is exactly the
+  // shape a model produces when it emits one long space-free phrase.
+  const withStop = cut + '.';
+  return withStop.length <= max ? withStop : cut.slice(0, max - 1) + '.';
 }
 
 /**
@@ -301,6 +315,54 @@ export function normalizeProfile(parsed) {
   return out;
 }
 
+// --------------------------------------------------- request-field helpers
+//
+// Request validation is strict on purpose: unlike model output (which is coerced
+// so a usable answer still reaches the user), a malformed request is a client bug
+// and is far better surfaced as a 400 than silently reinterpreted.
+
+/** Optional enum field. Absent / null / "" means "unknown" and yields ''. */
+function optEnum(body, key, allowed) {
+  const v = body[key];
+  if (v === undefined || v === null || v === '') return { ok: true, value: '' };
+  if (typeof v !== 'string' || !allowed.includes(v)) {
+    return { ok: false, detail: `${key} must be one of: ${allowed.join(', ')}` };
+  }
+  return { ok: true, value: v };
+}
+
+/** Optional boolean field. Absent / null means "unknown" and yields null. */
+function optBool(body, key) {
+  const v = body[key];
+  if (v === undefined || v === null) return { ok: true, value: null };
+  if (typeof v !== 'boolean') {
+    return { ok: false, detail: `${key} must be true or false` };
+  }
+  return { ok: true, value: v };
+}
+
+/**
+ * Required finite number field.
+ * @param {{min:number, max:number, nullable?:boolean}} o
+ */
+function numField(body, key, { min, max, nullable = false }) {
+  const v = body[key];
+  if (v === null || v === undefined) {
+    if (nullable) return { ok: true, value: null };
+    return { ok: false, detail: `${key} is required` };
+  }
+  if (typeof v !== 'number' || !Number.isFinite(v)) {
+    return {
+      ok: false,
+      detail: nullable ? `${key} must be a number or null` : `${key} must be a number`,
+    };
+  }
+  if (v < min || v > max) {
+    return { ok: false, detail: `${key} must be between ${min} and ${max}` };
+  }
+  return { ok: true, value: v };
+}
+
 /**
  * Validate the /api/profile request body.
  * @returns {{ok: true, value: object} | {ok: false, detail: string}}
@@ -335,10 +397,17 @@ export function validateProfileBody(body) {
   if (!sci.ok) return sci;
   const room = opt('room', 40);
   if (!room.ok) return room;
-  const pot = opt('pot_size', 40);
-  if (!pot.ok) return pot;
   const notes = opt('notes', 300);
   if (!notes.ok) return notes;
+
+  // Pot details are all optional and all independent: absent means "unknown", and
+  // the prompt tells the model what to assume for the parts it was not given.
+  const potSize = optEnum(body, 'pot_size', POT_SIZE);
+  if (!potSize.ok) return potSize;
+  const potMaterial = optEnum(body, 'pot_material', POT_MATERIAL);
+  if (!potMaterial.ok) return potMaterial;
+  const potDrainage = optBool(body, 'pot_drainage');
+  if (!potDrainage.ok) return potDrainage;
 
   return {
     ok: true,
@@ -348,9 +417,301 @@ export function validateProfileBody(body) {
       light_type: body.light_type,
       soil_type: body.soil_type,
       room: room.value,
-      pot_size: pot.value,
+      pot_size: potSize.value,
+      pot_material: potMaterial.value,
+      pot_drainage: potDrainage.value,
       notes: notes.value,
     },
+  };
+}
+
+// ------------------------------------------------------------- diagnose
+
+const MAX_RECENT_EVENTS = 10;
+
+/**
+ * Validate the /api/diagnose request body. The `image` field is NOT checked here —
+ * it goes through precheckImage()/decodeImage() on the same schedule as
+ * /api/identify (cheap checks before the GPU gate, the decode after it).
+ *
+ * @returns {{ok: true, value: object} | {ok: false, detail: string}}
+ */
+export function validateDiagnoseBody(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, detail: 'body must be a JSON object' };
+  }
+
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  if (!name) return { ok: false, detail: 'name is required' };
+  if (name.length > 80) return { ok: false, detail: 'name must be 80 characters or fewer' };
+
+  if (!LIGHT.includes(body.light_type)) {
+    return { ok: false, detail: `light_type must be one of: ${LIGHT.join(', ')}` };
+  }
+  if (!SOIL.includes(body.soil_type)) {
+    return { ok: false, detail: `soil_type must be one of: ${SOIL.join(', ')}` };
+  }
+  if (!MOISTURE.includes(body.moisture_pref)) {
+    return { ok: false, detail: `moisture_pref must be one of: ${MOISTURE.join(', ')}` };
+  }
+  if (!SEASON.includes(body.season)) {
+    return { ok: false, detail: `season must be one of: ${SEASON.join(', ')}` };
+  }
+
+  const sci = ((v) => (typeof v === 'string' ? v.trim() : ''))(body.scientific_name);
+  if (body.scientific_name !== undefined && body.scientific_name !== null && typeof body.scientific_name !== 'string') {
+    return { ok: false, detail: 'scientific_name must be a string' };
+  }
+  if (sci.length > 120) return { ok: false, detail: 'scientific_name must be 120 characters or fewer' };
+
+  const notesRaw = body.notes;
+  if (notesRaw !== undefined && notesRaw !== null && typeof notesRaw !== 'string') {
+    return { ok: false, detail: 'notes must be a string' };
+  }
+  const notes = typeof notesRaw === 'string' ? notesRaw.trim() : '';
+  if (notes.length > 300) return { ok: false, detail: 'notes must be 300 characters or fewer' };
+
+  // Pot details: optional and independent, exactly as on /api/profile. They belong
+  // here because the pot decides how fast the medium actually dries, which is the
+  // difference between "9 days is fine" and "9 days is a drought" for the same
+  // plant and the same interval.
+  const potSize = optEnum(body, 'pot_size', POT_SIZE);
+  if (!potSize.ok) return potSize;
+  const potMaterial = optEnum(body, 'pot_material', POT_MATERIAL);
+  if (!potMaterial.ok) return potMaterial;
+  const potDrainage = optBool(body, 'pot_drainage');
+  if (!potDrainage.ok) return potDrainage;
+
+  // The owner's own carnivore flag, when the app has one stored for this plant.
+  // It only ever ADDS to the name/soil heuristics the route applies — an absent or
+  // false flag never turns the advice filter off for a plant that is plainly a
+  // Nepenthes (see the ctx assembly in server.js).
+  const carnivore = optBool(body, 'carnivore');
+  if (!carnivore.ok) return carnivore;
+
+  // null is meaningful here: "this plant has never been watered in the app".
+  const days = numField(body, 'days_since_watered', { min: 0, max: 3650, nullable: true });
+  if (!days.ok) return days;
+  const interval = numField(body, 'current_interval', { min: 1, max: 3650 });
+  if (!interval.ok) return interval;
+  const count = numField(body, 'watering_count', { min: 0, max: 100000 });
+  if (!count.ok) return count;
+
+  let events = body.recent_events;
+  if (events === undefined || events === null) events = [];
+  if (!Array.isArray(events)) return { ok: false, detail: 'recent_events must be an array' };
+  if (events.length > MAX_RECENT_EVENTS) {
+    return { ok: false, detail: `recent_events must have ${MAX_RECENT_EVENTS} or fewer entries` };
+  }
+  const recent = [];
+  for (const [i, e] of events.entries()) {
+    if (!e || typeof e !== 'object' || Array.isArray(e)) {
+      return { ok: false, detail: `recent_events[${i}] must be an object` };
+    }
+    if (!EVENT_TYPE.includes(e.type)) {
+      return { ok: false, detail: `recent_events[${i}].type must be one of: ${EVENT_TYPE.join(', ')}` };
+    }
+    const ago = numField(e, 'days_ago', { min: 0, max: 3650 });
+    if (!ago.ok) return { ok: false, detail: `recent_events[${i}].${ago.detail}` };
+    recent.push({ type: e.type, days_ago: ago.value });
+  }
+
+  return {
+    ok: true,
+    value: {
+      name,
+      scientific_name: sci,
+      light_type: body.light_type,
+      soil_type: body.soil_type,
+      moisture_pref: body.moisture_pref,
+      pot_size: potSize.value,
+      pot_material: potMaterial.value,
+      pot_drainage: potDrainage.value,
+      carnivore: carnivore.value,
+      days_since_watered: days.value,
+      current_interval: interval.value,
+      watering_count: count.value,
+      recent_events: recent,
+      season: body.season,
+      notes,
+    },
+  };
+}
+
+const VERDICT_ALIASES = {
+  overwatered: 'likely_overwatered',
+  over_watered: 'likely_overwatered',
+  likely_over_watered: 'likely_overwatered',
+  too_much_water: 'likely_overwatered',
+  overwatering: 'likely_overwatered',
+  underwatered: 'likely_underwatered',
+  under_watered: 'likely_underwatered',
+  likely_under_watered: 'likely_underwatered',
+  too_little_water: 'likely_underwatered',
+  underwatering: 'likely_underwatered',
+  ok: 'watering_ok',
+  okay: 'watering_ok',
+  watering_okay: 'watering_ok',
+  fine: 'watering_ok',
+  good: 'watering_ok',
+  healthy: 'watering_ok',
+  normal: 'watering_ok',
+  unknown: 'unclear',
+  uncertain: 'unclear',
+  unsure: 'unclear',
+  inconclusive: 'unclear',
+};
+
+// Genus and common names of the carnivorous plants Plantaroo cares about. Used as
+// one of three inputs to the belt-and-braces filter on diagnose advice (the others
+// are the owner's own `carnivore` flag and a `carnivore_peat` potting medium — see
+// the ctx assembly in server.js): the model is told not to suggest fertilizer or
+// tap water for these, and the filter drops it if it does anyway.
+const CARNIVORE_RE =
+  /\b(nepenthes|sarracenia|dionaea|drosera|pinguicula|utricularia|cephalotus|darlingtonia|heliamphora|byblis|aldrovanda|venus\s*fly ?trap|pitcher\s*plant|sundew|butterwort|bladderwort|cobra\s*lily)\b/i;
+
+/** @returns {boolean} true if this name looks like a carnivorous plant. */
+export function looksCarnivorous(name, scientificName = '') {
+  return CARNIVORE_RE.test(`${name ?? ''} ${scientificName ?? ''}`);
+}
+
+/** Case- and punctuation-insensitive key, so near-identical strings dedupe. */
+function dedupeKey(s) {
+  return String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Clean, clamp, drop empties, dedupe, cap the count. Order is preserved. */
+function stringList(value, maxLen, maxCount) {
+  let list = value;
+  if (typeof list === 'string') list = [list];
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const raw of list) {
+    const text =
+      typeof raw === 'string'
+        ? raw
+        : raw?.text ?? raw?.observation ?? raw?.action ?? raw?.description ?? '';
+    const s = clampSentence(text, maxLen);
+    if (!s) continue;
+    const key = dedupeKey(s);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+    if (out.length >= maxCount) break;
+  }
+  return out;
+}
+
+/** 0-1, tolerating a percentage. Falls back rather than failing the whole answer. */
+function coerceConfidence(value, fallback = 0.5) {
+  let n = NaN;
+  if (typeof value === 'number') {
+    n = value;
+  } else if (typeof value === 'string') {
+    // Strip a "%" or stray words, but an entirely non-numeric string ("high")
+    // must fall back: stripping it leaves "", and Number('') is 0, which would
+    // silently claim a total lack of confidence the model never expressed.
+    const cleaned = value.replace(/[^0-9.\-]/g, '');
+    if (cleaned !== '') n = Number(cleaned);
+  }
+  if (!Number.isFinite(n)) return fallback;
+  // Above 1 is either a percentage (85) or a near-miss at the top of the scale
+  // (1.2). Dividing 1.2 by 100 would turn near-certainty into near-zero, so only
+  // clearly percentage-shaped values are rescaled; the rest just clamp to 1.
+  if (n > 2) n = n / 100;
+  return Math.min(1, Math.max(0, Number(n.toFixed(3))));
+}
+
+// Advice that must never reach the owner of a carnivorous plant. Fertilizer burns
+// their roots and tap water's dissolved minerals kills them over a few months.
+const FERTILIZER_RE = /fertiliz|fertilis|plant\s*food|\bfeed(ing|s)?\b|\bnutrients?\b|\bnpk\b/i;
+const TAP_WATER_RE = /\btap\s*water\b/i;
+const NEGATED_RE = /\b(avoid|avoiding|never|not|don't|dont|stop|skip|without)\b/i;
+
+/**
+ * Coerce the model's diagnose output into the documented response shape.
+ *
+ * @param {any} parsed raw parsed model JSON
+ * @param {{carnivore?: boolean}} [ctx]
+ * @returns {object | null} null = unusable output, caller should retry once
+ */
+export function normalizeDiagnose(parsed, ctx = {}) {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const p =
+    parsed.diagnosis && typeof parsed.diagnosis === 'object' ? parsed.diagnosis : parsed;
+
+  const notAPlant = coerceBool(p.not_a_plant ?? p.notAPlant ?? p.is_not_a_plant ?? false) === true;
+
+  let summary = clampSentence(p.summary ?? p.assessment ?? p.overview ?? p.diagnosis, 200);
+  let verdict = coerceEnum(
+    p.watering_verdict ?? p.verdict ?? p.watering ?? p.watering_status,
+    VERDICT,
+    VERDICT_ALIASES
+  );
+
+  if (notAPlant) {
+    // The one place a value is invented rather than coerced: "not a plant" is a
+    // complete, useful answer, and 502-ing because the model left `summary` empty
+    // would be worse for the user than one fixed sentence.
+    if (!summary) summary = 'This photo does not appear to show a plant, so there is nothing to assess.';
+    verdict = 'unclear';
+  }
+
+  // Without these two the response says nothing; let the caller retry once.
+  if (!summary || verdict === null) return null;
+
+  let observations = notAPlant ? [] : stringList(p.observations ?? p.visible ?? p.symptoms, 120, 4);
+  let actions = notAPlant ? [] : stringList(p.actions ?? p.next_steps ?? p.recommendations, 140, 3);
+
+  let causesRaw = p.likely_causes ?? p.causes ?? p.possible_causes;
+  if (typeof causesRaw === 'string') causesRaw = [causesRaw];
+  if (causesRaw && !Array.isArray(causesRaw) && typeof causesRaw === 'object') {
+    causesRaw = [causesRaw];
+  }
+  let likelyCauses = [];
+  if (!notAPlant && Array.isArray(causesRaw)) {
+    const seen = new Set();
+    for (const c of causesRaw) {
+      const text = clampSentence(
+        typeof c === 'string' ? c : c?.cause ?? c?.name ?? c?.text ?? c?.reason,
+        80
+      );
+      if (!text) continue;
+      const key = dedupeKey(text);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      likelyCauses.push({
+        cause: text,
+        confidence: coerceConfidence(
+          c && typeof c === 'object' ? c.confidence ?? c.probability ?? c.score : undefined
+        ),
+      });
+    }
+    // Best first, whatever order the model used.
+    likelyCauses.sort((a, b) => b.confidence - a.confidence);
+    likelyCauses = likelyCauses.slice(0, 3);
+  }
+
+  if (ctx.carnivore) {
+    const mentions = (t) => FERTILIZER_RE.test(t) || TAP_WATER_RE.test(t);
+    // An ACTION may legitimately mention either, as long as it is telling the
+    // owner to stay away from it ("never use tap water on this plant").
+    actions = actions.filter((t) => !mentions(t) || NEGATED_RE.test(t));
+    // A CAUSE gets no such exemption. "Nutrient deficiency from never
+    // fertilizing" reads as a warning to the regex, but it is really an argument
+    // FOR feeding — the one thing that must never reach a bog plant's owner.
+    likelyCauses = likelyCauses.filter((c) => !mentions(c.cause));
+  }
+
+  return {
+    summary,
+    watering_verdict: verdict,
+    observations,
+    likely_causes: likelyCauses,
+    actions,
+    confidence: coerceConfidence(p.confidence ?? p.certainty, 0.5),
+    not_a_plant: notAPlant,
   };
 }
 

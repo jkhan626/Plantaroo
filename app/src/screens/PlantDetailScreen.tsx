@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,8 +8,11 @@ import {
   TextInput,
   Alert,
   Platform,
+  Modal,
+  ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Svg, { Circle } from 'react-native-svg';
@@ -28,6 +31,7 @@ import { usePlant, useHistory, useJournal } from '../ui/hooks';
 import { useWaterAction } from '../ui/useWater';
 import { useToast } from '../ui/Toast';
 import { PlantAvatar, OptionSheet } from '../ui/components';
+import { PotSheet, potSummaryLabel, type PotValues } from '../ui/PotSheet';
 import { DateSheet } from '../ui/DateSheet';
 import { ImageViewerModal } from '../ui/ImageViewer';
 import { addPhotoToHistory, getAllPhotos, formatPhotoDate } from '../logic/photoHistory';
@@ -82,8 +86,14 @@ import {
 } from '../logic/careInfo';
 import { soilWarning } from '../logic/soilFit';
 import { rescheduleWateringReminders } from '../logic/notify';
-import { getPlants, getHistory, getJournal, dbDelete, dbAdd, genId } from '../data/db';
-import { choosePhoto } from '../lib/photo';
+import { getPlants, getHistory, getJournal, dbPut, dbDelete, dbAdd, genId } from '../data/db';
+import { choosePhoto, pickRawPhoto, resizeImage } from '../lib/photo';
+import {
+  localAiAvailable,
+  diagnosePlant,
+  type DiagnoseResult,
+  type WateringVerdict,
+} from '../lib/localAi';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type EditorField = 'moisture_pref' | 'fert_type' | 'water_source' | 'soil_type' | 'light_type' | 'room';
@@ -94,6 +104,13 @@ const RING_STROKE = 6;
 const RING_R = (RING_SIZE - RING_STROKE) / 2;
 const RING_C = 2 * Math.PI * RING_R;
 const MS_PER_DAY = 86_400_000;
+
+const VERDICT_LABELS: Record<WateringVerdict, string> = {
+  likely_overwatered: 'Probably too wet',
+  likely_underwatered: 'Probably too dry',
+  watering_ok: 'Watering looks fine',
+  unclear: 'Not sure from this photo',
+};
 
 interface Editor {
   field: EditorField;
@@ -116,8 +133,17 @@ export function PlantDetailScreen() {
   const [notesDraft, setNotesDraft] = useState('');
   const [dateOpen, setDateOpen] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [potOpen, setPotOpen] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [healthSheet, setHealthSheet] = useState<null | 'loading' | 'result' | 'error'>(null);
+  const [healthResult, setHealthResult] = useState<DiagnoseResult | null>(null);
+  const [healthErrorMsg, setHealthErrorMsg] = useState<string | null>(null);
+  const [healthPhoto, setHealthPhoto] = useState<string | null>(null);
+  const healthAbortRef = useRef<AbortController | null>(null);
+  const healthMountedRef = useRef(true);
 
   useEffect(() => {
     if (plant) setNotesDraft(plant.notes ?? '');
@@ -127,6 +153,22 @@ export function PlantDetailScreen() {
   useEffect(() => {
     if (!plant) nav.goBack();
   }, [plant, nav]);
+
+  // Gate the health-check action on server availability — hide entirely
+  // when unreachable, same as Add Plant's AI features. Abort any in-flight
+  // diagnose call on unmount so a late response never lands after teardown.
+  useEffect(() => {
+    healthMountedRef.current = true;
+    localAiAvailable().then((ok) => {
+      if (healthMountedRef.current) setAiAvailable(ok);
+    });
+    return () => {
+      healthMountedRef.current = false;
+      healthAbortRef.current?.abort();
+    };
+  }, []);
+
+  const insets = useSafeAreaInsets();
 
   if (!plant) return <SafeAreaView style={styles.root} />;
 
@@ -324,6 +366,21 @@ export function PlantDetailScreen() {
     patchPlant(plant, { [editor.field]: value } as Partial<Plant>);
   }
 
+  /** Store the pot values, deleting keys the user cleared back to "not set" —
+   * patchPlant can't remove a field (spread never erases), and Firestore
+   * rejects an explicit `undefined`, so build the full doc here instead. */
+  async function applyPot(values: PotValues) {
+    if (!plant) return;
+    const next: any = { ...plant };
+    delete next.pot_size;
+    delete next.pot_material;
+    delete next.pot_drainage;
+    if (values.pot_size) next.pot_size = values.pot_size;
+    if (values.pot_material) next.pot_material = values.pot_material;
+    if (values.pot_drainage !== undefined) next.pot_drainage = values.pot_drainage;
+    await dbPut('plants', next);
+  }
+
   function addJournalPhoto() {
     if (!plant) return;
     choosePhoto(
@@ -349,6 +406,135 @@ export function PlantDetailScreen() {
         onPress: () => dbDelete('journal', entryId),
       },
     ]);
+  }
+
+  // ---- Photo health check --------------------------------------------
+  // recent_events maps this plant's last 10 water/skip/late-answer history
+  // entries: "Skipped" -> skip; a watering logged with lateReason "Still wet"
+  // -> still_wet (valid evidence the schedule learned from); lateReason
+  // "Too busy" -> too_busy (gap discarded from learning); any other
+  // Watered/Watered + Fed -> a plain water event.
+  function buildDiagnoseParams(image: string) {
+    const recentEvents = allHistory
+      .filter((h) => h.plantId === plant!.id)
+      .filter((h) => h.type === 'Watered' || h.type === 'Watered + Fed' || h.type === 'Skipped')
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10)
+      .map((h) => ({
+        type: (h.type === 'Skipped'
+          ? 'skip'
+          : h.lateReason === 'Still wet'
+            ? 'still_wet'
+            : h.lateReason === 'Too busy'
+              ? 'too_busy'
+              : 'water') as 'water' | 'skip' | 'still_wet' | 'too_busy',
+        days_ago: Math.max(0, Math.round((Date.now() - new Date(h.date).getTime()) / MS_PER_DAY)),
+      }));
+    return {
+      image,
+      name: plant!.name.slice(0, 80),
+      light_type: plant!.light_type,
+      soil_type: plant!.soil_type,
+      moisture_pref: plant!.moisture_pref,
+      days_since_watered: plant!.last_watered
+        ? Math.round((Date.now() - new Date(plant!.last_watered).getTime()) / MS_PER_DAY)
+        : null,
+      current_interval: Math.max(1, Math.round(getClampedInterval(plant!))),
+      watering_count: plant!.watering_count || 0,
+      recent_events: recentEvents,
+      season: getSeasonLabel().toLowerCase() as 'winter' | 'spring' | 'summer' | 'fall',
+      notes: plant!.notes ? plant!.notes.slice(0, 300) : undefined,
+      ...(plant!.pot_size ? { pot_size: plant!.pot_size } : {}),
+      ...(plant!.pot_material ? { pot_material: plant!.pot_material } : {}),
+      ...(plant!.pot_drainage !== undefined ? { pot_drainage: plant!.pot_drainage } : {}),
+      carnivore: !!plant!.carnivore,
+    };
+  }
+
+  function closeHealthSheet() {
+    healthAbortRef.current?.abort();
+    setHealthSheet(null);
+  }
+
+  // Present the loading sheet after the picker's dismiss animation/interactions
+  // settle — on iOS an RN Modal opened in the same tick the picker resolves
+  // can silently fail to appear. runAfterInteractions covers the common case;
+  // the timeout is a fallback if no interaction handle is pending. Returns a
+  // canceller so a fast response can suppress a still-pending "loading" from
+  // clobbering the 'result'/'error' state it already set.
+  function presentHealthLoading(controller: AbortController): () => void {
+    let shown = false;
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      if (!healthMountedRef.current || controller.signal.aborted) return;
+      setHealthSheet('loading');
+    };
+    const handle = InteractionManager.runAfterInteractions(show);
+    const timer = setTimeout(show, 350);
+    return () => {
+      shown = true;
+      handle.cancel();
+      clearTimeout(timer);
+    };
+  }
+
+  async function runHealthCheck(rawUri: string) {
+    healthAbortRef.current?.abort();
+    const controller = new AbortController();
+    healthAbortRef.current = controller;
+    setHealthResult(null);
+    setHealthErrorMsg(null);
+    const cancelPresent = presentHealthLoading(controller);
+    try {
+      const uri768 = await resizeImage(rawUri, 768);
+      if (!healthMountedRef.current || controller.signal.aborted) return;
+      const result = await diagnosePlant(buildDiagnoseParams(uri768), { signal: controller.signal });
+      if (!healthMountedRef.current || controller.signal.aborted) return;
+      cancelPresent();
+      if (!result.ok) {
+        setHealthErrorMsg(
+          result.reason === 'rate_limited'
+            ? (result.retryAfterS ?? 0) > 3600
+              ? 'Daily limit reached, try tomorrow'
+              : 'Busy right now, try again in a minute'
+            : "Couldn't check right now",
+        );
+        setHealthSheet('error');
+        return;
+      }
+      setHealthPhoto(uri768);
+      setHealthResult(result.data);
+      setHealthSheet('result');
+    } catch {
+      if (!healthMountedRef.current || controller.signal.aborted) return;
+      cancelPresent();
+      setHealthErrorMsg("Couldn't check right now");
+      setHealthSheet('error');
+    }
+  }
+
+  function onHealthCheckPress() {
+    pickRawPhoto().then((rawUri) => {
+      if (rawUri) runHealthCheck(rawUri);
+    });
+  }
+
+  async function saveHealthToJournal() {
+    if (!plant || !healthResult || !healthPhoto) return;
+    const note = [VERDICT_LABELS[healthResult.watering_verdict], healthResult.summary, ...healthResult.actions.slice(0, 2)]
+      .filter(Boolean)
+      .join(' — ')
+      .slice(0, 500);
+    await dbAdd('journal', {
+      id: genId(),
+      plant_id: plant.id,
+      date: new Date().toISOString(),
+      photo: healthPhoto,
+      note,
+    });
+    toast.show({ message: 'Saved to journal' });
+    closeHealthSheet();
   }
 
   function confirmDelete() {
@@ -630,13 +816,22 @@ export function PlantDetailScreen() {
               Pick a symptom and get a diagnosis based on this plant’s real watering data.
             </Text>
           </Pressable>
+          {aiAvailable && (
+            <Pressable style={[styles.troubleshootBtn, { marginTop: 8 }]} onPress={onHealthCheckPress}>
+              <Text style={styles.troubleshootText}>Check plant health</Text>
+              <Text style={styles.troubleshootSub}>
+                Take or choose a photo for a quick look at how it’s doing.
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Setup */}
         <Section title="Setup">
           <Row label="Room" value={plant.room || '—'} onPress={() => openEditor('room')} />
           <Row label="Light" value={plant.light_type === 'grow' ? 'Grow light' : 'Natural'} onPress={() => openEditor('light_type')} />
-          <Row label="Soil mix" value={SOIL_TABLE[plant.soil_type]?.short ?? '—'} onPress={() => openEditor('soil_type')} last />
+          <Row label="Soil mix" value={SOIL_TABLE[plant.soil_type]?.short ?? '—'} onPress={() => openEditor('soil_type')} />
+          <Row label="Pot" value={potSummaryLabel(plant)} onPress={() => setPotOpen(true)} last />
         </Section>
 
         {/* Notes */}
@@ -761,12 +956,95 @@ export function PlantDetailScreen() {
         onSelect={applyEditor}
         onClose={() => setEditor(null)}
       />
+      <PotSheet
+        visible={potOpen}
+        initial={plant}
+        onDone={(values) => {
+          setPotOpen(false);
+          applyPot(values);
+        }}
+        onClose={() => setPotOpen(false)}
+      />
 
       <ImageViewerModal
         visible={imageViewerVisible}
         imageUri={selectedImage}
         onClose={() => setImageViewerVisible(false)}
       />
+
+      <Modal visible={healthSheet !== null} transparent animationType="slide" onRequestClose={closeHealthSheet}>
+        <Pressable style={styles.healthScrim} onPress={closeHealthSheet}>
+          <Pressable
+            style={[styles.healthSheet, { paddingBottom: insets.bottom + 16 }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.healthHandle} />
+            {healthSheet === 'loading' && (
+              <View style={styles.healthLoading}>
+                <ActivityIndicator size="small" color={colors.textTertiary} />
+                <Text style={styles.healthLoadingText}>Looking at your plant…</Text>
+              </View>
+            )}
+            {healthSheet === 'error' && (
+              <View style={styles.healthLoading}>
+                <Text style={styles.healthErrorText}>{healthErrorMsg}</Text>
+                <Pressable style={styles.healthDoneBtn} onPress={closeHealthSheet}>
+                  <Text style={styles.healthDoneText}>Done</Text>
+                </Pressable>
+              </View>
+            )}
+            {healthSheet === 'result' && healthResult && (
+              <ScrollView style={styles.healthScroll}>
+                {healthResult.not_a_plant ? (
+                  <Text style={styles.healthVerdict}>Couldn’t spot a plant in that photo.</Text>
+                ) : (
+                  <>
+                    <Text style={styles.healthVerdict}>{VERDICT_LABELS[healthResult.watering_verdict]}</Text>
+                    {healthResult.summary && <Text style={styles.healthSummary}>{healthResult.summary}</Text>}
+                    {healthResult.observations.length > 0 && (
+                      <View style={styles.healthSection}>
+                        <Text style={styles.healthSectionLabel}>What it sees</Text>
+                        {healthResult.observations.map((o, i) => (
+                          <Text key={i} style={styles.healthLine}>{o}</Text>
+                        ))}
+                      </View>
+                    )}
+                    {healthResult.likely_causes.length > 0 && (
+                      <View style={styles.healthSection}>
+                        <Text style={styles.healthSectionLabel}>Likely cause</Text>
+                        {healthResult.likely_causes.map((c, i) => (
+                          <Text key={i} style={styles.healthLine}>
+                            {c.cause}
+                            <Text style={styles.healthPct}>{`  ${Math.round(c.confidence * 100)}%`}</Text>
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                    {healthResult.actions.length > 0 && (
+                      <View style={styles.healthSection}>
+                        <Text style={styles.healthSectionLabel}>Try this</Text>
+                        {healthResult.actions.map((a, i) => (
+                          <Text key={i} style={styles.healthLine}>{a}</Text>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+                <View style={styles.healthBtnRow}>
+                  {!healthResult.not_a_plant && (
+                    <Pressable style={styles.healthSaveBtn} onPress={saveHealthToJournal}>
+                      <Text style={styles.healthSaveText}>Save to journal</Text>
+                    </Pressable>
+                  )}
+                  <Pressable style={styles.healthDoneBtn} onPress={closeHealthSheet}>
+                    <Text style={styles.healthDoneText}>Done</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1099,4 +1377,64 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   firstPhotoText: { color: colors.black, fontSize: font.size.xs, fontWeight: font.weight.semibold },
+
+  healthScrim: { flex: 1, backgroundColor: colors.scrim, justifyContent: 'flex-end' },
+  healthSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderColor: colors.hairline,
+  },
+  healthHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textMuted,
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  healthScroll: { maxHeight: 460 },
+  healthLoading: { alignItems: 'center', gap: 10, paddingVertical: 28 },
+  healthLoadingText: { color: colors.textTertiary, fontSize: font.size.md },
+  healthErrorText: { color: colors.textTertiary, fontSize: font.size.md, textAlign: 'center' },
+  healthVerdict: {
+    color: colors.textPrimary,
+    fontSize: font.size.xl,
+    fontWeight: font.weight.semibold,
+    marginBottom: 6,
+  },
+  healthSummary: { color: colors.textSecondary, fontSize: font.size.md, lineHeight: 20, marginBottom: 6 },
+  healthSection: { marginTop: 14 },
+  healthSectionLabel: {
+    color: colors.textMuted,
+    fontSize: font.size.xs,
+    fontWeight: font.weight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  healthLine: { color: colors.textPrimary, fontSize: font.size.md, lineHeight: 20, marginBottom: 4 },
+  healthPct: { color: colors.textTertiary, fontWeight: font.weight.regular, fontSize: font.size.sm },
+  healthBtnRow: { flexDirection: 'row', gap: 10, marginTop: 20, marginBottom: 4 },
+  healthSaveBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.greenBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthSaveText: { color: colors.green, fontSize: font.size.md, fontWeight: font.weight.semibold },
+  healthDoneBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthDoneText: { color: colors.black, fontSize: font.size.md, fontWeight: font.weight.semibold },
 });

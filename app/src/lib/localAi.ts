@@ -7,7 +7,7 @@
  * so callers can render a quiet fallback instead of an error.
  */
 import { currentUser } from './auth';
-import type { MoisturePref, FertType, WaterSource, SoilType, LightType } from '../types';
+import type { MoisturePref, FertType, WaterSource, SoilType, LightType, PotSize, PotMaterial } from '../types';
 
 export const LOCAL_AI_URL = 'https://jamal.taila00dc9.ts.net';
 
@@ -47,13 +47,62 @@ export interface ProfileParams {
   light_type: LightType;
   soil_type: SoilType;
   room?: string;
-  pot_size?: string;
+  pot_size?: PotSize;
+  pot_material?: PotMaterial;
+  pot_drainage?: boolean;
   notes?: string;
+}
+
+export type WateringVerdict = 'likely_overwatered' | 'likely_underwatered' | 'watering_ok' | 'unclear';
+
+export interface DiagnoseEvent {
+  type: 'water' | 'skip' | 'still_wet' | 'too_busy';
+  days_ago: number;
+}
+
+export interface DiagnoseParams {
+  image: string; // data URI, jpeg, 768px
+  name: string;
+  scientific_name?: string;
+  light_type: LightType;
+  soil_type: SoilType;
+  moisture_pref: MoisturePref;
+  days_since_watered: number | null;
+  current_interval: number;
+  watering_count: number;
+  recent_events: DiagnoseEvent[]; // <=10, most recent first
+  season: 'winter' | 'spring' | 'summer' | 'fall';
+  notes?: string; // <=300 chars
+  pot_size?: PotSize;
+  pot_material?: PotMaterial;
+  pot_drainage?: boolean;
+  carnivore?: boolean;
+}
+
+export interface DiagnoseCause {
+  cause: string;
+  confidence: number; // 0-1
+}
+
+export interface DiagnoseResult {
+  summary: string;
+  watering_verdict: WateringVerdict;
+  observations: string[];
+  likely_causes: DiagnoseCause[];
+  actions: string[];
+  confidence: number; // 0-1
+  not_a_plant: boolean;
 }
 
 const MOISTURE_PREFS: MoisturePref[] = ['moist', 'light_dry', 'moderate_dry', 'full_dry'];
 const FERT_TYPES: FertType[] = ['balanced', 'orchid_30_10_10', 'high_phosphorus', 'none'];
 const WATER_SOURCES: WaterSource[] = ['tap_ok', 'distilled_or_rain'];
+const WATERING_VERDICTS: WateringVerdict[] = [
+  'likely_overwatered',
+  'likely_underwatered',
+  'watering_ok',
+  'unclear',
+];
 
 async function authHeaders(): Promise<Record<string, string> | null> {
   const user = currentUser();
@@ -72,6 +121,7 @@ async function withTimeout<T>(
   externalSignal?: AbortSignal,
 ): Promise<T> {
   const controller = new AbortController();
+  if (externalSignal?.aborted) controller.abort();
   const timer = setTimeout(() => controller.abort(), ms);
   const onExternalAbort = () => controller.abort();
   externalSignal?.addEventListener('abort', onExternalAbort);
@@ -169,6 +219,34 @@ export async function generateProfile(
   }
 }
 
+export async function diagnosePlant(
+  params: DiagnoseParams,
+  opts?: { signal?: AbortSignal },
+): Promise<LocalAiResult<DiagnoseResult>> {
+  const headers = await authHeaders();
+  if (!headers) return { ok: false, reason: 'offline' };
+  try {
+    const res = await withTimeout(
+      (signal) =>
+        fetch(`${LOCAL_AI_URL}/api/diagnose`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(params),
+          signal,
+        }),
+      70_000,
+      opts?.signal,
+    );
+    const body = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, reason: reasonFromStatus(res.status, body), retryAfterS: body?.retry_after_s };
+    const validated = validateDiagnoseResult(body);
+    if (!validated) return { ok: false, reason: 'error' };
+    return { ok: true, data: validated };
+  } catch {
+    return { ok: false, reason: 'offline' };
+  }
+}
+
 // ---- validation helpers — coerce/reject defensively before trusting the model output ----
 
 function isFiniteNumber(v: unknown): v is number {
@@ -223,5 +301,35 @@ function validateAiProfile(body: any): AiProfile | null {
     clean_every_days: clean,
     rationale: typeof body.rationale === 'string' ? body.rationale : '',
     tips: Array.isArray(body.tips) ? body.tips.filter((t: unknown) => typeof t === 'string') : [],
+  };
+}
+
+function validateDiagnoseResult(body: any): DiagnoseResult | null {
+  if (!body || typeof body.summary !== 'string') return null;
+  const verdict = WATERING_VERDICTS.includes(body.watering_verdict) ? body.watering_verdict : 'unclear';
+  const observations = Array.isArray(body.observations)
+    ? body.observations.filter((o: unknown) => typeof o === 'string').slice(0, 8)
+    : [];
+  const likely_causes = Array.isArray(body.likely_causes)
+    ? body.likely_causes
+        .filter((c: any) => c && typeof c.cause === 'string')
+        .map((c: any) => ({
+          cause: c.cause,
+          confidence: isFiniteNumber(c.confidence) ? Math.max(0, Math.min(1, c.confidence)) : 0,
+        }))
+        .slice(0, 3)
+    : [];
+  const actions = Array.isArray(body.actions)
+    ? body.actions.filter((a: unknown) => typeof a === 'string').slice(0, 8)
+    : [];
+  const confidence = isFiniteNumber(body.confidence) ? Math.max(0, Math.min(1, body.confidence)) : 0;
+  return {
+    summary: body.summary,
+    watering_verdict: verdict,
+    observations,
+    likely_causes,
+    actions,
+    confidence,
+    not_a_plant: body.not_a_plant === true,
   };
 }

@@ -34,6 +34,7 @@ import {
   SelectRow,
   OptionSheet,
 } from '../ui/components';
+import { PotSheet, potSummaryLabel, type PotValues } from '../ui/PotSheet';
 import { useToast } from '../ui/Toast';
 import { Camera, ChevronLeft, Check } from '../ui/icons';
 import {
@@ -82,8 +83,9 @@ export function AddPlantScreen() {
   const [profile, setProfile] = useState<PlantProfile>(defaultProfile());
   const [matched, setMatched] = useState<null | boolean>(null);
   const [care, setCare] = useState<CareInfo | null>(null);
+  const [pot, setPot] = useState<PotValues>({});
 
-  const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'moisture' | 'fert' | 'water' | 'identify'>(null);
+  const [sheet, setSheet] = useState<null | 'room' | 'soil' | 'pot' | 'moisture' | 'fert' | 'water' | 'identify'>(null);
   // Soil the user explicitly chose to keep after a warning — don't re-nag at save.
   const soilWarnedRef = useRef<SoilType | null>(null);
 
@@ -118,6 +120,8 @@ export function AddPlantScreen() {
   soilRef.current = soil;
   const roomRef = useRef(room);
   roomRef.current = room;
+  const potRef = useRef(pot);
+  potRef.current = pot;
 
   // Abort in-flight identify/tailor requests and cancel the debounce on unmount.
   useEffect(() => {
@@ -230,6 +234,9 @@ export function AddPlantScreen() {
           light_type: lightRef.current,
           soil_type: soilRef.current,
           room: roomRef.current,
+          pot_size: potRef.current.pot_size,
+          pot_material: potRef.current.pot_material,
+          pot_drainage: potRef.current.pot_drainage,
         },
         { signal: controller.signal },
       );
@@ -281,8 +288,8 @@ export function AddPlantScreen() {
     runTailor();
   }
 
-  // Re-tailor whenever light or soil change after the first mount, as long as
-  // a plant name has been entered.
+  // Re-tailor whenever light, soil, or pot details change after the first
+  // mount, as long as a plant name has been entered.
   useEffect(() => {
     if (!lightSoilMounted.current) {
       lightSoilMounted.current = true;
@@ -290,7 +297,12 @@ export function AddPlantScreen() {
     }
     if (nameRef.current.trim()) scheduleTailor(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [light, soil]);
+  }, [light, soil, pot.pot_size, pot.pot_material, pot.pot_drainage]);
+
+  function onPotDone(values: PotValues) {
+    setPot(values);
+    setSheet(null);
+  }
 
   function applyIdentifiedCandidate(candidate: IdentifyCandidate, opts: { force: boolean }) {
     identifiedNameRef.current = candidate.common_name;
@@ -449,9 +461,12 @@ export function AddPlantScreen() {
       created_at: new Date().toISOString(),
     };
     // Firestore's setDoc rejects any explicit `undefined` field value — only
-    // write ai_rationale when there's an actual value (the default no-AI path
-    // has none).
+    // write ai_rationale/pot fields when there's an actual value (the default
+    // no-AI / not-set paths have none).
     if (aiRationale) plant.ai_rationale = aiRationale;
+    if (pot.pot_size) plant.pot_size = pot.pot_size;
+    if (pot.pot_material) plant.pot_material = pot.pot_material;
+    if (pot.pot_drainage !== undefined) plant.pot_drainage = pot.pot_drainage;
     await dbAdd('plants', plant);
     rescheduleWateringReminders(getPlants());
     toast.show({ message: `${trimmed} added` });
@@ -529,6 +544,8 @@ export function AddPlantScreen() {
             <SelectRow label="Room" valueLabel={room} onPress={() => setSheet('room')} />
             <View style={styles.divider} />
             <SelectRow label="Soil mix" valueLabel={SOIL_TABLE[soil].short} onPress={() => setSheet('soil')} />
+            <View style={styles.divider} />
+            <SelectRow label="Pot" valueLabel={potSummaryLabel(pot)} onPress={() => setSheet('pot')} />
           </View>
 
           <Field label="Light">
@@ -588,9 +605,10 @@ export function AddPlantScreen() {
           {!tailoring && aiRationale && (
             <View style={styles.tailoredRow}>
               <Text style={styles.tailoredText}>
-                <Text style={styles.tailoredLabel}>Tailored schedule  </Text>
+                <Text style={styles.tailoredLabel}>Starting point  </Text>
                 {aiRationale}
               </Text>
+              <Text style={styles.tailoredHint}>Plantaroo adjusts this as you water.</Text>
               <Pressable onPress={regenerateTailor} hitSlop={6}>
                 <Text style={styles.identifyAction}>Regenerate</Text>
               </Pressable>
@@ -708,6 +726,12 @@ export function AddPlantScreen() {
           touchedRef.current.add('water_source');
           setProfile((p) => ({ ...p, water_source: v as WaterSource }));
         }}
+        onClose={() => setSheet(null)}
+      />
+      <PotSheet
+        visible={sheet === 'pot'}
+        initial={pot}
+        onDone={onPotDone}
         onClose={() => setSheet(null)}
       />
       <OptionSheet
@@ -859,6 +883,7 @@ const styles = StyleSheet.create({
   },
   tailoredText: { color: colors.textTertiary, fontSize: 13, lineHeight: 17 },
   tailoredLabel: { color: colors.textSecondary, fontWeight: font.weight.semibold, fontSize: 13 },
+  tailoredHint: { color: colors.textMuted, fontSize: 12, lineHeight: 16 },
 
   rowLabel: { color: colors.textSecondary, fontSize: font.size.md },
   stepperRow: {

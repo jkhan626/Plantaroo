@@ -4,7 +4,9 @@ A small Express server that gives the Plantaroo iOS app two AI features at $0 ru
 calling a vision model running locally in [Ollama](https://ollama.com) on Jamal's Windows PC:
 
 - **`POST /api/identify`** — a photo in, plant candidates out.
-- **`POST /api/profile`** — a plant name plus the owner's setup in, a Plantaroo care profile out.
+- **`POST /api/profile`** — a plant name plus the owner's setup and pot in, a Plantaroo care
+  profile out.
+- **`POST /api/diagnose`** — a photo plus the plant's real watering history in, a health check out.
 
 The app reaches it over **Tailscale Funnel** (`https://jamal.taila00dc9.ts.net` → `localhost:3100`),
 so every request is treated as public internet traffic: a per-IP token bucket in front of everything,
@@ -66,8 +68,12 @@ cors
   -> requireAuth                (HEADERS ONLY — runs before any body is read)
   -> Content-Type: json check   (after auth, so anonymous callers get a bare 401)
   -> express.json (4 MB limit)
-  -> per-uid daily quota
   -> route
+       validate body / cheap image checks
+         -> per-uid daily quota    (charged only once the body is known to be good)
+         -> GPU gate
+         -> base64 decode
+         -> generate
 ```
 
 Auth before the body parser is deliberate: an unauthenticated 4 MB POST must cost a 401 and nothing
@@ -81,10 +87,19 @@ observable:
   no such line appears for a rejected request. `GET /api/status` totals the same numbers in
   `counters.json_bodies` / `counters.json_bytes`.
 
-Inside `/api/identify` the same logic applies to the GPU: only cheap checks (payload length, data-URI
-mime, base64 magic bytes) happen before the concurrency gate, and the base64 **decode** waits until a
-generation slot is actually held. Otherwise eight queued requests would each sit on megabytes of
-decoded image for the whole 15 s wait.
+**The per-uid daily quota is charged late, on purpose.** It is not middleware: each route spends a
+token by hand, *after* its body validation and cheap image precheck have passed and *before* the GPU
+gate. A request that fails validation costs a `400` and no quota — an app bug that sends the wrong
+enum, or a retry loop on a malformed body, cannot quietly eat a user's 20 diagnoses for the day.
+Nothing is given away by the reordering: a flood of invalid bodies from a valid token is still bounded
+by the per-client (30/min) and global (240/min) buckets at the very front of the pipeline, which do
+not care whether a request is well-formed, and nothing expensive — a GPU slot, a base64 decode, a
+generation — can happen on an uncharged request. `npm run test:quota` pins the ordering.
+
+Inside `/api/identify` and `/api/diagnose` the same logic applies to the GPU: only cheap checks
+(payload length, data-URI mime, base64 magic bytes) happen before the concurrency gate, and the
+base64 **decode** waits until a generation slot is actually held. Otherwise eight queued requests
+would each sit on megabytes of decoded image for the whole 15 s wait.
 
 ## Endpoints
 
@@ -144,14 +159,29 @@ Request (`name`, `light_type` and `soil_type` are required):
   "light_type": "natural",
   "soil_type": "chunky_aroid",
   "room": "Living room",
-  "pot_size": "10 inch",
+  "pot_size": "medium",
+  "pot_material": "terracotta",
+  "pot_drainage": true,
   "notes": "Near a south window"
 }
 ```
 
 - `light_type`: `grow` | `natural`
 - `soil_type`: `chunky_aroid` | `orchid_bark` | `sphagnum_moss` | `regular_perlite` | `cactus_gritty` | `carnivore_peat`
-- `name` ≤ 80 chars, `room` / `pot_size` ≤ 40, `notes` ≤ 300
+- `name` ≤ 80 chars, `room` ≤ 40, `notes` ≤ 300
+
+**Pot (all three optional, absent = unknown):**
+
+| Field | Values | Meaning |
+|---|---|---|
+| `pot_size` | `small` \| `medium` \| `large` | under 4 in / 10 cm · 4–8 in · over 8 in |
+| `pot_material` | `terracotta` \| `plastic` \| `glazed` \| `other` | `terracotta` means unglazed and porous |
+| `pot_drainage` | `true` \| `false` | whether the pot has a drainage hole |
+
+`pot_size` used to be free text (`"10 inch"`) and is now an **enum** — anything else is a `400`. All
+three are validated strictly: `pot_drainage` must be a real JSON boolean, not `"true"`. Whatever is
+left out stays unknown, and the prompt tells the model to assume the ordinary case for just that
+part (and a medium plastic pot with drainage when nothing at all was given).
 
 Response:
 
@@ -170,11 +200,169 @@ Response:
 }
 ```
 
-**`species_baseline_days` is the species baseline only** — the days between waterings in a standard
-well-draining mix under average indoor conditions during the growing season. The app applies its own
-soil factor and seasonal multiplier on top, so the model is explicitly told not to bake soil or
-season into that number. Light, soil, room and pot size shape `rationale`, `tips`, and genuine edge
-cases (carnivores need distilled water, orchids use `orchid_30_10_10`, succulents feed rarely).
+**`species_baseline_days` is the baseline for this plant _in its pot_** — the days between waterings
+in a standard well-draining mix under average indoor conditions during the growing season, in the pot
+described by the request (or a medium plastic pot with drainage when none was given). The app applies
+its own soil factor and seasonal multiplier on top, so the model is still explicitly told **not** to
+bake the potting medium or the season into that number.
+
+The pot is the one setup field that legitimately moves the baseline, because it decides how fast the
+water actually leaves:
+
+| Pot | Effect on `species_baseline_days` |
+|---|---|
+| unglazed terracotta (porous, wicks water out) | **shorter** |
+| small (little reservoir) | **shorter** |
+| large (deep reservoir) | **longer** |
+| glazed ceramic or plastic (sealed) | **longer** than terracotta |
+| no drainage hole | **longer** still, and the advice turns cautious |
+
+The model is also told not to stack those into an absurd number: a small terracotta pot rarely more
+than halves the species figure, a large glazed pot with no drainage rarely more than doubles it.
+Light, soil and room still shape only `rationale`, `tips`, and genuine edge cases (carnivores need
+distilled water, orchids use `orchid_30_10_10`, succulents feed rarely) — never the baseline. When any
+pot detail is given, `rationale` must mention the pot; when the pot has **no drainage hole**, one tip
+must warn about it.
+
+### `POST /api/diagnose`
+
+A photo health check. Same auth, same image rules as `/api/identify` (data URI or bare base64,
+JPEG/PNG, ≤ 2 MB decoded, ≤ 4096 px a side). The difference is that the model is also handed the
+plant's real watering record, so it can reason about the photo and the history together rather than
+guessing from pixels alone.
+
+Request (everything except `scientific_name` and `notes` is required):
+
+```json
+{
+  "image": "data:image/jpeg;base64,/9j/4AAQ...",
+  "name": "Citrus Seedling",
+  "scientific_name": "Citrus aurantium",
+  "light_type": "natural",
+  "soil_type": "regular_perlite",
+  "moisture_pref": "light_dry",
+  "days_since_watered": 1,
+  "current_interval": 5,
+  "watering_count": 41,
+  "recent_events": [
+    { "type": "water", "days_ago": 1 },
+    { "type": "still_wet", "days_ago": 6 },
+    { "type": "too_busy", "days_ago": 24 }
+  ],
+  "season": "summer",
+  "pot_size": "small",
+  "pot_material": "terracotta",
+  "pot_drainage": true,
+  "carnivore": false,
+  "notes": "One leaf has gone pale yellow with green veins."
+}
+```
+
+| Field | Rule |
+|---|---|
+| `image` | required; identical rules to `/api/identify` |
+| `name` | required, ≤ 80 chars |
+| `scientific_name` | optional, ≤ 120 chars |
+| `light_type` | `grow` \| `natural` |
+| `soil_type` | the six `SoilType` values (see `/api/profile`) |
+| `moisture_pref` | `moist` \| `light_dry` \| `moderate_dry` \| `full_dry` |
+| `days_since_watered` | number ≥ 0, or `null` for "never watered in the app" |
+| `current_interval` | number ≥ 1 — the app's current learned/base interval in days |
+| `watering_count` | number ≥ 0 |
+| `recent_events` | array, **≤ 10**, most recent first; `{ "type": "water"\|"skip"\|"still_wet"\|"too_busy", "days_ago": number }`. Optional — absent means `[]` |
+| `season` | `winter` \| `spring` \| `summer` \| `fall` |
+| `pot_size` | optional, `small` \| `medium` \| `large` — the same three enums as `/api/profile` |
+| `pot_material` | optional, `terracotta` \| `plastic` \| `glazed` \| `other` |
+| `pot_drainage` | optional, `true` \| `false` |
+| `carnivore` | optional, `true` \| `false` — the flag the app already stores for this plant |
+| `notes` | optional, ≤ 300 chars |
+
+**The pot is context for the watering verdict, not decoration.** The pot decides how fast the water
+actually leaves, so the same nine-day gap means different things in different pots, and the prompt
+says so: unglazed terracotta wicks moisture out through its walls and dries **faster** than the
+interval alone suggests (which also makes soggy soil in a terracotta pot a strong overwatering
+signal); a small pot runs out sooner; a large one stays wet deep in the middle long after the surface
+looks dry; glazed ceramic and plastic seal the water in; and **no drainage hole** means excess water
+cannot escape at all, so root rot leads the list of risks. The model is told to weigh the gap since
+the last watering against how fast *this* pot dries rather than against the interval in isolation.
+
+Unlike `/api/profile`, anything the app leaves out is **not** filled in with an assumption: diagnose
+has the photo, so the model is told to read the pot there first and only fall back to "an ordinary
+medium plastic pot with a drainage hole" when it cannot see one.
+
+`carnivore` is the flag the app already stores on the plant. It is only ever an *extra* signal — the
+server treats the plant as carnivorous if the flag is `true` **or** the potting medium is
+`carnivore_peat` **or** the name matches a bog genus, so `carnivore: false` cannot switch the
+protection off for something that is plainly a Venus fly trap. When any of the three fires, the
+prompt states it as a fact up front as well as relying on rule 7.
+
+Request validation is strict: a bad enum, a string where a number belongs, or an 11th event is a
+`400` with a `detail` naming the field (`recent_events[3].type must be one of: ...`) rather than
+something quietly reinterpreted. Model *output* is the opposite — coerced and clamped, never
+rejected for a near-miss.
+
+**The event types are explained to the model,** because two of them mean opposite things:
+
+| Event | What the model is told |
+|---|---|
+| `water` | a watering |
+| `skip` | the owner deliberately skipped a scheduled watering |
+| `still_wet` | the schedule said water, the owner found the soil **still wet**. Real evidence about the *plant*: it is being scheduled too often, or this pot and medium dry more slowly than assumed |
+| `too_busy` | the watering ran late for **human** reasons. Evidence about the *owner*, not the plant — never to be read as the plant tolerating drought |
+
+Response:
+
+```json
+{
+  "summary": "The plant shows signs of overwatering with pale yellow leaves. Check watering frequency.",
+  "watering_verdict": "likely_overwatered",
+  "observations": ["Pale yellow leaf with green veins"],
+  "likely_causes": [{ "cause": "Repeated 'still wet' events", "confidence": 0.8 }],
+  "actions": ["Check soil moisture", "Consider a longer watering interval"],
+  "confidence": 0.8,
+  "not_a_plant": false
+}
+```
+
+| Field | Guarantee |
+|---|---|
+| `summary` | non-empty, ≤ 200 chars, trimmed on a word boundary |
+| `watering_verdict` | exactly one of `likely_overwatered`, `likely_underwatered`, `watering_ok`, `unclear` |
+| `observations` | ≤ 4 strings, ≤ 120 chars each, deduped, no empties |
+| `likely_causes` | ≤ 3 `{cause, confidence}`, `cause` ≤ 80 chars, `confidence` 0–1, **sorted best first**, deduped |
+| `actions` | ≤ 3 strings, ≤ 140 chars each, deduped |
+| `confidence` | 0–1 (a percentage is rescaled; a non-numeric answer falls back to 0.5) |
+| `not_a_plant` | boolean |
+
+**`not_a_plant: true`** forces `watering_verdict: "unclear"` and empties all three arrays, whatever
+else the model said; `summary` explains what the photo appears to show instead. It is the one place a
+value is invented rather than coerced: if the model flags "not a plant" but leaves `summary` blank,
+the server fills in a fixed sentence rather than answering `502` — "that isn't a plant" is a
+complete, useful reply and the user should get it.
+
+The prompt tells the model to reason from **both** the photo and the record, to say so when the photo
+is ambiguous rather than guess, to be conservative ("Consider …", "Check …", never "you must"), never
+to name a medicine, pesticide or commercial product, and never to suggest fertilizer or tap water for
+a carnivorous plant. That last one is enforced in code as well: when **any** of the three signals fires
+(the request's `carnivore: true`, a `carnivore_peat` potting medium, or a name or scientific name
+matching a carnivorous genus or common name), any `action` recommending fertilizer or tap water is
+dropped (an action *warning against* them survives), and any `likely_cause` mentioning either is
+dropped outright — "nutrient deficiency from never fertilizing" reads as a warning but is really an
+argument for feeding, which is the one thing a bog plant's owner must not be told.
+
+One more guardrail worth knowing about: the model's first instinct was to answer `likely_overwatered`
+for a visibly healthy plant purely because it had been watered on schedule. The prompt now says
+explicitly that a record which simply follows the app's own interval is **normal**, and that an
+over/under verdict needs the photo or a `still_wet` / late-watering pattern behind it.
+
+Unusable model output gets one corrective retry, then `502 { "error": "model_output_invalid" }`. The
+retry deliberately re-sends **text only, not the photo**: the model has already made its findings and
+only has to re-emit them in the right shape, and a second vision-encode pass would not fit the
+timeout budget.
+
+Logging is deliberately minimal here — a health check is about the user's own plant and its problems,
+so the success line carries `uid`, `ms` and `verdict` and nothing else. No plant name, no summary, no
+observations, and (as everywhere) never the image.
 
 ### Server-side clamping
 
@@ -246,9 +434,9 @@ the tailscale binary cannot be found it warns instead of failing; if the check c
 | Bad/missing token | 401 | `{ "error": "unauthorized" }` |
 | Invalid field / enum / non-JSON body | 400 | `{ "error": "bad_request", "detail": "..." }` |
 | Decoded image > 2 MB, > 4096 px a side, or body > 4 MB | 413 | `{ "error": "image_too_large" }` |
-| > 20 identifies or > 80 profiles per uid per rolling 24 h | 429 | `{ "error": "rate_limited", "retry_after_s": N }` |
+| > 20 identifies, > 80 profiles or > 20 diagnoses per uid per rolling 24 h (three separate buckets; **only requests that passed validation are counted**) | 429 | `{ "error": "rate_limited", "retry_after_s": N }` |
 | 2 generations in flight and 8 already queued, or still waiting after 15 s | 503 | `{ "error": "busy" }` |
-| Ollama slower than 50 s (identify) / 25 s + 15 s retry (profile) | 504 | `{ "error": "model_timeout" }` |
+| Ollama slower than 50 s (identify) / 25 s + 15 s retry (profile) / 35 s + 15 s retry (diagnose) | 504 | `{ "error": "model_timeout" }` |
 | Model returned unusable JSON after one retry | 502 | `{ "error": "model_output_invalid" }` |
 | Ollama down or erroring | 502 | `{ "error": "model_unavailable" }` |
 
@@ -309,13 +497,17 @@ the `ip_limited` / `global_limited` counters.
 
 ### Timeout budget
 
-The app client allows **70 s for identify** and **60 s for profile**. Every server path fits inside
-that:
+The app client allows **70 s for identify**, **60 s for profile** and **70 s for diagnose**. Every
+server path fits inside that:
 
 | | queue wait | generation | worst case | client cap |
 |---|---|---|---|---|
 | identify | ≤ 15 s | ≤ 50 s | **65 s** | 70 s |
 | profile | ≤ 15 s | ≤ 25 s + one ≤ 15 s retry | **55 s** | 60 s |
+| diagnose | ≤ 15 s | ≤ 35 s + one ≤ 15 s retry | **65 s** | 70 s |
+
+Diagnose fits the same 65 s worst case as identify despite also retrying, because its retry re-sends
+text only — no second vision-encode pass.
 
 `server.requestTimeout` and `server.headersTimeout` are both 80 s, just outside the worst case.
 **Changing any of these means changing the client's timeouts to match.**
@@ -359,11 +551,25 @@ curl -s -X POST http://127.0.0.1:3100/api/identify \
   -H 'content-type: application/json' \
   -d "{\"image\":\"data:image/jpeg;base64,$B64\"}"
 
-# profile, over Funnel
+# profile, over Funnel, with pot details
 curl -s -X POST https://jamal.taila00dc9.ts.net/api/profile \
   -H "authorization: Bearer $ID_TOKEN" \
   -H 'content-type: application/json' \
-  -d '{"name":"Pothos","light_type":"grow","soil_type":"regular_perlite"}'
+  -d '{"name":"Pothos","light_type":"grow","soil_type":"regular_perlite",
+       "pot_size":"small","pot_material":"terracotta","pot_drainage":true}'
+
+# diagnose
+B64=$(base64 -w0 test/fixtures/chlorosis.jpg)
+curl -s -X POST http://127.0.0.1:3100/api/diagnose \
+  -H "authorization: Bearer $ID_TOKEN" \
+  -H 'content-type: application/json' \
+  -d "{\"image\":\"data:image/jpeg;base64,$B64\",
+       \"name\":\"Citrus Seedling\",\"light_type\":\"natural\",
+       \"soil_type\":\"regular_perlite\",\"moisture_pref\":\"light_dry\",
+       \"days_since_watered\":1,\"current_interval\":5,\"watering_count\":41,
+       \"recent_events\":[{\"type\":\"still_wet\",\"days_ago\":6}],
+       \"season\":\"summer\",\"pot_size\":\"small\",
+       \"pot_material\":\"terracotta\",\"pot_drainage\":true}"
 ```
 
 Simulating a Funnel client from loopback — useful for checking that the per-client bucket really is
@@ -387,9 +593,47 @@ anything the client sent.)
 npm test                            # node --test test/unit.mjs
 ```
 
-No server, no network, no Ollama: it pins the client-IP derivation table above (forwarded IP wins,
-garbage falls back to the socket address, a non-loopback peer ignores the header) and the
-`DEV_ALLOW_NO_AUTH` rule that it must not follow.
+No server, no network, no Ollama (58 tests). It pins the client-IP derivation table above (forwarded
+IP wins, garbage falls back to the socket address, a non-loopback peer ignores the header), the
+`DEV_ALLOW_NO_AUTH` rule that it must not follow, and the validation/clamping layer: the pot enums on
+**both** `/api/profile` and `/api/diagnose` (including that `pot_drainage: false` survives as `false`
+rather than collapsing into "unknown"), the whole `/api/diagnose` request contract, and every clamp on
+diagnose output — the 200-char summary, the verdict aliases, the 4/3/3 caps with dedupe, best-first
+cause ordering, confidence coercion, the `not_a_plant` override, and the carnivore advice filter.
+
+For the diagnose pot and carnivore context specifically it checks that the pot reaches the prompt as
+*drying* context (not just as a listed fact), that an unspecified pot sends the model to the photo
+while `/api/profile` keeps its own "assume a medium plastic pot" wording, that a carnivore is stated
+as a fact when the flag **or** the `carnivore_peat` medium says so, and that the three-signal
+`carnivore` rule holds — including that `carnivore: false` cannot unset a Venus fly trap.
+
+## Quota-ordering check
+
+```bash
+npm run test:quota                  # or: node test/quota-order.mjs
+```
+
+Pins the one rule that unit tests cannot reach — **a per-uid daily quota is spent only by requests
+that passed validation** — because the thing being asserted is the order of statements inside an
+Express route, and `server.js` starts listening at import time.
+
+It spawns its **own** server and never touches the live one: port `3199`, `DEV_ALLOW_NO_AUTH=1` with
+`TAILSCALE_EXE` pointed at a path that does not exist (so the Funnel guard takes its "cannot verify"
+branch and warns instead of refusing to start), and `OLLAMA_URL` pointed at a closed port so a request
+that gets past the quota fails immediately with `502 model_unavailable` instead of holding the GPU for
+35 s. That `502` is the proof: it means the request was charged and reached generation.
+
+Per endpoint (`/api/diagnose` and `/api/identify`, both 20/day), in a fresh server process so their
+per-client buckets cannot pool:
+
+1. five malformed bodies → `400` each, and they must cost no quota;
+2. twenty well-formed bodies → `502` each, and **none** may be `429` (with the limiter in front of
+   validation the last five were, because the rejects had already spent five tokens);
+3. one more → `429` with `retry_after_s` and a `Retry-After` header, proving the allowance is real
+   and exactly 20 valid calls fit inside it.
+
+26 requests per endpoint stays under the per-client bucket's 30/min. `/api/profile` is not covered —
+its 80/day allowance would need 86 requests — but its charge site is line-for-line the same.
 
 ## Smoke test
 
@@ -419,9 +663,23 @@ Additionally in TOKEN/DEV mode: three fixture identifies, a 2.4 MB image → 413
 Alocasia Dragon Scale), every carnivore field asserted on a Cape Sundew, `mist`/`clean` in 1–90, and a
 bad enum → 400.
 
+Plus, for the pot and diagnose work:
+
+- **the same plant in opposite pots** — one small unglazed terracotta pot with drainage, one large
+  glazed pot without. The terracotta baseline must come back **shorter than or equal to** the glazed
+  one, the terracotta rationale must mention the pot, and the no-drainage answer must warn about it
+  somewhere. Free-text `pot_size: "4 inch"` must be a 400.
+- **two diagnose photos** — the healthy monstera fixture (expected to read as fine) and a Wikimedia
+  photo of a potted citrus seedling with clear interveinal chlorosis, sent with a history containing
+  two `still_wet` events. Every field of the response is asserted against the caps in the table
+  above, including that `likely_causes` comes back best-first.
+- **diagnose request validation** — a bad `recent_events[].type` and a missing `season` each get a
+  `400` naming the field.
+
 Fixture photos come from **Wikimedia Commons only** (stable `Special:FilePath` URLs, freely licensed)
 and are downloaded into the gitignored `test/fixtures/` on first use — there is no dependency on the
-untracked repo-root `plant-images.json`.
+untracked repo-root `plant-images.json`. The diagnose fixture is
+`Chlorose ferrique sur Citrus aurantium.jpg`, saved as `chlorosis.jpg`.
 
 The per-IP limiter check runs **last** and empties that bucket on purpose, so wait ~60 s between
 runs or the next one starts rate-limited. It empties the loopback client bucket (the smoke test sends
