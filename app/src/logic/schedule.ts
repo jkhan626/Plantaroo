@@ -148,6 +148,7 @@ export interface DueText {
 
 export function getDueText(plant: Plant): DueText {
   if (!plant.last_watered) return { text: 'Never watered', status: 'never' };
+  if (isSnoozed(plant)) return { text: 'Still wet — check tomorrow', status: 'later' };
   const d = getDaysUntilDue(plant);
   if (d < -1) return { text: `${Math.abs(d)}d overdue`, status: 'overdue' };
   if (d === -1) return { text: '1d overdue', status: 'overdue' };
@@ -176,6 +177,7 @@ export function relativeDayLabel(iso: string | null): string {
 export function formatDueDate(plant: Plant): string {
   const due = getNextDueDate(plant);
   if (!due) return 'After first watering';
+  if (isSnoozed(plant)) return 'Still wet — check tomorrow';
   const d = getDaysUntilDue(plant);
   if (d < -1) return `${Math.abs(d)} days overdue`;
   if (d === -1) return '1 day overdue';

@@ -88,6 +88,7 @@ Runs on **Jamal's PC**, $0: Ollama `qwen2.5vl:7b` (vision, ~6 GB VRAM) behind `l
 - Reads come from the in-memory `_cache`; **all writes go through `dbPut/dbAdd/dbDelete`** so the cache and Firestore stay in sync. Don't read Firestore directly in feature code — use the `db*` API.
 - `learned_interval` and `seasonal_multiplier` are always separate. Multiplier applied at display time, never stored.
 - Late "too busy" gaps discarded from learning. "Still wet" gaps are valid evidence.
+- **"Still wet" on a To Do card is snooze-only (decided 2026-09-13):** it hides the plant until tomorrow, sets `still_wet_at`, logs a `Still wet` history event, and feeds NOTHING into `recent_valid_gaps`. The next real watering skips the late prompt and records the real gap as valid evidence. Never re-add a synthetic "+1 day" nudge.
 - `next_due`, feed flags, seasonal adjustments are **computed, never stored**.
 - Single `index.html` pattern — no React, no build tools. Firebase loads via CDN ESM imports in the module script.
 - Failed API profile lookups are NOT cached — only successful responses.

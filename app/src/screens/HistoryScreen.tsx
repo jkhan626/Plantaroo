@@ -55,6 +55,7 @@ const TYPE_COLOR: Record<string, string> = {
   Cleaned: colors.textSecondary,
   Pruned: colors.orange,
   'Growth photo': colors.lightBlue,
+  'Still wet': colors.textTertiary,
 };
 
 /** Unified row: a real history event, or a journal entry shown alongside. */
@@ -74,6 +75,7 @@ const TYPE_FILTERS: { label: string; types: string[] | null }[] = [
   { label: 'Watered', types: ['Watered', 'Watered + Fed'] },
   { label: 'Fed', types: ['Watered + Fed'] },
   { label: 'Skipped', types: ['Skipped'] },
+  { label: 'Still wet', types: ['Still wet'] },
   { label: 'Misted', types: ['Misted'] },
   { label: 'Cleaned', types: ['Cleaned'] },
   { label: 'Pruned', types: ['Pruned'] },

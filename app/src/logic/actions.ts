@@ -8,7 +8,6 @@ import { writeWateringSummary } from '../lib/wateringSummary';
 import {
   getEffectiveStartingInterval,
   getLearnedInterval,
-  getClampedInterval,
   updateIntervalFromGap,
 } from './schedule';
 import { isFeedDue } from './fertilize';
@@ -43,11 +42,16 @@ export async function waterPlant(
   const at = when ? new Date(when) : new Date();
   const now = at.toISOString();
 
+  // A prior "still wet" report in this cycle is already-confirmed evidence:
+  // treat this watering as still_wet even if the caller didn't re-ask.
+  const effectiveReason: LateChoice =
+    lateReason === null && plant.still_wet_at ? 'still_wet' : lateReason;
+
   if (plant.last_watered) {
     const gapDays = (at.getTime() - new Date(plant.last_watered).getTime()) / MS_PER_DAY;
     // A backdated event whose gap is the real interval is valid evidence; a
     // non-positive gap (same day / before the prior watering) teaches nothing.
-    if (lateReason !== 'too_busy' && gapDays > 0) {
+    if (effectiveReason !== 'too_busy' && gapDays > 0) {
       updateIntervalFromGap(plant, gapDays); // 'still_wet' & on-time gaps are valid evidence
     }
     // 'too_busy': discard the gap entirely — keep prior learning.
@@ -58,6 +62,7 @@ export async function waterPlant(
 
   plant.last_watered = now;
   plant.snooze_until = null; // watering clears any "still wet" snooze
+  plant.still_wet_at = null; // and the still-wet report for this cycle
   plant.watering_count = (plant.watering_count || 0) + 1;
 
   let type: HistoryType = 'Watered';
@@ -70,7 +75,7 @@ export async function waterPlant(
   await dbPut('plants', plant);
 
   const label: LateReason =
-    lateReason === 'still_wet' ? 'Still wet' : lateReason === 'too_busy' ? 'Too busy' : null;
+    effectiveReason === 'still_wet' ? 'Still wet' : effectiveReason === 'too_busy' ? 'Too busy' : null;
   const entry: HistoryEntry = {
     id: genId(),
     plantId: plant.id,
@@ -93,6 +98,7 @@ export async function skipPlant(input: Plant): Promise<{ undo: UndoToken }> {
   const now = new Date().toISOString();
   plant.last_watered = now; // anchor moves; watering_count & gaps untouched
   plant.snooze_until = null; // skipping clears any "still wet" snooze
+  plant.still_wet_at = null;
   await dbPut('plants', plant);
 
   const entry: HistoryEntry = {
@@ -112,22 +118,34 @@ export async function skipPlant(input: Plant): Promise<{ undo: UndoToken }> {
 
 /**
  * "Still wet" — the plant is due but the soil is still moist, so don't water.
- * Hide it from the To Do list until tomorrow, and gently teach the schedule it
- * can wait a little longer (one day past the current prediction is valid
- * evidence). No watering is logged, so the plant isn't over-watered.
+ * Hide it from the To Do list until tomorrow. This does NOT feed the learning
+ * model — it only pushes the plant out a day. When the plant is eventually
+ * watered, the real gap since the last watering is the evidence (see
+ * `waterPlant`'s `still_wet_at` handling), so the late prompt won't ask again.
  */
 export async function stillWetDefer(input: Plant): Promise<{ undo: UndoToken }> {
   const snapshot = clone(input);
   const plant = clone(input);
+  const now = new Date().toISOString();
   // Reappear at the start of the next local day.
   const t = new Date();
   const tomorrow = new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1, 0, 0, 0);
   plant.snooze_until = tomorrow.toISOString();
-  // Gentle learning: it lasted ~one day longer than predicted.
-  if (plant.last_watered) updateIntervalFromGap(plant, getClampedInterval(plant) + 1);
+  plant.still_wet_at = now;
   await dbPut('plants', plant);
+
+  const entry: HistoryEntry = {
+    id: genId(),
+    plantId: plant.id,
+    plantName: plant.name,
+    date: now,
+    type: 'Still wet',
+    lateReason: null,
+  };
+  const historyId = (await dbAdd('history', entry)) as number;
+
   writeWateringSummary(getPlants());
-  return { undo: { snapshot, historyId: -1 } }; // no history entry to remove
+  return { undo: { snapshot, historyId } };
 }
 
 /** Repot: suppress fertilizer for 2 weeks and reset the repot-check anchor. */

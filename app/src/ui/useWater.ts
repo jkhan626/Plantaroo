@@ -47,6 +47,11 @@ export function useWaterAction() {
 
   function water(plant: Plant, cb?: WaterCallbacks) {
     const days = getDaysUntilDue(plant);
+    // Already confirmed still wet this cycle — don't ask again, just log it.
+    if (plant.still_wet_at) {
+      doWater(plant, 'still_wet', cb);
+      return;
+    }
     if (plant.last_watered && days < 0) {
       Alert.alert(
         'Watering late?',

@@ -53,6 +53,7 @@ import {
   formatDueDate,
   getDaysUntilDue,
   relativeDayLabel,
+  isSnoozed,
 } from '../logic/schedule';
 import {
   SOIL_TABLE,
@@ -175,8 +176,15 @@ export function PlantDetailScreen() {
   const interval = getClampedInterval(plant);
   const seasonal = getSeasonalMultiplier(plant.light_type);
   const dueDays = getDaysUntilDue(plant);
-  const dueColor =
-    !plant.last_watered ? colors.blue : dueDays < 0 ? colors.red : dueDays <= 2 ? colors.orange : colors.textPrimary;
+  const dueColor = !plant.last_watered
+    ? colors.blue
+    : isSnoozed(plant)
+      ? colors.textTertiary
+      : dueDays < 0
+        ? colors.red
+        : dueDays <= 2
+          ? colors.orange
+          : colors.textPrimary;
 
   // Ring progress: how far through the effective interval we are.
   const effectiveInterval = interval * seasonal;
@@ -409,21 +417,28 @@ export function PlantDetailScreen() {
   }
 
   // ---- Photo health check --------------------------------------------
-  // recent_events maps this plant's last 10 water/skip/late-answer history
-  // entries: "Skipped" -> skip; a watering logged with lateReason "Still wet"
-  // -> still_wet (valid evidence the schedule learned from); lateReason
-  // "Too busy" -> too_busy (gap discarded from learning); any other
-  // Watered/Watered + Fed -> a plain water event.
+  // recent_events maps this plant's last 10 water/skip/still-wet/late-answer
+  // history entries: "Skipped" -> skip; a "Still wet" defer entry -> still_wet;
+  // a watering logged with lateReason "Still wet" -> still_wet (valid evidence
+  // the schedule learned from); lateReason "Too busy" -> too_busy (gap
+  // discarded from learning); any other Watered/Watered + Fed -> a plain
+  // water event.
   function buildDiagnoseParams(image: string) {
     const recentEvents = allHistory
       .filter((h) => h.plantId === plant!.id)
-      .filter((h) => h.type === 'Watered' || h.type === 'Watered + Fed' || h.type === 'Skipped')
+      .filter(
+        (h) =>
+          h.type === 'Watered' ||
+          h.type === 'Watered + Fed' ||
+          h.type === 'Skipped' ||
+          h.type === 'Still wet',
+      )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10)
       .map((h) => ({
         type: (h.type === 'Skipped'
           ? 'skip'
-          : h.lateReason === 'Still wet'
+          : h.type === 'Still wet' || h.lateReason === 'Still wet'
             ? 'still_wet'
             : h.lateReason === 'Too busy'
               ? 'too_busy'

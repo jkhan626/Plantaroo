@@ -51,6 +51,8 @@ export interface Plant extends PlantProfile {
   last_repotted?: string | null;
   /** "Still wet" snooze: hide from the To Do list until this ISO time (next day). */
   snooze_until?: string | null;
+  /** Owner reported the soil still wet on this date, in the current watering cycle. */
+  still_wet_at?: string | null;
   /** Rationale from the AI-tailored schedule shown at add time, if generated. */
   ai_rationale?: string;
   /** Optional pot details — inform the tailored schedule; never required. */
@@ -66,7 +68,8 @@ export type HistoryType =
   | 'Repotted'
   | 'Misted'
   | 'Cleaned'
-  | 'Pruned';
+  | 'Pruned'
+  | 'Still wet';
 
 export type LateReason = 'Still wet' | 'Too busy' | null;
 
