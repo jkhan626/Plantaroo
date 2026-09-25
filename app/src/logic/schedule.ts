@@ -61,7 +61,11 @@ export function getNextDueDate(plant: Plant): Date | null {
   if (!plant.last_watered) return null; // never watered
   const clamped = getClampedInterval(plant);
   const seasonal = getSeasonalMultiplier(plant.light_type);
-  const effective = clamped * seasonal;
+  let effective = clamped * seasonal;
+  // Watered early last cycle: check again after the gap that was just observed.
+  if (plant.check_after_days && plant.check_after_days > 0) {
+    effective = Math.min(effective, plant.check_after_days);
+  }
   const last = new Date(plant.last_watered);
   return new Date(last.getTime() + effective * MS_PER_DAY);
 }

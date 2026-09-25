@@ -8,6 +8,7 @@ import { writeWateringSummary } from '../lib/wateringSummary';
 import {
   getEffectiveStartingInterval,
   getLearnedInterval,
+  getNextDueDate,
   updateIntervalFromGap,
 } from './schedule';
 import { isFeedDue } from './fertilize';
@@ -47,8 +48,18 @@ export async function waterPlant(
   const effectiveReason: LateChoice =
     lateReason === null && plant.still_wet_at ? 'still_wet' : lateReason;
 
+  // Due date before this watering (includes any pending early-check).
+  const expectedDue = getNextDueDate(input);
+  plant.check_after_days = null; // an early-check lasts one cycle
+
   if (plant.last_watered) {
     const gapDays = (at.getTime() - new Date(plant.last_watered).getTime()) / MS_PER_DAY;
+    // Watered a day+ before it was due: it dried faster than the schedule
+    // thinks, so prompt a check after that same gap next time. Learning still
+    // only drifts gradually; this just makes sure the owner looks in time.
+    if (expectedDue && gapDays > 0 && expectedDue.getTime() - at.getTime() >= MS_PER_DAY) {
+      plant.check_after_days = gapDays;
+    }
     // A backdated event whose gap is the real interval is valid evidence; a
     // non-positive gap (same day / before the prior watering) teaches nothing.
     if (effectiveReason !== 'too_busy' && gapDays > 0) {
@@ -223,6 +234,7 @@ export function ymdToISO(ymd: string): string {
 /** Correct the last-watered date (no gap learning — this is a correction). */
 export async function setLastWatered(input: Plant, iso: string | null): Promise<void> {
   const plant = clone(input);
+  plant.check_after_days = null; // corrected anchor: drop any early-check
   if (!iso) {
     plant.last_watered = null;
     plant.recent_valid_gaps = [];
@@ -270,6 +282,7 @@ export async function patchPlant(input: Plant, patch: Partial<Plant>): Promise<v
  */
 export function recomputeWateringState(input: Plant, hist: HistoryEntry[]): Plant {
   const plant = clone(input);
+  plant.check_after_days = null; // early-check can't be trusted after an unwater
   const events = hist
     .filter((h) => h.type === 'Watered' || h.type === 'Watered + Fed' || h.type === 'Skipped')
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());

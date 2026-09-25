@@ -29,7 +29,11 @@ function getNextDueDate(plant: Plant): Date | null {
   const interval = plant.current_interval ?? 7;
   // seasonal_multiplier is never stored (computed at display time) — kept here
   // only for backward compatibility with any legacy field; defaults to 1.0.
-  const baseDays = interval * ((plant as any).seasonal_multiplier ?? 1.0);
+  let baseDays = interval * ((plant as any).seasonal_multiplier ?? 1.0);
+  // Watered early last cycle: the next check comes after the observed gap.
+  if (plant.check_after_days && plant.check_after_days > 0) {
+    baseDays = Math.min(baseDays, plant.check_after_days);
+  }
   const dueMs = lastWateredMs + baseDays * MS_PER_DAY;
 
   return new Date(dueMs);

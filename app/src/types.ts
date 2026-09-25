@@ -53,6 +53,12 @@ export interface Plant extends PlantProfile {
   snooze_until?: string | null;
   /** Owner reported the soil still wet on this date, in the current watering cycle. */
   still_wet_at?: string | null;
+  /**
+   * Watered early last time: prompt a check after this many days (the gap that
+   * was just observed) instead of waiting out the full learned interval. Lasts
+   * one cycle — reset on every watering. Never feeds the learning model.
+   */
+  check_after_days?: number | null;
   /** Rationale from the AI-tailored schedule shown at add time, if generated. */
   ai_rationale?: string;
   /** Optional pot details — inform the tailored schedule; never required. */
