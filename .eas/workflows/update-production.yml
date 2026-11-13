@@ -1,0 +1,15 @@
+name: Publish production OTA update
+
+# Lives at the repo root because the Expo<->GitHub link reads workflows from
+# the repo root; the app itself is in app/, so each step cds into it.
+# Run on demand (Expo dashboard or MCP workflow_run).
+jobs:
+  update:
+    name: Publish update to production
+    runs_on: linux-medium
+    steps:
+      - uses: eas/checkout
+      - name: Install app dependencies
+        run: cd app && npm ci --legacy-peer-deps
+      - name: Publish OTA update
+        run: cd app && npx eas-cli@latest update --branch production --message "Watering only - remove care tasks" --non-interactive
