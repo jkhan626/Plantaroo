@@ -1,0 +1,24 @@
+name: Publish production OTA update
+
+# Lives at the repo root because the Expo<->GitHub link reads workflows from
+# the repo root; the app itself is in app/, so the step cds into it.
+# Run on demand (Expo dashboard or MCP workflow_run).
+jobs:
+  update:
+    name: Publish update to production
+    runs_on: linux-medium
+    image: latest
+    steps:
+      - uses: eas/checkout
+      - name: Install deps and publish OTA update
+        run: |
+          # Expo SDK 54 / RN 0.81 need Node >= 20.19; older runner images ship 18.
+          if [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]; then
+            export N_PREFIX="$HOME/.n"
+            npx -y n 22
+            export PATH="$N_PREFIX/bin:$PATH"
+          fi
+          node --version
+          cd app
+          npm ci --legacy-peer-deps
+          npx eas-cli@latest update --branch production --message "$(git log -1 --pretty=%s)" --non-interactive
