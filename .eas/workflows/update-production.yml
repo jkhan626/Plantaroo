@@ -21,4 +21,4 @@ jobs:
           node --version
           cd app
           npm ci --legacy-peer-deps
-          npx eas-cli@latest update --branch production --message "Watering only - remove care tasks" --non-interactive
+          npx eas-cli@latest update --branch production --message "$(git log -1 --pretty=%s)" --non-interactive
