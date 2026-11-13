@@ -19,7 +19,6 @@ import { PlantAvatar, PressableScale } from '../ui/components';
 import { Droplet, Check, X, Skip as SkipIcon, Clock } from '../ui/icons';
 import { getDueText, getDaysUntilDue } from '../logic/schedule';
 import { isFeedDue, needsDistilled } from '../logic/fertilize';
-import { getDueTasks } from '../logic/tasks';
 import { skipPlant } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants } from '../data/db';
@@ -92,11 +91,6 @@ export function CareQueueScreen() {
 
   const feed = plant ? isFeedDue(plant) : false;
   const distilled = plant ? needsDistilled(plant) : false;
-  const taskText = plant
-    ? getDueTasks(plant)
-        .map((t) => t.label)
-        .join('  ·  ')
-    : '';
   const due = plant ? getDueText(plant) : null;
   const dueTint =
     due?.status === 'overdue' || due?.status === 'today'
@@ -146,13 +140,11 @@ export function CareQueueScreen() {
               {plant.name}
             </Text>
             {due && <Text style={[styles.due, { color: dueTint }]}>{due.text}</Text>}
-            {(feed || distilled || !!taskText) && (
+            {(feed || distilled) && (
               <Text style={styles.hints}>
                 {feed ? <Text style={styles.feedHint}>Feed this time</Text> : null}
                 {feed && distilled ? '  ·  ' : ''}
                 {distilled ? <Text style={styles.distilledHint}>Distilled water</Text> : null}
-                {(feed || distilled) && taskText ? '  ·  ' : ''}
-                {taskText ? <Text style={styles.taskHint}>{taskText}</Text> : null}
               </Text>
             )}
           </View>
@@ -218,7 +210,6 @@ const styles = StyleSheet.create({
   hints: { fontSize: font.size.lg, marginTop: 10 },
   feedHint: { color: colors.purple, fontWeight: font.weight.semibold },
   distilledHint: { color: colors.lightBlue, fontWeight: font.weight.medium },
-  taskHint: { color: colors.lightBlue, fontWeight: font.weight.medium },
 
   actions: { paddingHorizontal: spacing.xl, paddingBottom: 14, gap: 10 },
   waterBtn: {
