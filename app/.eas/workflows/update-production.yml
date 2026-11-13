@@ -1,0 +1,11 @@
+name: Publish production OTA update
+
+# Run on demand (Expo dashboard / MCP workflow_run) to ship an OTA update
+# to the production channel without needing local network access to Expo.
+jobs:
+  update:
+    name: Publish update to production
+    type: update
+    params:
+      branch: production
+      message: 'Watering only: remove care tasks'

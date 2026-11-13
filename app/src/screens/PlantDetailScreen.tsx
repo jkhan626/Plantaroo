@@ -42,9 +42,6 @@ import {
   Repot as RepotIcon,
   Trash,
   Camera,
-  Mist as MistIcon,
-  Sparkle,
-  Scissors,
 } from '../ui/icons';
 import {
   getClampedInterval,
@@ -71,9 +68,6 @@ import {
   saveNotes,
   skipPlant,
   repotPlant,
-  mistPlant,
-  cleanPlant,
-  prunePlant,
   undoAction,
   removeHistoryEntry,
 } from '../logic/actions';
@@ -282,24 +276,11 @@ export function PlantDetailScreen() {
       onUndo: async () => undoAction(undo),
     });
   }
-  async function doCareTask(
-    action: typeof mistPlant,
-    message: string,
-  ) {
-    if (!plant) return;
-    const { undo } = await action(plant);
-    toast.show({
-      message,
-      onUndo: async () => undoAction(undo),
-    });
-  }
 
   function editNumber(
     field:
       | 'species_baseline_days'
-      | 'feed_every_n_waterings'
-      | 'mist_every_days'
-      | 'clean_every_days',
+      | 'feed_every_n_waterings',
     label: string,
   ) {
     if (Platform.OS !== 'ios') return; // Alert.prompt is iOS-only
@@ -712,32 +693,6 @@ export function PlantDetailScreen() {
             <RepotIcon size={18} color={colors.orange} />
           </ActionBtn>
         </View>
-        <View style={[styles.actions, { marginTop: 10 }]}>
-          <ActionBtn
-            label="Mist"
-            tint={colors.lightBlue}
-            bg="rgba(90,200,250,0.10)"
-            onPress={() => doCareTask(mistPlant, `${plant.name} misted`)}
-          >
-            <MistIcon size={18} color={colors.lightBlue} />
-          </ActionBtn>
-          <ActionBtn
-            label="Clean"
-            tint={colors.textSecondary}
-            bg="rgba(142,142,147,0.1)"
-            onPress={() => doCareTask(cleanPlant, 'Leaves cleaned')}
-          >
-            <Sparkle size={18} color={colors.textSecondary} />
-          </ActionBtn>
-          <ActionBtn
-            label="Prune"
-            tint={colors.orange}
-            bg={colors.orangeBg}
-            onPress={() => doCareTask(prunePlant, `${plant.name} pruned`)}
-          >
-            <Scissors size={18} color={colors.orange} />
-          </ActionBtn>
-        </View>
 
         {plant.carnivore && (
           <View style={styles.warning}>
@@ -779,23 +734,6 @@ export function PlantDetailScreen() {
             onPress={Platform.OS === 'ios' ? () => editNumber('feed_every_n_waterings', 'Feed every N waterings (0 = never)') : undefined}
           />
           <Row label="Water source" value={displayLabel(plant.water_source)} onPress={() => openEditor('water_source')} last />
-        </Section>
-
-        {/* Care tasks (Phase 2) */}
-        <Section title="Care tasks">
-          <Row
-            label="Mist every"
-            value={plant.mist_every_days ? `${plant.mist_every_days} days` : 'Off'}
-            onPress={Platform.OS === 'ios' ? () => editNumber('mist_every_days', 'Mist every N days (0 = off)') : undefined}
-          />
-          <Row label="Last misted" value={relativeDayLabel(plant.last_misted ?? null)} />
-          <Row
-            label="Clean leaves every"
-            value={plant.clean_every_days ? `${plant.clean_every_days} days` : 'Off'}
-            onPress={Platform.OS === 'ios' ? () => editNumber('clean_every_days', 'Clean leaves every N days (0 = off)') : undefined}
-          />
-          <Row label="Last cleaned" value={relativeDayLabel(plant.last_cleaned ?? null)} />
-          <Row label="Last pruned" value={relativeDayLabel(plant.last_pruned ?? null)} last />
         </Section>
 
         {/* Bundled plant knowledge (Phase 3) */}

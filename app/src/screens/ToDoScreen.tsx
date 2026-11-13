@@ -7,7 +7,6 @@ import { colors, font, radius, spacing, shadow } from '../theme';
 import type { RootStackParamList } from '../navigation/types';
 import { usePlants } from '../ui/hooks';
 import { useWaterAction } from '../ui/useWater';
-import { useCareTaskAction } from '../ui/useCareTask';
 import { useToast } from '../ui/Toast';
 import { PlantCard } from '../ui/PlantCard';
 import { ScreenHeader } from '../ui/Header';
@@ -17,7 +16,6 @@ import { PressableScale } from '../ui/components';
 import { DateSheet } from '../ui/DateSheet';
 import { Plus, Check, Gear, Sprout, Droplet, ChevronRight } from '../ui/icons';
 import { getDaysUntilDue, getSeasonLabel, isSnoozed } from '../logic/schedule';
-import { getDueTasks, type CareTask } from '../logic/tasks';
 import { bulkSetLastWatered, stillWetDefer, undoAction } from '../logic/actions';
 import { rescheduleWateringReminders } from '../logic/notify';
 import { getPlants, isHydrated, refreshFromCloud } from '../data/db';
@@ -29,7 +27,6 @@ export function ToDoScreen() {
   const insets = useSafeAreaInsets();
   const plants = usePlants();
   const { water } = useWaterAction();
-  const { completeTask } = useCareTaskAction();
   const toast = useToast();
   const [dateOpen, setDateOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,12 +49,6 @@ export function ToDoScreen() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const dueCount = overdue.length + today.length + neverW.length;
-
-  // Plants with a non-water task due that aren't already in a watering section.
-  const waterDueIds = new Set([...overdue, ...today, ...neverW].map((p) => p.id));
-  const otherCare = plants
-    .filter((p) => !waterDueIds.has(p.id) && getDueTasks(p).length > 0)
-    .sort((a, b) => a.name.localeCompare(b.name));
 
   async function stillWet(p: (typeof plants)[number]) {
     const { undo } = await stillWetDefer(p);
@@ -84,9 +75,7 @@ export function ToDoScreen() {
       ? getSeasonLabel()
       : dueCount > 0
         ? `${dueCount} need${dueCount === 1 ? 's' : ''} water · ${getSeasonLabel()}`
-        : otherCare.length > 0
-          ? `${otherCare.length} care task${otherCare.length === 1 ? '' : 's'} · ${getSeasonLabel()}`
-          : `All caught up · ${getSeasonLabel()}`;
+        : `All caught up · ${getSeasonLabel()}`;
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
@@ -117,7 +106,7 @@ export function ToDoScreen() {
             actionLabel="Add a plant"
             onAction={() => nav.navigate('AddPlant')}
           />
-        ) : dueCount === 0 && otherCare.length === 0 ? (
+        ) : dueCount === 0 ? (
           <EmptyState
             icon={<Check size={34} color={colors.green} />}
             title="All caught up"
@@ -139,8 +128,8 @@ export function ToDoScreen() {
                 <ChevronRight size={18} color={colors.green} />
               </PressableScale>
             )}
-            <Section title="Overdue" tint={colors.red} items={overdue} water={water} stillWet={stillWet} task={completeTask} nav={nav} />
-            <Section title="Due today" tint={colors.orange} items={today} water={water} stillWet={stillWet} task={completeTask} nav={nav} />
+            <Section title="Overdue" tint={colors.red} items={overdue} water={water} stillWet={stillWet} nav={nav} />
+            <Section title="Due today" tint={colors.orange} items={today} water={water} stillWet={stillWet} nav={nav} />
             {neverW.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.sectionHeaderRow}>
@@ -162,15 +151,6 @@ export function ToDoScreen() {
                 ))}
               </View>
             )}
-            <Section
-              title="Other care"
-              tint={colors.lightBlue}
-              items={otherCare}
-              water={water}
-              task={completeTask}
-              nav={nav}
-              mode="all"
-            />
           </>
         )}
       </ScrollView>
@@ -199,18 +179,14 @@ function Section({
   items,
   water,
   stillWet,
-  task,
   nav,
-  mode = 'todo',
 }: {
   title: string;
   tint: string;
   items: ReturnType<typeof usePlants>;
   water: (p: any) => void;
   stillWet?: (p: any) => void;
-  task?: (p: any, t: CareTask) => void;
   nav: Nav;
-  mode?: 'todo' | 'all';
 }) {
   if (items.length === 0) return null;
   return (
@@ -220,11 +196,10 @@ function Section({
         <PlantCard
           key={p.id}
           plant={p}
-          mode={mode}
+          mode="todo"
           onPress={() => nav.navigate('PlantDetail', { id: p.id })}
           onWater={() => water(p)}
           onStillWet={stillWet ? () => stillWet(p) : undefined}
-          onTask={task ? (t) => task(p, t) : undefined}
         />
       ))}
     </View>

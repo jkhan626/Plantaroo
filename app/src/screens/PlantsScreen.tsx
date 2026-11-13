@@ -19,7 +19,6 @@ import type { RootStackParamList } from '../navigation/types';
 import type { Plant, LightType } from '../types';
 import { usePlants } from '../ui/hooks';
 import { useWaterAction } from '../ui/useWater';
-import { useCareTaskAction } from '../ui/useCareTask';
 import { PlantCard } from '../ui/PlantCard';
 import { ScreenHeader } from '../ui/Header';
 import { EmptyState } from '../ui/EmptyState';
@@ -43,7 +42,6 @@ export function PlantsScreen() {
   const insets = useSafeAreaInsets();
   const plants = usePlants();
   const { water } = useWaterAction();
-  const { completeTask } = useCareTaskAction();
 
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('due');
@@ -192,7 +190,6 @@ export function PlantsScreen() {
                   plant={p}
                   onPress={() => nav.navigate('PlantDetail', { id: p.id })}
                   onWater={() => water(p)}
-                  onTask={(t) => completeTask(p, t)}
                 />
               ))}
             </View>
@@ -204,7 +201,6 @@ export function PlantsScreen() {
               plant={p}
               onPress={() => nav.navigate('PlantDetail', { id: p.id })}
               onWater={() => water(p)}
-              onTask={(t) => completeTask(p, t)}
             />
           ))
         )}
